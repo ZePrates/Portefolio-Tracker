@@ -14,7 +14,148 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      assets: {
+        Row: {
+          annual_yield: number | null
+          average_price: number
+          class: string
+          created_at: string
+          currency: string
+          current_price: number
+          current_value: number
+          id: string
+          invested_amount: number
+          metal_type: string | null
+          name: string
+          notes: string | null
+          p2p_group: string | null
+          quantity: number
+          ticker: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          annual_yield?: number | null
+          average_price?: number
+          class: string
+          created_at?: string
+          currency?: string
+          current_price?: number
+          current_value?: number
+          id?: string
+          invested_amount?: number
+          metal_type?: string | null
+          name: string
+          notes?: string | null
+          p2p_group?: string | null
+          quantity?: number
+          ticker?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          annual_yield?: number | null
+          average_price?: number
+          class?: string
+          created_at?: string
+          currency?: string
+          current_price?: number
+          current_value?: number
+          id?: string
+          invested_amount?: number
+          metal_type?: string | null
+          name?: string
+          notes?: string | null
+          p2p_group?: string | null
+          quantity?: number
+          ticker?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      dividends: {
+        Row: {
+          amount: number
+          asset_id: string | null
+          asset_name: string
+          created_at: string
+          id: string
+          paid_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          asset_id?: string | null
+          asset_name?: string
+          created_at?: string
+          id?: string
+          paid_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          asset_id?: string | null
+          asset_name?: string
+          created_at?: string
+          id?: string
+          paid_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dividends_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          asset_id: string | null
+          created_at: string
+          id: string
+          price: number
+          quantity: number
+          total: number
+          traded_at: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          asset_id?: string | null
+          created_at?: string
+          id?: string
+          price?: number
+          quantity?: number
+          total?: number
+          traded_at?: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          asset_id?: string | null
+          created_at?: string
+          id?: string
+          price?: number
+          quantity?: number
+          total?: number
+          traded_at?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
