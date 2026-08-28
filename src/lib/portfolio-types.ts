@@ -1,0 +1,80 @@
+export type AssetClass =
+  | "etf"
+  | "reit"
+  | "acao_dividendo"
+  | "acao_crescimento"
+  | "metal"
+  | "p2p";
+
+export interface Asset {
+  id: string;
+  user_id: string;
+  class: AssetClass;
+  ticker: string | null;
+  name: string;
+  quantity: number;
+  average_price: number;
+  current_price: number;
+  invested_amount: number;
+  current_value: number;
+  currency: string;
+  metal_type: string | null;
+  p2p_group: string | null;
+  annual_yield: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Dividend {
+  id: string;
+  user_id: string;
+  asset_id: string | null;
+  asset_name: string;
+  amount: number;
+  paid_at: string;
+  created_at: string;
+}
+
+export interface Transaction {
+  id: string;
+  user_id: string;
+  asset_id: string | null;
+  type: "buy" | "sell";
+  quantity: number;
+  price: number;
+  total: number;
+  traded_at: string;
+  created_at: string;
+}
+
+export const CLASS_LABELS: Record<AssetClass, string> = {
+  etf: "ETFs",
+  reit: "REITs",
+  acao_dividendo: "Ações Dividendos",
+  acao_crescimento: "Ações Crescimento",
+  metal: "Metais Preciosos",
+  p2p: "P2P",
+};
+
+/** Valor atual de um ativo (títulos: quantidade × preço; P2P/metais: valor corrente). */
+export function assetCurrentValue(a: Asset): number {
+  if (a.class === "p2p" || a.class === "metal") return a.current_value || 0;
+  if (a.quantity > 0 && a.current_price > 0) return a.quantity * a.current_price;
+  return a.current_value || 0;
+}
+
+/** Total investido num ativo. */
+export function assetInvested(a: Asset): number {
+  if (a.class === "p2p" || a.class === "metal") return a.invested_amount || 0;
+  if (a.quantity > 0 && a.average_price > 0) return a.quantity * a.average_price;
+  return a.invested_amount || 0;
+}
+
+export function assetPL(a: Asset): { abs: number; pct: number } {
+  const invested = assetInvested(a);
+  const current = assetCurrentValue(a);
+  const abs = current - invested;
+  const pct = invested > 0 ? (abs / invested) * 100 : 0;
+  return { abs, pct };
+}
