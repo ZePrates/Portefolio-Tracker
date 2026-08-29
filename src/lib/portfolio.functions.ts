@@ -14,17 +14,17 @@ const assetClassSchema = z.enum([
 const assetInputSchema = z.object({
   class: assetClassSchema,
   name: z.string().min(1, "Nome é obrigatório"),
-  ticker: z.string().nullish(),
+  ticker: z.string().nullable().default(null),
   quantity: z.number().min(0).default(0),
   average_price: z.number().min(0).default(0),
   current_price: z.number().min(0).default(0),
   invested_amount: z.number().min(0).default(0),
   current_value: z.number().min(0).default(0),
   currency: z.string().default("EUR"),
-  metal_type: z.string().nullish(),
-  p2p_group: z.string().nullish(),
-  annual_yield: z.number().min(0).nullish(),
-  notes: z.string().nullish(),
+  metal_type: z.string().nullable().default(null),
+  p2p_group: z.string().nullable().default(null),
+  annual_yield: z.number().min(0).nullable().default(null),
+  notes: z.string().nullable().default(null),
 });
 
 export const listAssets = createServerFn({ method: "GET" })
@@ -92,7 +92,7 @@ export const createDividend = createServerFn({ method: "POST" })
   .inputValidator((input) =>
     z
       .object({
-        asset_id: z.string().uuid().nullish(),
+        asset_id: z.string().uuid().nullable().default(null),
         asset_name: z.string().min(1),
         amount: z.number().positive("Valor tem de ser positivo"),
         paid_at: z.string().min(1),

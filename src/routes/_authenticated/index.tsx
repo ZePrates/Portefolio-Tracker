@@ -202,7 +202,7 @@ function DashboardPage() {
                   return (
                     <li key={c}>
                       <Link
-                        to={CLASS_ROUTES[c.class]}
+                        to={CLASS_ROUTES[c]}
                         className="flex items-center justify-between rounded-lg border border-border/60 px-4 py-3 transition-colors hover:bg-accent/50"
                       >
                         <span className="text-sm font-medium">{CLASS_LABELS[c]}</span>
