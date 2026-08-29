@@ -9,50 +9,270 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedAcoesCrescimentoRouteImport } from './routes/_authenticated/acoes-crescimento'
+import { Route as AuthenticatedAcoesDividendosRouteImport } from './routes/_authenticated/acoes-dividendos'
+import { Route as AuthenticatedAnaliseRouteImport } from './routes/_authenticated/analise'
+import { Route as AuthenticatedDividendosRouteImport } from './routes/_authenticated/dividendos'
+import { Route as AuthenticatedEtfsRouteImport } from './routes/_authenticated/etfs'
+import { Route as AuthenticatedMetaisRouteImport } from './routes/_authenticated/metais'
+import { Route as AuthenticatedP2pRouteImport } from './routes/_authenticated/p2p'
+import { Route as AuthenticatedReitsRouteImport } from './routes/_authenticated/reits'
 
-const IndexRoute = IndexRouteImport.update({
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAcoesCrescimentoRoute =
+  AuthenticatedAcoesCrescimentoRouteImport.update({
+    id: '/acoes-crescimento',
+    path: '/acoes-crescimento',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAcoesDividendosRoute =
+  AuthenticatedAcoesDividendosRouteImport.update({
+    id: '/acoes-dividendos',
+    path: '/acoes-dividendos',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAnaliseRoute = AuthenticatedAnaliseRouteImport.update({
+  id: '/analise',
+  path: '/analise',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDividendosRoute = AuthenticatedDividendosRouteImport.update({
+  id: '/dividendos',
+  path: '/dividendos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedEtfsRoute = AuthenticatedEtfsRouteImport.update({
+  id: '/etfs',
+  path: '/etfs',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedMetaisRoute = AuthenticatedMetaisRouteImport.update({
+  id: '/metais',
+  path: '/metais',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedP2pRoute = AuthenticatedP2pRouteImport.update({
+  id: '/p2p',
+  path: '/p2p',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedReitsRoute = AuthenticatedReitsRouteImport.update({
+  id: '/reits',
+  path: '/reits',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AuthenticatedIndexRoute
+  '/auth': typeof AuthRoute
+  '/acoes-crescimento': typeof AuthenticatedAcoesCrescimentoRoute
+  '/acoes-dividendos': typeof AuthenticatedAcoesDividendosRoute
+  '/analise': typeof AuthenticatedAnaliseRoute
+  '/dividendos': typeof AuthenticatedDividendosRoute
+  '/etfs': typeof AuthenticatedEtfsRoute
+  '/metais': typeof AuthenticatedMetaisRoute
+  '/p2p': typeof AuthenticatedP2pRoute
+  '/reits': typeof AuthenticatedReitsRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/acoes-crescimento': typeof AuthenticatedAcoesCrescimentoRoute
+  '/acoes-dividendos': typeof AuthenticatedAcoesDividendosRoute
+  '/analise': typeof AuthenticatedAnaliseRoute
+  '/dividendos': typeof AuthenticatedDividendosRoute
+  '/etfs': typeof AuthenticatedEtfsRoute
+  '/metais': typeof AuthenticatedMetaisRoute
+  '/p2p': typeof AuthenticatedP2pRoute
+  '/reits': typeof AuthenticatedReitsRoute
+  '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/acoes-crescimento': typeof AuthenticatedAcoesCrescimentoRoute
+  '/_authenticated/acoes-dividendos': typeof AuthenticatedAcoesDividendosRoute
+  '/_authenticated/analise': typeof AuthenticatedAnaliseRoute
+  '/_authenticated/dividendos': typeof AuthenticatedDividendosRoute
+  '/_authenticated/etfs': typeof AuthenticatedEtfsRoute
+  '/_authenticated/metais': typeof AuthenticatedMetaisRoute
+  '/_authenticated/p2p': typeof AuthenticatedP2pRoute
+  '/_authenticated/reits': typeof AuthenticatedReitsRoute
+  '/_authenticated/': typeof AuthenticatedIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/acoes-crescimento'
+    | '/acoes-dividendos'
+    | '/analise'
+    | '/dividendos'
+    | '/etfs'
+    | '/metais'
+    | '/p2p'
+    | '/reits'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/auth'
+    | '/acoes-crescimento'
+    | '/acoes-dividendos'
+    | '/analise'
+    | '/dividendos'
+    | '/etfs'
+    | '/metais'
+    | '/p2p'
+    | '/reits'
+    | '/'
+  id:
+    | '__root__'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/acoes-crescimento'
+    | '/_authenticated/acoes-dividendos'
+    | '/_authenticated/analise'
+    | '/_authenticated/dividendos'
+    | '/_authenticated/etfs'
+    | '/_authenticated/metais'
+    | '/_authenticated/p2p'
+    | '/_authenticated/reits'
+    | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/': {
+      id: '/_authenticated/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/acoes-crescimento': {
+      id: '/_authenticated/acoes-crescimento'
+      path: '/acoes-crescimento'
+      fullPath: '/acoes-crescimento'
+      preLoaderRoute: typeof AuthenticatedAcoesCrescimentoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/acoes-dividendos': {
+      id: '/_authenticated/acoes-dividendos'
+      path: '/acoes-dividendos'
+      fullPath: '/acoes-dividendos'
+      preLoaderRoute: typeof AuthenticatedAcoesDividendosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/analise': {
+      id: '/_authenticated/analise'
+      path: '/analise'
+      fullPath: '/analise'
+      preLoaderRoute: typeof AuthenticatedAnaliseRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dividendos': {
+      id: '/_authenticated/dividendos'
+      path: '/dividendos'
+      fullPath: '/dividendos'
+      preLoaderRoute: typeof AuthenticatedDividendosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/etfs': {
+      id: '/_authenticated/etfs'
+      path: '/etfs'
+      fullPath: '/etfs'
+      preLoaderRoute: typeof AuthenticatedEtfsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/metais': {
+      id: '/_authenticated/metais'
+      path: '/metais'
+      fullPath: '/metais'
+      preLoaderRoute: typeof AuthenticatedMetaisRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/p2p': {
+      id: '/_authenticated/p2p'
+      path: '/p2p'
+      fullPath: '/p2p'
+      preLoaderRoute: typeof AuthenticatedP2pRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reits': {
+      id: '/_authenticated/reits'
+      path: '/reits'
+      fullPath: '/reits'
+      preLoaderRoute: typeof AuthenticatedReitsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAcoesCrescimentoRoute: typeof AuthenticatedAcoesCrescimentoRoute
+  AuthenticatedAcoesDividendosRoute: typeof AuthenticatedAcoesDividendosRoute
+  AuthenticatedAnaliseRoute: typeof AuthenticatedAnaliseRoute
+  AuthenticatedDividendosRoute: typeof AuthenticatedDividendosRoute
+  AuthenticatedEtfsRoute: typeof AuthenticatedEtfsRoute
+  AuthenticatedMetaisRoute: typeof AuthenticatedMetaisRoute
+  AuthenticatedP2pRoute: typeof AuthenticatedP2pRoute
+  AuthenticatedReitsRoute: typeof AuthenticatedReitsRoute
+  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAcoesCrescimentoRoute: AuthenticatedAcoesCrescimentoRoute,
+  AuthenticatedAcoesDividendosRoute: AuthenticatedAcoesDividendosRoute,
+  AuthenticatedAnaliseRoute: AuthenticatedAnaliseRoute,
+  AuthenticatedDividendosRoute: AuthenticatedDividendosRoute,
+  AuthenticatedEtfsRoute: AuthenticatedEtfsRoute,
+  AuthenticatedMetaisRoute: AuthenticatedMetaisRoute,
+  AuthenticatedP2pRoute: AuthenticatedP2pRoute,
+  AuthenticatedReitsRoute: AuthenticatedReitsRoute,
+  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
