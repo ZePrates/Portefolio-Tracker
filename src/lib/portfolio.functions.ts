@@ -1,6 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Database } from "@/integrations/supabase/types";
+
+type AssetUpdate = Database["public"]["Tables"]["assets"]["Update"];
 
 const assetClassSchema = z.enum([
   "etf",
@@ -57,9 +60,12 @@ export const updateAsset = createServerFn({ method: "POST" })
     z.object({ id: z.string().uuid(), patch: assetInputSchema.partial() }).parse(input),
   )
   .handler(async ({ data, context }) => {
+    const patch = Object.fromEntries(
+      Object.entries(data.patch).filter(([, v]) => v !== undefined),
+    ) as AssetUpdate;
     const { data: row, error } = await context.supabase
       .from("assets")
-      .update(data.patch)
+      .update(patch)
       .eq("id", data.id)
       .select()
       .single();
