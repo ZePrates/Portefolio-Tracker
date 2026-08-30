@@ -1,10 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Plus, RefreshCw } from "lucide-react";
 import { PieChart as PieIcon } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { listAssets, listDividends } from "@/lib/portfolio.functions";
+import { refreshPricesFromYahoo } from "@/lib/prices.functions";
+import { useState } from "react";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import {
   type Asset,
   type AssetClass,
@@ -89,10 +93,11 @@ function DashboardPage() {
         actions={
           <Button
             variant="outline"
-            onClick={() => {}}
-            title="Preços são geridos manualmente por agora"
+            onClick={refreshPrices}
+            disabled={refreshing}
+            title="Obter cotações do Yahoo Finance"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
             Atualizar preços
           </Button>
         }

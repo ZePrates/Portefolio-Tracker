@@ -11,6 +11,7 @@ import {
   assetPL,
 } from "@/lib/portfolio-types";
 import { listAssets, createAsset, updateAsset, deleteAsset } from "@/lib/portfolio.functions";
+import { refreshPricesFromYahoo } from "@/lib/prices.functions";
 import { formatEUR, formatPercent } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
 import { PageHeader, MetricCard, EmptyState, Button, Modal, Field, TextInput } from "@/components/ui-bits";
@@ -65,11 +66,13 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   const createFn = useServerFn(createAsset);
   const updateFn = useServerFn(updateAsset);
   const deleteFn = useServerFn(deleteAsset);
+  const refreshFn = useServerFn(refreshPricesFromYahoo);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Asset | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const { data: allAssets, isLoading } = useQuery({
     queryKey: ["assets"],
@@ -170,7 +173,31 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   };
 
   const refreshPrices = async () => {
-    toast.info("Preços atualizados manualmente — edita cada ativo para ajustar o preço atual.");
+    if (refreshing) return;
+    setRefreshing(true);
+    const toastId = toast.loading("A obter preços do Yahoo Finance...");
+    try {
+      const res = (await refreshFn({ data: { class: assetClass } })) as {
+        updated: number;
+        failed: string[];
+        total: number;
+      };
+      await queryClient.invalidateQueries({ queryKey: ["assets"] });
+      if (res.updated === 0 && res.total === 0) {
+        toast.info("Não há ativos com ticker nesta página.", { id: toastId });
+      } else if (res.failed.length > 0) {
+        toast.warning(
+          `${res.updated} preços atualizados. Sem cotação: ${res.failed.join(", ")}`,
+          { id: toastId },
+        );
+      } else {
+        toast.success(`${res.updated} preços atualizados.`, { id: toastId });
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao atualizar preços.", { id: toastId });
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const set = (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -183,8 +210,8 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         subtitle={subtitle}
         actions={
           <>
-            <Button variant="outline" onClick={refreshPrices}>
-              <RefreshCw className="h-4 w-4" />
+            <Button variant="outline" onClick={refreshPrices} disabled={refreshing}>
+              <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
               Atualizar preços
             </Button>
             <Button onClick={openCreate}>
