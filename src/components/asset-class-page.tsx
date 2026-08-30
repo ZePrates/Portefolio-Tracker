@@ -170,7 +170,31 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   };
 
   const refreshPrices = async () => {
-    toast.info("Preços atualizados manualmente — edita cada ativo para ajustar o preço atual.");
+    if (refreshing) return;
+    setRefreshing(true);
+    const toastId = toast.loading("A obter preços do Yahoo Finance...");
+    try {
+      const res = (await refreshFn({ data: { class: assetClass } })) as {
+        updated: number;
+        failed: string[];
+        total: number;
+      };
+      await queryClient.invalidateQueries({ queryKey: ["assets"] });
+      if (res.updated === 0 && res.total === 0) {
+        toast.info("Não há ativos com ticker nesta página.", { id: toastId });
+      } else if (res.failed.length > 0) {
+        toast.warning(
+          `${res.updated} preços atualizados. Sem cotação: ${res.failed.join(", ")}`,
+          { id: toastId },
+        );
+      } else {
+        toast.success(`${res.updated} preços atualizados.`, { id: toastId });
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao atualizar preços.", { id: toastId });
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const set = (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
