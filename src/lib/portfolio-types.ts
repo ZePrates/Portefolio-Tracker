@@ -22,6 +22,11 @@ export interface Asset {
   p2p_group: string | null;
   annual_yield: number | null;
   notes: string | null;
+  native_currency: string;
+  purchase_price_native: number | null;
+  current_price_native: number | null;
+  dividend_frequency: string | null;
+  last_dividend_import: string | null;
   created_at: string;
   updated_at: string;
 }
