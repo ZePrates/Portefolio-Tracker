@@ -8,6 +8,16 @@ export function formatEUR(value: number, hidden = false): string {
   return eurFormatter.format(value ?? 0);
 }
 
+/** Formata um valor na moeda original do ativo (ex.: USD). */
+export function formatMoney(value: number, currency = "EUR", hidden = false): string {
+  if (hidden) return "••••";
+  try {
+    return new Intl.NumberFormat("pt-PT", { style: "currency", currency }).format(value ?? 0);
+  } catch {
+    return `${(value ?? 0).toFixed(2)} ${currency}`;
+  }
+}
+
 export function formatPercent(value: number, hidden = false): string {
   if (hidden) return "••••";
   const sign = value > 0 ? "+" : "";
