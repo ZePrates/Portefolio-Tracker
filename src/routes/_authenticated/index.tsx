@@ -55,6 +55,34 @@ function DashboardPage() {
   const { hidden } = usePrivateMode();
   const fetchAssets = useServerFn(listAssets);
   const fetchDividends = useServerFn(listDividends);
+  const refreshFn = useServerFn(refreshPricesFromYahoo);
+  const queryClient = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const refreshPrices = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    const toastId = toast.loading("A obter preços do Yahoo Finance...");
+    try {
+      const res = (await refreshFn({ data: { class: null } })) as {
+        updated: number;
+        failed: string[];
+        total: number;
+      };
+      await queryClient.invalidateQueries({ queryKey: ["assets"] });
+      if (res.failed.length > 0) {
+        toast.warning(`${res.updated} preços atualizados. Sem cotação: ${res.failed.join(", ")}`, {
+          id: toastId,
+        });
+      } else {
+        toast.success(`${res.updated} preços atualizados.`, { id: toastId });
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao atualizar preços.", { id: toastId });
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const { data: assetsRaw, isLoading } = useQuery({
     queryKey: ["assets"],
