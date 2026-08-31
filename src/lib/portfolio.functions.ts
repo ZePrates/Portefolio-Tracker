@@ -28,6 +28,10 @@ const assetInputSchema = z.object({
   p2p_group: z.string().nullable().default(null),
   annual_yield: z.number().min(0).nullable().default(null),
   notes: z.string().nullable().default(null),
+  native_currency: z.string().default("EUR"),
+  purchase_price_native: z.number().min(0).nullable().default(null),
+  current_price_native: z.number().min(0).nullable().default(null),
+  dividend_frequency: z.string().nullable().default(null),
 });
 
 export const listAssets = createServerFn({ method: "GET" })
