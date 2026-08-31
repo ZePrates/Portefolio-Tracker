@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, Pencil, Trash2, RefreshCw } from "lucide-react";
+import { Plus, Pencil, Trash2, RefreshCw, Search, Download } from "lucide-react";
 import { toast } from "sonner";
 import {
   type Asset,
@@ -11,8 +11,12 @@ import {
   assetPL,
 } from "@/lib/portfolio-types";
 import { listAssets, createAsset, updateAsset, deleteAsset } from "@/lib/portfolio.functions";
-import { refreshPricesFromYahoo } from "@/lib/prices.functions";
-import { formatEUR, formatPercent } from "@/lib/format";
+import {
+  refreshPricesFromYahoo,
+  lookupTicker,
+  importDividendsForAsset,
+} from "@/lib/prices.functions";
+import { formatEUR, formatMoney, formatPercent } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
 import { PageHeader, MetricCard, EmptyState, Button, Modal, Field, TextInput } from "@/components/ui-bits";
 import { cn } from "@/lib/utils";
@@ -28,27 +32,39 @@ interface FormState {
   name: string;
   ticker: string;
   quantity: string;
-  average_price: string;
+  purchase_price: string;
   current_price: string;
   invested_amount: string;
   current_value: string;
   metal_type: string;
   p2p_group: string;
   annual_yield: string;
+  currency: string;
+  frequency: string;
 }
 
-const EMPTY_FORM: FormState = {
-  name: "",
-  ticker: "",
-  quantity: "",
-  average_price: "",
-  current_price: "",
-  invested_amount: "",
-  current_value: "",
-  metal_type: "Ouro",
-  p2p_group: "A",
-  annual_yield: "",
-};
+const CURRENCIES = ["USD", "EUR", "GBP", "CHF", "CAD"];
+
+function defaultCurrency(c: AssetClass) {
+  return c === "etf" ? "EUR" : "USD";
+}
+
+function emptyForm(c: AssetClass): FormState {
+  return {
+    name: "",
+    ticker: "",
+    quantity: "",
+    purchase_price: "",
+    current_price: "",
+    invested_amount: "",
+    current_value: "",
+    metal_type: "Ouro",
+    p2p_group: "A",
+    annual_yield: "",
+    currency: defaultCurrency(c),
+    frequency: "",
+  };
+}
 
 function num(s: string): number {
   const n = parseFloat(s.replace(",", "."));
@@ -59,6 +75,10 @@ function isSecurity(c: AssetClass) {
   return c === "etf" || c === "reit" || c === "acao_dividendo" || c === "acao_crescimento";
 }
 
+function paysDividends(c: AssetClass) {
+  return c === "reit" || c === "acao_dividendo" || c === "etf";
+}
+
 export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Props) {
   const { hidden } = usePrivateMode();
   const queryClient = useQueryClient();
@@ -67,12 +87,17 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   const updateFn = useServerFn(updateAsset);
   const deleteFn = useServerFn(deleteAsset);
   const refreshFn = useServerFn(refreshPricesFromYahoo);
+  const lookupFn = useServerFn(lookupTicker);
+  const importDivFn = useServerFn(importDividendsForAsset);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Asset | null>(null);
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [form, setForm] = useState<FormState>(() => emptyForm(assetClass));
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [looking, setLooking] = useState(false);
+  const [importingId, setImportingId] = useState<string | null>(null);
+  const [fxRate, setFxRate] = useState<number>(1);
 
   const { data: allAssets, isLoading } = useQuery({
     queryKey: ["assets"],
@@ -94,25 +119,83 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
 
   const openCreate = () => {
     setEditing(null);
-    setForm(EMPTY_FORM);
+    setForm(emptyForm(assetClass));
+    setFxRate(1);
     setDialogOpen(true);
   };
 
   const openEdit = (a: Asset) => {
     setEditing(a);
+    const cur = a.native_currency || "EUR";
+    const rate =
+      a.current_price_native && a.current_price_native > 0 && a.current_price > 0
+        ? a.current_price / a.current_price_native
+        : 1;
+    setFxRate(cur === "EUR" ? 1 : rate);
     setForm({
       name: a.name,
       ticker: a.ticker ?? "",
       quantity: a.quantity ? String(a.quantity) : "",
-      average_price: a.average_price ? String(a.average_price) : "",
-      current_price: a.current_price ? String(a.current_price) : "",
+      purchase_price: String(a.purchase_price_native ?? a.average_price ?? "") || "",
+      current_price: String(a.current_price_native ?? a.current_price ?? "") || "",
       invested_amount: a.invested_amount ? String(a.invested_amount) : "",
       current_value: a.current_value ? String(a.current_value) : "",
       metal_type: a.metal_type ?? "Ouro",
       p2p_group: a.p2p_group ?? "A",
       annual_yield: a.annual_yield != null ? String(a.annual_yield) : "",
+      currency: cur,
+      frequency: a.dividend_frequency ?? "",
     });
     setDialogOpen(true);
+  };
+
+  /** Vai buscar ao Yahoo Finance toda a informação do ticker. */
+  const lookup = async () => {
+    const ticker = form.ticker.trim();
+    if (!ticker) {
+      toast.error("Escreve primeiro o ticker.");
+      return;
+    }
+    setLooking(true);
+    const id = toast.loading(`A procurar ${ticker} no Yahoo Finance...`);
+    try {
+      const info = (await lookupFn({ data: { ticker } })) as {
+        name: string;
+        currency: string;
+        price: number;
+        rate: number | null;
+        annualYield: number | null;
+        frequency: string | null;
+        dividendsPerShareTTM: number;
+      };
+      setFxRate(info.rate ?? 1);
+      setForm((f) => ({
+        ...f,
+        name: f.name.trim() || info.name,
+        currency: info.currency,
+        current_price: String(info.price),
+        purchase_price: f.purchase_price || String(info.price),
+        annual_yield: info.annualYield != null ? info.annualYield.toFixed(2) : f.annual_yield,
+        frequency: info.frequency ?? f.frequency,
+      }));
+      toast.success(
+        info.annualYield != null
+          ? `${info.name}: ${info.price} ${info.currency} · yield ${info.annualYield.toFixed(2)}%`
+          : `${info.name}: ${info.price} ${info.currency}`,
+        { id },
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não encontrei este ticker.", { id });
+    } finally {
+      setLooking(false);
+    }
+  };
+
+  const rateFor = async (currency: string): Promise<number> => {
+    if (currency === "EUR") return 1;
+    if (fxRate && fxRate !== 1) return fxRate;
+    const info = (await lookupFn({ data: { ticker: `${currency}EUR=X` } })) as { price: number };
+    return info.price;
   };
 
   const save = async () => {
@@ -123,24 +206,29 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
     setSaving(true);
     try {
       const quantity = num(form.quantity);
-      const averagePrice = num(form.average_price);
-      const currentPrice = num(form.current_price);
+      const rate = isSecurity(assetClass) ? await rateFor(form.currency) : 1;
+      const purchaseNative = num(form.purchase_price);
+      const currentNative = num(form.current_price);
+      const purchaseEur = purchaseNative * rate;
+      const currentEur = currentNative * rate;
       const invested = isSecurity(assetClass)
-        ? quantity * averagePrice
+        ? quantity * purchaseEur
         : num(form.invested_amount);
-      const current = isSecurity(assetClass)
-        ? quantity * currentPrice
-        : num(form.current_value);
+      const current = isSecurity(assetClass) ? quantity * currentEur : num(form.current_value);
       const payload = {
         class: assetClass,
         name: form.name.trim(),
         ticker: form.ticker.trim() || null,
         quantity,
-        average_price: averagePrice,
-        current_price: currentPrice,
+        average_price: purchaseEur,
+        current_price: currentEur,
         invested_amount: invested,
         current_value: current,
         currency: "EUR",
+        native_currency: isSecurity(assetClass) ? form.currency : "EUR",
+        purchase_price_native: isSecurity(assetClass) ? purchaseNative : null,
+        current_price_native: isSecurity(assetClass) ? currentNative : null,
+        dividend_frequency: form.frequency.trim() || null,
         metal_type: assetClass === "metal" ? form.metal_type : null,
         p2p_group: assetClass === "p2p" ? form.p2p_group : null,
         annual_yield: form.annual_yield ? num(form.annual_yield) : null,
@@ -149,15 +237,45 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         await updateFn({ data: { id: editing.id, patch: payload } });
         toast.success("Ativo atualizado.");
       } else {
-        await createFn({ data: payload });
+        const created = (await createFn({ data: payload })) as { id: string };
         toast.success("Ativo adicionado.");
+        if (paysDividends(assetClass) && payload.ticker && created?.id) {
+          try {
+            const res = (await importDivFn({ data: { assetId: created.id, years: 3 } })) as {
+              imported: number;
+            };
+            if (res.imported > 0) toast.success(`${res.imported} dividendos importados.`);
+          } catch {
+            /* importação é best-effort */
+          }
+        }
       }
       setDialogOpen(false);
       await queryClient.invalidateQueries({ queryKey: ["assets"] });
+      await queryClient.invalidateQueries({ queryKey: ["dividends"] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao guardar.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const importDividends = async (a: Asset) => {
+    setImportingId(a.id);
+    const id = toast.loading(`A importar dividendos de ${a.name}...`);
+    try {
+      const res = (await importDivFn({ data: { assetId: a.id, years: 3 } })) as {
+        imported: number;
+      };
+      await queryClient.invalidateQueries({ queryKey: ["dividends"] });
+      toast.success(
+        res.imported > 0 ? `${res.imported} dividendos importados.` : "Sem dividendos novos.",
+        { id },
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao importar dividendos.", { id });
+    } finally {
+      setImportingId(null);
     }
   };
 
@@ -251,13 +369,19 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card">
-          <table className="w-full min-w-[640px] text-sm">
+          <table className="w-full min-w-[820px] text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
                 <th className="px-4 py-3 font-medium">Ativo</th>
                 <th className="px-4 py-3 text-right font-medium">
                   {assetClass === "metal" ? "Gramas" : assetClass === "p2p" ? "Grupo" : "Qtd."}
                 </th>
+                {isSecurity(assetClass) && (
+                  <>
+                    <th className="px-4 py-3 text-right font-medium">Preço compra</th>
+                    <th className="px-4 py-3 text-right font-medium">Preço atual</th>
+                  </>
+                )}
                 <th className="px-4 py-3 text-right font-medium">Investido</th>
                 <th className="px-4 py-3 text-right font-medium">Valor atual</th>
                 <th className="px-4 py-3 text-right font-medium">P/L</th>
@@ -267,6 +391,12 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
             <tbody>
               {assets.map((a) => {
                 const p = assetPL(a);
+                const cur = a.native_currency || "EUR";
+                const foreign = cur !== "EUR";
+                const rate =
+                  a.current_price_native && a.current_price_native > 0 && a.current_price > 0
+                    ? a.current_price / a.current_price_native
+                    : 1;
                 return (
                   <tr key={a.id} className="border-b border-border/60 last:border-0 hover:bg-accent/40">
                     <td className="px-4 py-3">
@@ -278,8 +408,42 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                     <td className="px-4 py-3 text-right text-muted-foreground">
                       {assetClass === "p2p" ? a.p2p_group ?? "—" : a.quantity || "—"}
                     </td>
-                    <td className="px-4 py-3 text-right">{formatEUR(assetInvested(a), hidden)}</td>
-                    <td className="px-4 py-3 text-right">{formatEUR(assetCurrentValue(a), hidden)}</td>
+                    {isSecurity(assetClass) && (
+                      <>
+                        <td className="px-4 py-3 text-right">
+                          {formatEUR(a.average_price ?? 0, hidden)}
+                          {foreign && a.purchase_price_native != null && (
+                            <span className="block text-xs text-muted-foreground">
+                              {formatMoney(a.purchase_price_native, cur, hidden)}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {formatEUR(a.current_price ?? 0, hidden)}
+                          {foreign && a.current_price_native != null && (
+                            <span className="block text-xs text-muted-foreground">
+                              {formatMoney(a.current_price_native, cur, hidden)}
+                            </span>
+                          )}
+                        </td>
+                      </>
+                    )}
+                    <td className="px-4 py-3 text-right">
+                      {formatEUR(assetInvested(a), hidden)}
+                      {foreign && (
+                        <span className="block text-xs text-muted-foreground">
+                          {formatMoney(assetInvested(a) / rate, cur, hidden)}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {formatEUR(assetCurrentValue(a), hidden)}
+                      {foreign && (
+                        <span className="block text-xs text-muted-foreground">
+                          {formatMoney(assetCurrentValue(a) / rate, cur, hidden)}
+                        </span>
+                      )}
+                    </td>
                     <td
                       className={cn(
                         "px-4 py-3 text-right font-medium",
@@ -291,6 +455,17 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
+                        {paysDividends(assetClass) && a.ticker && (
+                          <button
+                            onClick={() => importDividends(a)}
+                            disabled={importingId === a.id}
+                            className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+                            aria-label={`Importar dividendos de ${a.name}`}
+                            title="Importar dividendos do Yahoo Finance"
+                          >
+                            <Download className="h-4 w-4" />
+                          </button>
+                        )}
                         <button
                           onClick={() => openEdit(a)}
                           className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -321,21 +496,31 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         title={editing ? "Editar ativo" : "Adicionar ativo"}
       >
         <div className="space-y-4">
+          {isSecurity(assetClass) && (
+            <Field label="Ticker">
+              <div className="flex gap-2">
+                <TextInput
+                  value={form.ticker}
+                  onChange={set("ticker")}
+                  placeholder="Ex.: O, VICI, VWCE.DE"
+                />
+                <Button variant="outline" onClick={lookup} disabled={looking}>
+                  <Search className={cn("h-4 w-4", looking && "animate-pulse")} />
+                  {looking ? "A procurar…" : "Procurar"}
+                </Button>
+              </div>
+            </Field>
+          )}
+
           <Field label="Nome">
             <TextInput
               value={form.name}
               onChange={set("name")}
               placeholder={
-                assetClass === "p2p" ? "Ex.: Mintos" : assetClass === "metal" ? "Ex.: Barra de ouro 50g" : "Ex.: Vanguard FTSE All-World"
+                assetClass === "p2p" ? "Ex.: Mintos" : assetClass === "metal" ? "Ex.: Barra de ouro 50g" : "Ex.: Realty Income"
               }
             />
           </Field>
-
-          {isSecurity(assetClass) && (
-            <Field label="Ticker (opcional)">
-              <TextInput value={form.ticker} onChange={set("ticker")} placeholder="Ex.: VWCE" />
-            </Field>
-          )}
 
           {assetClass === "metal" && (
             <Field label="Metal">
@@ -364,17 +549,34 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
           )}
 
           {isSecurity(assetClass) ? (
-            <div className="grid grid-cols-3 gap-3">
-              <Field label="Quantidade">
-                <TextInput inputMode="decimal" value={form.quantity} onChange={set("quantity")} placeholder="0" />
-              </Field>
-              <Field label="Preço médio">
-                <TextInput inputMode="decimal" value={form.average_price} onChange={set("average_price")} placeholder="0,00" />
-              </Field>
-              <Field label="Preço atual">
-                <TextInput inputMode="decimal" value={form.current_price} onChange={set("current_price")} placeholder="0,00" />
-              </Field>
-            </div>
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Quantidade">
+                  <TextInput inputMode="decimal" value={form.quantity} onChange={set("quantity")} placeholder="0" />
+                </Field>
+                <Field label="Moeda">
+                  <select
+                    value={form.currency}
+                    onChange={set("currency")}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-ring"
+                  >
+                    {CURRENCIES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label={`Preço de compra por ação (${form.currency})`}>
+                  <TextInput inputMode="decimal" value={form.purchase_price} onChange={set("purchase_price")} placeholder="0,00" />
+                </Field>
+                <Field label={`Preço atual (${form.currency})`}>
+                  <TextInput inputMode="decimal" value={form.current_price} onChange={set("current_price")} placeholder="0,00" />
+                </Field>
+              </div>
+            </>
           ) : (
             <>
               {assetClass === "metal" && (
@@ -393,10 +595,17 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
             </>
           )}
 
-          {(assetClass === "p2p" || assetClass === "reit" || assetClass === "acao_dividendo") && (
-            <Field label="Yield anual (%, opcional)">
-              <TextInput inputMode="decimal" value={form.annual_yield} onChange={set("annual_yield")} placeholder="Ex.: 5,2" />
-            </Field>
+          {(assetClass === "p2p" || paysDividends(assetClass)) && (
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Yield anual (%)">
+                <TextInput inputMode="decimal" value={form.annual_yield} onChange={set("annual_yield")} placeholder="Ex.: 5,2" />
+              </Field>
+              {assetClass !== "p2p" && (
+                <Field label="Frequência">
+                  <TextInput value={form.frequency} onChange={set("frequency")} placeholder="Ex.: Mensal" />
+                </Field>
+              )}
+            </div>
           )}
 
           <div className="flex justify-end gap-2 pt-2">
