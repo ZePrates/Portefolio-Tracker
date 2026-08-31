@@ -22,13 +22,18 @@ export type Database = {
           created_at: string
           currency: string
           current_price: number
+          current_price_native: number | null
           current_value: number
+          dividend_frequency: string | null
           id: string
           invested_amount: number
+          last_dividend_import: string | null
           metal_type: string | null
           name: string
+          native_currency: string
           notes: string | null
           p2p_group: string | null
+          purchase_price_native: number | null
           quantity: number
           ticker: string | null
           updated_at: string
@@ -41,13 +46,18 @@ export type Database = {
           created_at?: string
           currency?: string
           current_price?: number
+          current_price_native?: number | null
           current_value?: number
+          dividend_frequency?: string | null
           id?: string
           invested_amount?: number
+          last_dividend_import?: string | null
           metal_type?: string | null
           name: string
+          native_currency?: string
           notes?: string | null
           p2p_group?: string | null
+          purchase_price_native?: number | null
           quantity?: number
           ticker?: string | null
           updated_at?: string
@@ -60,13 +70,18 @@ export type Database = {
           created_at?: string
           currency?: string
           current_price?: number
+          current_price_native?: number | null
           current_value?: number
+          dividend_frequency?: string | null
           id?: string
           invested_amount?: number
+          last_dividend_import?: string | null
           metal_type?: string | null
           name?: string
+          native_currency?: string
           notes?: string | null
           p2p_group?: string | null
+          purchase_price_native?: number | null
           quantity?: number
           ticker?: string | null
           updated_at?: string
@@ -82,6 +97,8 @@ export type Database = {
           created_at: string
           id: string
           paid_at: string
+          per_share: number | null
+          source: string
           user_id: string
         }
         Insert: {
@@ -91,6 +108,8 @@ export type Database = {
           created_at?: string
           id?: string
           paid_at?: string
+          per_share?: number | null
+          source?: string
           user_id: string
         }
         Update: {
@@ -100,6 +119,8 @@ export type Database = {
           created_at?: string
           id?: string
           paid_at?: string
+          per_share?: number | null
+          source?: string
           user_id?: string
         }
         Relationships: [
