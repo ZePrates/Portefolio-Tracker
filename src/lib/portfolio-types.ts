@@ -55,6 +55,14 @@ export interface Transaction {
   total: number;
   traded_at: string;
   created_at: string;
+  fee: number;
+  fee_native: number | null;
+  native_currency: string;
+  price_native: number | null;
+  fx_rate: number;
+  realized_pl: number | null;
+  source: string;
+  notes: string | null;
 }
 
 export const CLASS_LABELS: Record<AssetClass, string> = {
