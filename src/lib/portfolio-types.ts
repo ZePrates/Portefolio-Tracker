@@ -74,8 +74,21 @@ export const CLASS_LABELS: Record<AssetClass, string> = {
   p2p: "P2P",
 };
 
+/** Uma posição está aberta quando ainda há algo detido. */
+export function isOpenPosition(a: Asset): boolean {
+  if (a.status === "closed") return false;
+  if (a.class === "p2p" || a.class === "metal") return (a.current_value || a.invested_amount || 0) > 0;
+  return (a.quantity || 0) > 0;
+}
+
+/** Lucro/prejuízo já realizado (vendas concretizadas). */
+export function assetRealizedPL(a: Asset): number {
+  return a.realized_pl || 0;
+}
+
 /** Valor atual de um ativo (títulos: quantidade × preço; P2P/metais: valor corrente). */
 export function assetCurrentValue(a: Asset): number {
+  if (!isOpenPosition(a)) return 0;
   if (a.class === "p2p" || a.class === "metal") return a.current_value || 0;
   if (a.quantity > 0 && a.current_price > 0) return a.quantity * a.current_price;
   return a.current_value || 0;
