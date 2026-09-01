@@ -19,6 +19,7 @@ export type Database = {
           annual_yield: number | null
           average_price: number
           class: string
+          closed_at: string | null
           created_at: string
           currency: string
           current_price: number
@@ -35,7 +36,10 @@ export type Database = {
           p2p_group: string | null
           purchase_price_native: number | null
           quantity: number
+          realized_pl: number
+          status: string
           ticker: string | null
+          total_fees: number
           updated_at: string
           user_id: string
         }
@@ -43,6 +47,7 @@ export type Database = {
           annual_yield?: number | null
           average_price?: number
           class: string
+          closed_at?: string | null
           created_at?: string
           currency?: string
           current_price?: number
@@ -59,7 +64,10 @@ export type Database = {
           p2p_group?: string | null
           purchase_price_native?: number | null
           quantity?: number
+          realized_pl?: number
+          status?: string
           ticker?: string | null
+          total_fees?: number
           updated_at?: string
           user_id: string
         }
@@ -67,6 +75,7 @@ export type Database = {
           annual_yield?: number | null
           average_price?: number
           class?: string
+          closed_at?: string | null
           created_at?: string
           currency?: string
           current_price?: number
@@ -83,7 +92,10 @@ export type Database = {
           p2p_group?: string | null
           purchase_price_native?: number | null
           quantity?: number
+          realized_pl?: number
+          status?: string
           ticker?: string | null
+          total_fees?: number
           updated_at?: string
           user_id?: string
         }
@@ -137,34 +149,61 @@ export type Database = {
         Row: {
           asset_id: string | null
           created_at: string
+          fee: number
+          fee_native: number | null
+          fx_rate: number
           id: string
+          native_currency: string
+          notes: string | null
           price: number
+          price_native: number | null
           quantity: number
+          realized_pl: number | null
+          source: string
           total: number
           traded_at: string
           type: string
+          updated_at: string
           user_id: string
         }
         Insert: {
           asset_id?: string | null
           created_at?: string
+          fee?: number
+          fee_native?: number | null
+          fx_rate?: number
           id?: string
+          native_currency?: string
+          notes?: string | null
           price?: number
+          price_native?: number | null
           quantity?: number
+          realized_pl?: number | null
+          source?: string
           total?: number
           traded_at?: string
           type: string
+          updated_at?: string
           user_id: string
         }
         Update: {
           asset_id?: string | null
           created_at?: string
+          fee?: number
+          fee_native?: number | null
+          fx_rate?: number
           id?: string
+          native_currency?: string
+          notes?: string | null
           price?: number
+          price_native?: number | null
           quantity?: number
+          realized_pl?: number | null
+          source?: string
           total?: number
           traded_at?: string
           type?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
