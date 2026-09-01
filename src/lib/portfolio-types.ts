@@ -94,8 +94,9 @@ export function assetCurrentValue(a: Asset): number {
   return a.current_value || 0;
 }
 
-/** Total investido num ativo. */
+/** Total investido num ativo (custo das unidades ainda detidas). */
 export function assetInvested(a: Asset): number {
+  if (!isOpenPosition(a)) return 0;
   if (a.class === "p2p" || a.class === "metal") return a.invested_amount || 0;
   if (a.quantity > 0 && a.average_price > 0) return a.quantity * a.average_price;
   return a.invested_amount || 0;
