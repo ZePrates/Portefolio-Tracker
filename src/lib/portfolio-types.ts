@@ -27,6 +27,10 @@ export interface Asset {
   current_price_native: number | null;
   dividend_frequency: string | null;
   last_dividend_import: string | null;
+  status: string;
+  realized_pl: number;
+  total_fees: number;
+  closed_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -51,6 +55,14 @@ export interface Transaction {
   total: number;
   traded_at: string;
   created_at: string;
+  fee: number;
+  fee_native: number | null;
+  native_currency: string;
+  price_native: number | null;
+  fx_rate: number;
+  realized_pl: number | null;
+  source: string;
+  notes: string | null;
 }
 
 export const CLASS_LABELS: Record<AssetClass, string> = {
@@ -62,15 +74,29 @@ export const CLASS_LABELS: Record<AssetClass, string> = {
   p2p: "P2P",
 };
 
+/** Uma posição está aberta quando ainda há algo detido. */
+export function isOpenPosition(a: Asset): boolean {
+  if (a.status === "closed") return false;
+  if (a.class === "p2p" || a.class === "metal") return (a.current_value || a.invested_amount || 0) > 0;
+  return (a.quantity || 0) > 0;
+}
+
+/** Lucro/prejuízo já realizado (vendas concretizadas). */
+export function assetRealizedPL(a: Asset): number {
+  return a.realized_pl || 0;
+}
+
 /** Valor atual de um ativo (títulos: quantidade × preço; P2P/metais: valor corrente). */
 export function assetCurrentValue(a: Asset): number {
+  if (!isOpenPosition(a)) return 0;
   if (a.class === "p2p" || a.class === "metal") return a.current_value || 0;
   if (a.quantity > 0 && a.current_price > 0) return a.quantity * a.current_price;
   return a.current_value || 0;
 }
 
-/** Total investido num ativo. */
+/** Total investido num ativo (custo das unidades ainda detidas). */
 export function assetInvested(a: Asset): number {
+  if (!isOpenPosition(a)) return 0;
   if (a.class === "p2p" || a.class === "metal") return a.invested_amount || 0;
   if (a.quantity > 0 && a.average_price > 0) return a.quantity * a.average_price;
   return a.invested_amount || 0;
