@@ -27,6 +27,10 @@ export interface Asset {
   current_price_native: number | null;
   dividend_frequency: string | null;
   last_dividend_import: string | null;
+  status: string;
+  realized_pl: number;
+  total_fees: number;
+  closed_at: string | null;
   created_at: string;
   updated_at: string;
 }
