@@ -246,14 +246,16 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         toast.success("Ativo adicionado.");
         if (paysDividends(assetClass) && payload.ticker && created?.id) {
           try {
-            const res = (await importDivFn({ data: { assetId: created.id, years: 3 } })) as {
-              imported: number;
+            const res = (await syncDivFn({ data: { assetId: created.id } })) as {
+              inserted: number;
             };
-            if (res.imported > 0) toast.success(`${res.imported} dividendos importados.`);
+            if (res.inserted > 0)
+              toast.success(`${res.inserted} dividendos sincronizados desde a compra.`);
           } catch {
-            /* importação é best-effort */
+            /* sincronização é best-effort */
           }
         }
+
       }
       setDialogOpen(false);
       await queryClient.invalidateQueries({ queryKey: ["assets"] });
