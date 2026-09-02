@@ -1,6 +1,8 @@
 /** Lógica pura de custo FIFO — testável isoladamente. */
 
 export interface LedgerEntry {
+  /** Id da transação (a compra é o lote). */
+  id?: string;
   type: string;
   quantity: number;
   /** Preço por unidade em EUR. */
@@ -12,9 +14,23 @@ export interface LedgerEntry {
 }
 
 export interface FifoLot {
+  /** Id da transação de compra que originou o lote. */
+  id?: string;
+  /** Quantidade original comprada neste lote. */
+  originalQuantity: number;
+  /** Quantidade ainda por vender. */
   quantity: number;
   /** Custo por unidade em EUR (inclui comissão de compra repartida). */
   unitCost: number;
+  traded_at: string;
+}
+
+export interface LotConsumption {
+  lotId?: string;
+  traded_at: string;
+  quantity: number;
+  unitCost: number;
+  cost: number;
 }
 
 export interface SaleResult {
@@ -24,6 +40,8 @@ export interface SaleResult {
   proceeds: number;
   /** Lucro/prejuízo realizado, já líquido de comissões (EUR). */
   realizedPL: number;
+  /** Lotes consumidos por esta venda. */
+  breakdown: LotConsumption[];
   /** Lotes que permanecem abertos após a venda. */
   remaining: FifoLot[];
   /** Quantidade ainda detida. */
@@ -48,7 +66,13 @@ export function buildOpenLots(entries: LedgerEntry[]): FifoLot[] {
     if (qty <= 0) continue;
     if (e.type === "buy") {
       const fee = Number(e.fee ?? 0) || 0;
-      lots.push({ quantity: qty, unitCost: (Number(e.price) || 0) + fee / qty });
+      lots.push({
+        id: e.id,
+        originalQuantity: qty,
+        quantity: qty,
+        unitCost: (Number(e.price) || 0) + fee / qty,
+        traded_at: e.traded_at,
+      });
     } else if (e.type === "sell") {
       consume(lots, qty);
     }
@@ -56,18 +80,24 @@ export function buildOpenLots(entries: LedgerEntry[]): FifoLot[] {
   return lots;
 }
 
-function consume(lots: FifoLot[], quantity: number): number {
+function consume(lots: FifoLot[], quantity: number): LotConsumption[] {
   let left = quantity;
-  let cost = 0;
+  const out: LotConsumption[] = [];
   while (left > 1e-9 && lots.length > 0) {
     const lot = lots[0]!;
     const take = Math.min(lot.quantity, left);
-    cost += take * lot.unitCost;
+    out.push({
+      lotId: lot.id,
+      traded_at: lot.traded_at,
+      quantity: take,
+      unitCost: lot.unitCost,
+      cost: take * lot.unitCost,
+    });
     lot.quantity -= take;
     left -= take;
     if (lot.quantity <= 1e-9) lots.shift();
   }
-  return cost;
+  return out;
 }
 
 export function totalQuantity(lots: FifoLot[]): number {
@@ -96,13 +126,15 @@ export function applySale(
       `Não podes vender ${quantity} unidades: só tens ${Number(held.toFixed(6))}.`,
     );
   }
-  const costBasis = consume(working, quantity);
+  const breakdown = consume(working, quantity);
+  const costBasis = breakdown.reduce((s, b) => s + b.cost, 0);
   const proceeds = quantity * price;
   const realizedPL = proceeds - fee - costBasis;
   return {
     costBasis,
     proceeds,
     realizedPL,
+    breakdown,
     remaining: working,
     remainingQuantity: totalQuantity(working),
     remainingCost: totalCost(working),
