@@ -14,7 +14,7 @@ import {
 } from "@/lib/portfolio-types";
 import { AssetPositionModal } from "@/components/asset-position-modal";
 import { listAssets, createAsset, updateAsset, deleteAsset } from "@/lib/portfolio.functions";
-import { refreshPricesFromYahoo, lookupTicker } from "@/lib/prices.functions";
+import { updateAllPrices, lookupTicker } from "@/lib/prices.functions";
 import { syncDividendsForAsset } from "@/lib/dividends.functions";
 
 import { formatEUR, formatMoney, formatPercent } from "@/lib/format";
@@ -92,7 +92,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   const createFn = useServerFn(createAsset);
   const updateFn = useServerFn(updateAsset);
   const deleteFn = useServerFn(deleteAsset);
-  const refreshFn = useServerFn(refreshPricesFromYahoo);
+  const refreshFn = useServerFn(updateAllPrices);
   const lookupFn = useServerFn(lookupTicker);
   const syncDivFn = useServerFn(syncDividendsForAsset);
 

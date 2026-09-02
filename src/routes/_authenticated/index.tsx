@@ -5,7 +5,7 @@ import { Plus, RefreshCw } from "lucide-react";
 import { PieChart as PieIcon } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { listAssets, listDividends } from "@/lib/portfolio.functions";
-import { refreshPricesFromYahoo } from "@/lib/prices.functions";
+import { updateAllPrices } from "@/lib/prices.functions";
 import { useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -55,7 +55,7 @@ function DashboardPage() {
   const { hidden } = usePrivateMode();
   const fetchAssets = useServerFn(listAssets);
   const fetchDividends = useServerFn(listDividends);
-  const refreshFn = useServerFn(refreshPricesFromYahoo);
+  const refreshFn = useServerFn(updateAllPrices);
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
 
