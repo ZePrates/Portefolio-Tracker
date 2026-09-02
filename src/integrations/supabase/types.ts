@@ -153,6 +153,7 @@ export type Database = {
           fee_native: number | null
           fx_rate: number
           id: string
+          lot_breakdown: Json | null
           native_currency: string
           notes: string | null
           price: number
@@ -173,6 +174,7 @@ export type Database = {
           fee_native?: number | null
           fx_rate?: number
           id?: string
+          lot_breakdown?: Json | null
           native_currency?: string
           notes?: string | null
           price?: number
@@ -193,6 +195,7 @@ export type Database = {
           fee_native?: number | null
           fx_rate?: number
           id?: string
+          lot_breakdown?: Json | null
           native_currency?: string
           notes?: string | null
           price?: number
