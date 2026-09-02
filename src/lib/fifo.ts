@@ -67,7 +67,7 @@ export function buildOpenLots(entries: LedgerEntry[]): FifoLot[] {
     if (e.type === "buy") {
       const fee = Number(e.fee ?? 0) || 0;
       lots.push({
-        id: e.id,
+        ...(e.id ? { id: e.id } : {}),
         originalQuantity: qty,
         quantity: qty,
         unitCost: (Number(e.price) || 0) + fee / qty,
@@ -87,7 +87,7 @@ function consume(lots: FifoLot[], quantity: number): LotConsumption[] {
     const lot = lots[0]!;
     const take = Math.min(lot.quantity, left);
     out.push({
-      lotId: lot.id,
+      ...(lot.id ? { lotId: lot.id } : {}),
       traded_at: lot.traded_at,
       quantity: take,
       unitCost: lot.unitCost,
