@@ -229,8 +229,40 @@ export function AssetPositionModal({ asset, onClose }: Props) {
     }
   };
 
+  const saveExpense = async () => {
+    const v = num(expenseAmount);
+    if (v <= 0) {
+      toast.error("Indica o valor da despesa.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await createExpenseFn({
+        data: {
+          assetId: asset.id,
+          type: "storage",
+          amount: v,
+          currency: "EUR",
+          fx_rate: 1,
+          incurred_at: date,
+          notes: expenseNotes || null,
+        },
+      });
+      toast.success("Despesa registada.");
+      setExpenseAmount("");
+      setExpenseNotes("");
+      setMode("view");
+      await queryClient.invalidateQueries({ queryKey: ["expenses", asset.id] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível registar a despesa.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const tone = (v: number) =>
     v > 0 ? "text-success" : v < 0 ? "text-destructive" : "text-muted-foreground";
+
 
   return (
     <Modal open={!!asset} onClose={onClose} title={asset.name}>
