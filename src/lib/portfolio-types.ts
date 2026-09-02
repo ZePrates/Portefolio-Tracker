@@ -31,8 +31,13 @@ export interface Asset {
   realized_pl: number;
   total_fees: number;
   closed_at: string | null;
+  price_source?: string | null;
+  price_updated_at?: string | null;
+  fx_rate?: number | null;
+  fx_updated_at?: string | null;
   created_at: string;
   updated_at: string;
+
 }
 
 export interface Dividend {
