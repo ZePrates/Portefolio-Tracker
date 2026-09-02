@@ -14,11 +14,9 @@ import {
 } from "@/lib/portfolio-types";
 import { AssetPositionModal } from "@/components/asset-position-modal";
 import { listAssets, createAsset, updateAsset, deleteAsset } from "@/lib/portfolio.functions";
-import {
-  refreshPricesFromYahoo,
-  lookupTicker,
-  importDividendsForAsset,
-} from "@/lib/prices.functions";
+import { refreshPricesFromYahoo, lookupTicker } from "@/lib/prices.functions";
+import { syncDividendsForAsset } from "@/lib/dividends.functions";
+
 import { formatEUR, formatMoney, formatPercent } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
 import { PageHeader, MetricCard, EmptyState, Button, Modal, Field, TextInput } from "@/components/ui-bits";
