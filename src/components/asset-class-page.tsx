@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, Pencil, Trash2, RefreshCw, Search, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, RefreshCw, Search, Download, ArrowLeftRight } from "lucide-react";
 import { toast } from "sonner";
 import {
   type Asset,
@@ -9,7 +9,10 @@ import {
   assetCurrentValue,
   assetInvested,
   assetPL,
+  assetRealizedPL,
+  isOpenPosition,
 } from "@/lib/portfolio-types";
+import { AssetPositionModal } from "@/components/asset-position-modal";
 import { listAssets, createAsset, updateAsset, deleteAsset } from "@/lib/portfolio.functions";
 import {
   refreshPricesFromYahoo,
