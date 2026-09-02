@@ -300,6 +300,52 @@ export function AssetPositionModal({ asset, onClose }: Props) {
 
             <section>
               <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Dividendos
+              </h3>
+              <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+                <div className="rounded-lg border border-border p-3">
+                  <div className="text-xs text-muted-foreground">Recebidos</div>
+                  <div className="font-medium text-success">{formatEUR(divStats.received, hidden)}</div>
+                </div>
+                <div className="rounded-lg border border-border p-3">
+                  <div className="text-xs text-muted-foreground">Previstos</div>
+                  <div className="font-medium">{formatEUR(divStats.scheduled, hidden)}</div>
+                </div>
+                <div className="rounded-lg border border-border p-3">
+                  <div className="text-xs text-muted-foreground">Último</div>
+                  <div className="font-medium">
+                    {divStats.last
+                      ? `${formatEUR(grossOf(divStats.last), hidden)} · ${divStats.last.payment_date ?? divStats.last.paid_at}`
+                      : "—"}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-border p-3">
+                  <div className="text-xs text-muted-foreground">Próximo</div>
+                  <div className="font-medium">
+                    {divStats.next
+                      ? `${formatEUR(grossOf(divStats.next), hidden)} · ${divStats.next.payment_date ?? divStats.next.paid_at}`
+                      : "—"}
+                  </div>
+                </div>
+              </div>
+              {assetDividends.length > 0 && (
+                <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto text-xs text-muted-foreground">
+                  {assetDividends.map((d) => (
+                    <li key={d.id} className="flex justify-between">
+                      <span>{d.payment_date ?? d.paid_at}</span>
+                      <span>
+                        {formatEUR(grossOf(d as never), hidden)}{" "}
+                        {isReceived(d as never) ? "" : "(previsto)"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section>
+
+              <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Lotes abertos
               </h3>
               {pos.lots.length === 0 ? (
