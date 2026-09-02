@@ -87,6 +87,17 @@ export function AssetPositionModal({ asset, onClose }: Props) {
     enabled: !!asset,
   });
 
+  const isMetal = asset?.class === "metal";
+  const { data: expenseRows } = useQuery({
+    queryKey: ["expenses", asset?.id],
+    queryFn: () => expensesFn({ data: { assetId: asset!.id } }),
+    enabled: !!asset && isMetal,
+  });
+  const expenses = (expenseRows ?? []) as { id: string; amount: number; incurred_at: string; notes: string | null }[];
+  const expensesTotal = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+
+
+
   const dividendsFn = useServerFn(listDividends);
   const { data: allDividends } = useQuery({
     queryKey: ["dividends"],
