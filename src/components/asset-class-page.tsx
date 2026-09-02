@@ -269,22 +269,32 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
 
   const importDividends = async (a: Asset) => {
     setImportingId(a.id);
-    const id = toast.loading(`A importar dividendos de ${a.name}...`);
+    const id = toast.loading(`A sincronizar dividendos de ${a.name}...`);
     try {
-      const res = (await importDivFn({ data: { assetId: a.id, years: 3 } })) as {
-        imported: number;
+      const res = (await syncDivFn({ data: { assetId: a.id } })) as {
+        status: string;
+        reason?: string;
+        inserted: number;
+        updated: number;
       };
       await queryClient.invalidateQueries({ queryKey: ["dividends"] });
-      toast.success(
-        res.imported > 0 ? `${res.imported} dividendos importados.` : "Sem dividendos novos.",
-        { id },
-      );
+      if (res.status !== "ok") {
+        toast.warning(res.reason ?? "Dados de dividendos indisponíveis.", { id });
+      } else {
+        toast.success(
+          res.inserted > 0
+            ? `${res.inserted} dividendos novos (${res.updated} atualizados).`
+            : `Sem dividendos novos (${res.updated} atualizados).`,
+          { id },
+        );
+      }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Falha ao importar dividendos.", { id });
+      toast.error(e instanceof Error ? e.message : "Falha ao sincronizar dividendos.", { id });
     } finally {
       setImportingId(null);
     }
   };
+
 
   const remove = async (a: Asset) => {
     if (!window.confirm(`Eliminar "${a.name}"?`)) return;
