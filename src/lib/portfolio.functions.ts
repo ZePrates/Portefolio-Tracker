@@ -188,6 +188,8 @@ async function loadPosition(
     .eq("asset_id", assetId);
   if (txError) throw new Error(txError.message);
   const entries: LedgerEntry[] = (txs ?? []).map((t) => ({
+    id: t.id,
+
     type: t.type,
     quantity: Number(t.quantity),
     price: Number(t.price),
