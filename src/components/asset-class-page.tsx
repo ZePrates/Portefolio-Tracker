@@ -216,15 +216,15 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
     setSaving(true);
     try {
       const quantity = num(form.quantity);
-      const rate = isSecurity(assetClass) ? await rateFor(form.currency) : 1;
+      const rate = isQuantityAsset(assetClass) ? await rateFor(form.currency) : 1;
       const purchaseNative = num(form.purchase_price);
       const currentNative = num(form.current_price);
       const purchaseEur = purchaseNative * rate;
       const currentEur = currentNative * rate;
-      const invested = isSecurity(assetClass)
+      const invested = isQuantityAsset(assetClass)
         ? quantity * purchaseEur
         : num(form.invested_amount);
-      const current = isSecurity(assetClass) ? quantity * currentEur : num(form.current_value);
+      const current = isQuantityAsset(assetClass) ? quantity * currentEur : num(form.current_value);
       const payload = {
         class: assetClass,
         name: form.name.trim(),
@@ -235,9 +235,9 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         invested_amount: invested,
         current_value: current,
         currency: "EUR",
-        native_currency: isSecurity(assetClass) ? form.currency : "EUR",
-        purchase_price_native: isSecurity(assetClass) ? purchaseNative : null,
-        current_price_native: isSecurity(assetClass) ? currentNative : null,
+        native_currency: isQuantityAsset(assetClass) ? form.currency : "EUR",
+        purchase_price_native: isQuantityAsset(assetClass) ? purchaseNative : null,
+        current_price_native: isQuantityAsset(assetClass) ? currentNative : null,
         dividend_frequency: form.frequency.trim() || null,
         metal_type: assetClass === "metal" ? form.metal_type : null,
         p2p_group: assetClass === "p2p" ? form.p2p_group : null,
@@ -658,7 +658,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
             </Field>
           )}
 
-          {isSecurity(assetClass) ? (
+          {isQuantityAsset(assetClass) ? (
             <>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Quantidade">
