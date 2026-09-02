@@ -126,6 +126,12 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   );
   const pl = totals.current - totals.invested;
   const plPct = totals.invested > 0 ? (pl / totals.invested) * 100 : 0;
+  const lastPriceUpdate = assets.reduce<string | null>(
+    (acc, a) => (a.price_updated_at && (!acc || a.price_updated_at > acc) ? a.price_updated_at : acc),
+    null,
+  );
+
+
 
   const openCreate = () => {
     setEditing(null);
