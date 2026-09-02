@@ -14,11 +14,9 @@ import {
 } from "@/lib/portfolio-types";
 import { AssetPositionModal } from "@/components/asset-position-modal";
 import { listAssets, createAsset, updateAsset, deleteAsset } from "@/lib/portfolio.functions";
-import {
-  refreshPricesFromYahoo,
-  lookupTicker,
-  importDividendsForAsset,
-} from "@/lib/prices.functions";
+import { refreshPricesFromYahoo, lookupTicker } from "@/lib/prices.functions";
+import { syncDividendsForAsset } from "@/lib/dividends.functions";
+
 import { formatEUR, formatMoney, formatPercent } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
 import { PageHeader, MetricCard, EmptyState, Button, Modal, Field, TextInput } from "@/components/ui-bits";
@@ -91,7 +89,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   const deleteFn = useServerFn(deleteAsset);
   const refreshFn = useServerFn(refreshPricesFromYahoo);
   const lookupFn = useServerFn(lookupTicker);
-  const importDivFn = useServerFn(importDividendsForAsset);
+  const syncDivFn = useServerFn(syncDividendsForAsset);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Asset | null>(null);
@@ -248,14 +246,16 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         toast.success("Ativo adicionado.");
         if (paysDividends(assetClass) && payload.ticker && created?.id) {
           try {
-            const res = (await importDivFn({ data: { assetId: created.id, years: 3 } })) as {
-              imported: number;
+            const res = (await syncDivFn({ data: { assetId: created.id } })) as {
+              inserted: number;
             };
-            if (res.imported > 0) toast.success(`${res.imported} dividendos importados.`);
+            if (res.inserted > 0)
+              toast.success(`${res.inserted} dividendos sincronizados desde a compra.`);
           } catch {
-            /* importação é best-effort */
+            /* sincronização é best-effort */
           }
         }
+
       }
       setDialogOpen(false);
       await queryClient.invalidateQueries({ queryKey: ["assets"] });
@@ -269,22 +269,32 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
 
   const importDividends = async (a: Asset) => {
     setImportingId(a.id);
-    const id = toast.loading(`A importar dividendos de ${a.name}...`);
+    const id = toast.loading(`A sincronizar dividendos de ${a.name}...`);
     try {
-      const res = (await importDivFn({ data: { assetId: a.id, years: 3 } })) as {
-        imported: number;
+      const res = (await syncDivFn({ data: { assetId: a.id } })) as {
+        status: string;
+        reason?: string;
+        inserted: number;
+        updated: number;
       };
       await queryClient.invalidateQueries({ queryKey: ["dividends"] });
-      toast.success(
-        res.imported > 0 ? `${res.imported} dividendos importados.` : "Sem dividendos novos.",
-        { id },
-      );
+      if (res.status !== "ok") {
+        toast.warning(res.reason ?? "Dados de dividendos indisponíveis.", { id });
+      } else {
+        toast.success(
+          res.inserted > 0
+            ? `${res.inserted} dividendos novos (${res.updated} atualizados).`
+            : `Sem dividendos novos (${res.updated} atualizados).`,
+          { id },
+        );
+      }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Falha ao importar dividendos.", { id });
+      toast.error(e instanceof Error ? e.message : "Falha ao sincronizar dividendos.", { id });
     } finally {
       setImportingId(null);
     }
   };
+
 
   const remove = async (a: Asset) => {
     if (!window.confirm(`Eliminar "${a.name}"?`)) return;

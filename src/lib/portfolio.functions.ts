@@ -118,18 +118,43 @@ export const createDividend = createServerFn({ method: "POST" })
         asset_name: z.string().min(1),
         amount: z.number().positive("Valor tem de ser positivo"),
         paid_at: z.string().min(1),
+        ex_date: z.string().nullable().default(null),
+        currency: z.string().default("EUR"),
+        amount_native: z.number().nullable().default(null),
+        fx_rate: z.number().positive().default(1),
+        tax_amount: z.number().min(0).default(0),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const gross = data.amount;
     const { data: row, error } = await context.supabase
       .from("dividends")
-      .insert({ ...data, user_id: context.userId })
+      .insert({
+        user_id: context.userId,
+        asset_id: data.asset_id,
+        asset_name: data.asset_name,
+        amount: gross,
+        gross_amount: gross,
+        net_amount: gross - data.tax_amount,
+        tax_amount: data.tax_amount,
+        paid_at: data.paid_at,
+        payment_date: data.paid_at,
+        ex_date: data.ex_date ?? data.paid_at,
+        currency: data.currency,
+        amount_native: data.amount_native ?? gross,
+        fx_rate: data.fx_rate,
+        fx_date: data.paid_at,
+        status: data.paid_at <= today ? "received" : "scheduled",
+        source: "manual",
+      })
       .select()
       .single();
     if (error) throw new Error(error.message);
     return row;
   });
+
 
 export const deleteDividend = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

@@ -40,10 +40,30 @@ export interface Dividend {
   user_id: string;
   asset_id: string | null;
   asset_name: string;
+  /** Valor bruto em EUR (compatibilidade). */
   amount: number;
   paid_at: string;
   created_at: string;
+  source?: string | null;
+  per_share?: number | null;
+  ex_date?: string | null;
+  record_date?: string | null;
+  payment_date?: string | null;
+  currency?: string | null;
+  per_share_native?: number | null;
+  amount_native?: number | null;
+  fx_rate?: number | null;
+  fx_date?: string | null;
+  gross_amount?: number | null;
+  tax_amount?: number | null;
+  fee_amount?: number | null;
+  net_amount?: number | null;
+  eligible_quantity?: number | null;
+  source_event_id?: string | null;
+  status?: string | null;
+  updated_at?: string | null;
 }
+
 
 export interface Transaction {
   id: string;
