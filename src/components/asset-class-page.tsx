@@ -108,7 +108,10 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
     queryFn: () => fetchAssets(),
   });
 
-  const assets = ((allAssets ?? []) as Asset[]).filter((a) => a.class === assetClass);
+  const classAssets = ((allAssets ?? []) as Asset[]).filter((a) => a.class === assetClass);
+  const assets = classAssets.filter(isOpenPosition);
+  const closedAssets = classAssets.filter((a) => !isOpenPosition(a));
+  const realizedTotal = classAssets.reduce((s, a) => s + assetRealizedPL(a), 0);
 
   const totals = assets.reduce(
     (acc, a) => {
