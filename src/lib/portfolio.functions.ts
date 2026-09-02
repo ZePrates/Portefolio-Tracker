@@ -286,6 +286,8 @@ export const sellAsset = createServerFn({ method: "POST" })
       price_native: data.price_native,
       fx_rate: rate,
       realized_pl: result.realizedPL,
+      lot_breakdown: result.breakdown,
+
       source: "manual",
       notes: data.notes,
     });
