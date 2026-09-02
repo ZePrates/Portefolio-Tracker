@@ -513,6 +513,78 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         </div>
       )}
 
+      {closedAssets.length > 0 && (
+        <section className="space-y-3">
+          <div>
+            <h2 className="text-lg font-semibold">Posições fechadas</h2>
+            <p className="text-sm text-muted-foreground">
+              Ativos totalmente vendidos — o histórico permanece disponível.
+            </p>
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-border bg-card">
+            <table className="w-full min-w-[620px] text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+                  <th className="px-4 py-3 font-medium">Ativo</th>
+                  <th className="px-4 py-3 text-right font-medium">P/L realizado</th>
+                  <th className="px-4 py-3 text-right font-medium">Comissões</th>
+                  <th className="px-4 py-3 text-right font-medium">Fecho</th>
+                  <th className="px-4 py-3 text-right font-medium">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {closedAssets.map((a) => {
+                  const r = assetRealizedPL(a);
+                  return (
+                    <tr key={a.id} className="border-b border-border/60 last:border-0 hover:bg-accent/40">
+                      <td className="px-4 py-3">
+                        <p className="font-medium">{a.name}</p>
+                        {a.ticker && <p className="text-xs text-muted-foreground">{a.ticker}</p>}
+                      </td>
+                      <td
+                        className={cn(
+                          "px-4 py-3 text-right font-medium",
+                          r > 0 ? "text-success" : r < 0 ? "text-destructive" : "text-muted-foreground",
+                        )}
+                      >
+                        {formatEUR(r, hidden)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-muted-foreground">
+                        {formatEUR(a.total_fees ?? 0, hidden)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-muted-foreground">
+                        {a.closed_at ? a.closed_at.slice(0, 10) : "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end gap-1">
+                          <button
+                            onClick={() => setPositionAsset(a)}
+                            className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+                            aria-label={`Ver histórico de ${a.name}`}
+                            title="Ver histórico"
+                          >
+                            <ArrowLeftRight className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => remove(a)}
+                            className="rounded-lg p-2 text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
+                            aria-label={`Eliminar ${a.name}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      <AssetPositionModal asset={positionAsset} onClose={() => setPositionAsset(null)} />
+
       <Modal
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
