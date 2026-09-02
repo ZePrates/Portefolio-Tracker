@@ -29,6 +29,7 @@ export type Database = {
           id: string
           invested_amount: number
           last_dividend_import: string | null
+          last_dividend_sync: string | null
           metal_type: string | null
           name: string
           native_currency: string
@@ -57,6 +58,7 @@ export type Database = {
           id?: string
           invested_amount?: number
           last_dividend_import?: string | null
+          last_dividend_sync?: string | null
           metal_type?: string | null
           name: string
           native_currency?: string
@@ -85,6 +87,7 @@ export type Database = {
           id?: string
           invested_amount?: number
           last_dividend_import?: string | null
+          last_dividend_sync?: string | null
           metal_type?: string | null
           name?: string
           native_currency?: string
@@ -104,35 +107,83 @@ export type Database = {
       dividends: {
         Row: {
           amount: number
+          amount_native: number | null
           asset_id: string | null
           asset_name: string
           created_at: string
+          currency: string
+          eligible_quantity: number | null
+          ex_date: string | null
+          fee_amount: number
+          fx_date: string | null
+          fx_rate: number
+          gross_amount: number | null
           id: string
+          net_amount: number | null
           paid_at: string
+          payment_date: string | null
           per_share: number | null
+          per_share_native: number | null
+          record_date: string | null
           source: string
+          source_event_id: string | null
+          status: string
+          tax_amount: number
+          updated_at: string
           user_id: string
         }
         Insert: {
           amount?: number
+          amount_native?: number | null
           asset_id?: string | null
           asset_name?: string
           created_at?: string
+          currency?: string
+          eligible_quantity?: number | null
+          ex_date?: string | null
+          fee_amount?: number
+          fx_date?: string | null
+          fx_rate?: number
+          gross_amount?: number | null
           id?: string
+          net_amount?: number | null
           paid_at?: string
+          payment_date?: string | null
           per_share?: number | null
+          per_share_native?: number | null
+          record_date?: string | null
           source?: string
+          source_event_id?: string | null
+          status?: string
+          tax_amount?: number
+          updated_at?: string
           user_id: string
         }
         Update: {
           amount?: number
+          amount_native?: number | null
           asset_id?: string | null
           asset_name?: string
           created_at?: string
+          currency?: string
+          eligible_quantity?: number | null
+          ex_date?: string | null
+          fee_amount?: number
+          fx_date?: string | null
+          fx_rate?: number
+          gross_amount?: number | null
           id?: string
+          net_amount?: number | null
           paid_at?: string
+          payment_date?: string | null
           per_share?: number | null
+          per_share_native?: number | null
+          record_date?: string | null
           source?: string
+          source_event_id?: string | null
+          status?: string
+          tax_amount?: number
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
