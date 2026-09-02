@@ -76,6 +76,11 @@ function isSecurity(c: AssetClass) {
   return c === "etf" || c === "reit" || c === "acao_dividendo" || c === "acao_crescimento";
 }
 
+/** Ativos geridos por quantidade × preço (títulos e metais). P2P é valor agregado. */
+function isQuantityAsset(c: AssetClass) {
+  return isSecurity(c) || c === "metal";
+}
+
 function paysDividends(c: AssetClass) {
   return c === "reit" || c === "acao_dividendo" || c === "etf";
 }
