@@ -100,6 +100,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   const [refreshing, setRefreshing] = useState(false);
   const [looking, setLooking] = useState(false);
   const [importingId, setImportingId] = useState<string | null>(null);
+  const [positionAsset, setPositionAsset] = useState<Asset | null>(null);
   const [fxRate, setFxRate] = useState<number>(1);
 
   const { data: allAssets, isLoading } = useQuery({
