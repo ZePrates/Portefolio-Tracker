@@ -2,8 +2,22 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database } from "@/integrations/supabase/types";
+import {
+  applySale,
+  buildOpenLots,
+  totalCost,
+  totalQuantity,
+  type LedgerEntry,
+} from "@/lib/fifo";
 
 type AssetUpdate = Database["public"]["Tables"]["assets"]["Update"];
+type AssetRow = Database["public"]["Tables"]["assets"]["Row"];
+type SupabaseLike = Awaited<
+  ReturnType<Parameters<typeof requireSupabaseAuth.server>[0]["next"]>
+> extends never
+  ? never
+  : any; // eslint-disable-line @typescript-eslint/no-explicit-any
+
 
 const assetClassSchema = z.enum([
   "etf",
