@@ -468,6 +468,16 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
+                        {isSecurity(assetClass) && (
+                          <button
+                            onClick={() => setPositionAsset(a)}
+                            className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+                            aria-label={`Comprar ou vender ${a.name}`}
+                            title="Comprar / Vender"
+                          >
+                            <ArrowLeftRight className="h-4 w-4" />
+                          </button>
+                        )}
                         {paysDividends(assetClass) && a.ticker && (
                           <button
                             onClick={() => importDividends(a)}
