@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import type { Asset, Dividend } from "@/lib/portfolio-types";
 import { buyAsset, getPosition, previewSale, sellAsset, listDividends } from "@/lib/portfolio.functions";
+import { createExpense, listExpenses } from "@/lib/expenses.functions";
 import { grossOf, isReceived, lastDividend, nextDividend, totalReceived, totalScheduled } from "@/lib/dividends";
 import { formatEUR, formatMoney } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
