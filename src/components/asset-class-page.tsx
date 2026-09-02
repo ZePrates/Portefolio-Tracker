@@ -89,7 +89,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   const deleteFn = useServerFn(deleteAsset);
   const refreshFn = useServerFn(refreshPricesFromYahoo);
   const lookupFn = useServerFn(lookupTicker);
-  const importDivFn = useServerFn(importDividendsForAsset);
+  const syncDivFn = useServerFn(syncDividendsForAsset);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Asset | null>(null);
