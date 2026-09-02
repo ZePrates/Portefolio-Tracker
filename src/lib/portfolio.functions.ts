@@ -240,7 +240,12 @@ export const buyAsset = createServerFn({ method: "POST" })
     });
     if (txError) throw new Error(txError.message);
 
-    lots.push({ quantity: data.quantity, unitCost: price + (data.quantity > 0 ? fee / data.quantity : 0) });
+    lots.push({
+      originalQuantity: data.quantity,
+      quantity: data.quantity,
+      unitCost: price + (data.quantity > 0 ? fee / data.quantity : 0),
+      traded_at: data.traded_at,
+    });
     const quantity = totalQuantity(lots);
     const cost = totalCost(lots);
     const { error } = await context.supabase
