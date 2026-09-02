@@ -12,11 +12,9 @@ import {
 
 type AssetUpdate = Database["public"]["Tables"]["assets"]["Update"];
 type AssetRow = Database["public"]["Tables"]["assets"]["Row"];
-type SupabaseLike = Awaited<
-  ReturnType<Parameters<typeof requireSupabaseAuth.server>[0]["next"]>
-> extends never
-  ? never
-  : any; // eslint-disable-line @typescript-eslint/no-explicit-any
+import type { SupabaseClient } from "@supabase/supabase-js";
+type SupabaseLike = SupabaseClient<Database>;
+
 
 
 const assetClassSchema = z.enum([
