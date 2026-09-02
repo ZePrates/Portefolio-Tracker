@@ -318,3 +318,69 @@ export const sellAsset = createServerFn({ method: "POST" })
       proceeds: result.proceeds,
     };
   });
+
+/**
+ * Estado completo de uma posição: lotes abertos (FIFO), movimentos,
+ * P/L realizado e não realizado.
+ */
+export const getPosition = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ assetId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { asset, lots } = await loadPosition(context.supabase, data.assetId);
+    const { data: txs, error } = await context.supabase
+      .from("transactions")
+      .select("*")
+      .eq("asset_id", data.assetId)
+      .order("traded_at", { ascending: false })
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+
+    const quantity = totalQuantity(lots);
+    const costBasis = totalCost(lots);
+    const currentValue = quantity * Number(asset.current_price ?? 0);
+    const realized = (txs ?? []).reduce((s, t) => s + Number(t.realized_pl ?? 0), 0);
+    return {
+      asset,
+      lots,
+      transactions: txs ?? [],
+      quantity,
+      costBasis,
+      currentValue,
+      unrealizedPL: quantity > 0 ? currentValue - costBasis : 0,
+      realizedPL: realized,
+      totalPL: realized + (quantity > 0 ? currentValue - costBasis : 0),
+      fxRate: fxRateOf(asset),
+    };
+  });
+
+/** Simula uma venda (sem gravar) para pré-visualização antes da confirmação. */
+export const previewSale = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        assetId: z.string().uuid(),
+        quantity: z.number().positive(),
+        price_native: z.number().min(0),
+        fee_native: z.number().min(0).default(0),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { asset, lots } = await loadPosition(context.supabase, data.assetId);
+    const rate = fxRateOf(asset);
+    const available = totalQuantity(lots);
+    const result = applySale(lots, data.quantity, data.price_native * rate, data.fee_native * rate);
+    return {
+      available,
+      fxRate: rate,
+      proceeds: result.proceeds,
+      fee: data.fee_native * rate,
+      costBasis: result.costBasis,
+      realizedPL: result.realizedPL,
+      breakdown: result.breakdown,
+      remainingQuantity: result.remainingQuantity,
+      remainingCost: result.remainingCost,
+    };
+  });
