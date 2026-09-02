@@ -661,7 +661,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
           {isQuantityAsset(assetClass) ? (
             <>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Quantidade">
+                <Field label={assetClass === "metal" ? "Peso (gramas)" : "Quantidade"}>
                   <TextInput inputMode="decimal" value={form.quantity} onChange={set("quantity")} placeholder="0" />
                 </Field>
                 <Field label="Moeda">
@@ -679,7 +679,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                 </Field>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label={`Preço de compra por ação (${form.currency})`}>
+                <Field label={`Preço de compra por ${assetClass === "metal" ? "grama" : "ação"} (${form.currency})`}>
                   <TextInput inputMode="decimal" value={form.purchase_price} onChange={set("purchase_price")} placeholder="0,00" />
                 </Field>
                 <Field label={`Preço atual (${form.currency})`}>
