@@ -1,13 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import type { Asset } from "@/lib/portfolio-types";
-import { buyAsset, getPosition, previewSale, sellAsset } from "@/lib/portfolio.functions";
+import type { Asset, Dividend } from "@/lib/portfolio-types";
+import { buyAsset, getPosition, previewSale, sellAsset, listDividends } from "@/lib/portfolio.functions";
+import { grossOf, isReceived, lastDividend, nextDividend, totalReceived, totalScheduled } from "@/lib/dividends";
 import { formatEUR, formatMoney } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
 import { Button, Field, Modal, TextInput } from "@/components/ui-bits";
 import { cn } from "@/lib/utils";
+
 
 interface Props {
   asset: Asset | null;
