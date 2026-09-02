@@ -362,6 +362,15 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         }
       />
 
+      {lastPriceUpdate && (
+        <p className="-mt-2 text-xs text-muted-foreground">
+          Cotações atualizadas em {new Date(lastPriceUpdate).toLocaleString("pt-PT")} · fonte de
+          mercado (Yahoo Finance), sem estimativas.
+        </p>
+      )}
+
+
+
       <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-5">
         <MetricCard label="Valor atual" value={formatEUR(totals.current, hidden)} />
         <MetricCard label="Total investido" value={formatEUR(totals.invested, hidden)} />
