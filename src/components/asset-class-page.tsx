@@ -14,7 +14,7 @@ import {
 } from "@/lib/portfolio-types";
 import { AssetPositionModal } from "@/components/asset-position-modal";
 import { listAssets, createAsset, updateAsset, deleteAsset } from "@/lib/portfolio.functions";
-import { refreshPricesFromYahoo, lookupTicker } from "@/lib/prices.functions";
+import { updateAllPrices, lookupTicker } from "@/lib/prices.functions";
 import { syncDividendsForAsset } from "@/lib/dividends.functions";
 
 import { formatEUR, formatMoney, formatPercent } from "@/lib/format";
@@ -76,6 +76,11 @@ function isSecurity(c: AssetClass) {
   return c === "etf" || c === "reit" || c === "acao_dividendo" || c === "acao_crescimento";
 }
 
+/** Ativos geridos por quantidade × preço (títulos e metais). P2P é valor agregado. */
+function isQuantityAsset(c: AssetClass) {
+  return isSecurity(c) || c === "metal";
+}
+
 function paysDividends(c: AssetClass) {
   return c === "reit" || c === "acao_dividendo" || c === "etf";
 }
@@ -87,7 +92,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   const createFn = useServerFn(createAsset);
   const updateFn = useServerFn(updateAsset);
   const deleteFn = useServerFn(deleteAsset);
-  const refreshFn = useServerFn(refreshPricesFromYahoo);
+  const refreshFn = useServerFn(updateAllPrices);
   const lookupFn = useServerFn(lookupTicker);
   const syncDivFn = useServerFn(syncDividendsForAsset);
 
@@ -121,6 +126,12 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   );
   const pl = totals.current - totals.invested;
   const plPct = totals.invested > 0 ? (pl / totals.invested) * 100 : 0;
+  const lastPriceUpdate = assets.reduce<string | null>(
+    (acc, a) => (a.price_updated_at && (!acc || a.price_updated_at > acc) ? a.price_updated_at : acc),
+    null,
+  );
+
+
 
   const openCreate = () => {
     setEditing(null);
@@ -211,15 +222,15 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
     setSaving(true);
     try {
       const quantity = num(form.quantity);
-      const rate = isSecurity(assetClass) ? await rateFor(form.currency) : 1;
+      const rate = isQuantityAsset(assetClass) ? await rateFor(form.currency) : 1;
       const purchaseNative = num(form.purchase_price);
       const currentNative = num(form.current_price);
       const purchaseEur = purchaseNative * rate;
       const currentEur = currentNative * rate;
-      const invested = isSecurity(assetClass)
+      const invested = isQuantityAsset(assetClass)
         ? quantity * purchaseEur
         : num(form.invested_amount);
-      const current = isSecurity(assetClass) ? quantity * currentEur : num(form.current_value);
+      const current = isQuantityAsset(assetClass) ? quantity * currentEur : num(form.current_value);
       const payload = {
         class: assetClass,
         name: form.name.trim(),
@@ -230,9 +241,9 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         invested_amount: invested,
         current_value: current,
         currency: "EUR",
-        native_currency: isSecurity(assetClass) ? form.currency : "EUR",
-        purchase_price_native: isSecurity(assetClass) ? purchaseNative : null,
-        current_price_native: isSecurity(assetClass) ? currentNative : null,
+        native_currency: isQuantityAsset(assetClass) ? form.currency : "EUR",
+        purchase_price_native: isQuantityAsset(assetClass) ? purchaseNative : null,
+        current_price_native: isQuantityAsset(assetClass) ? currentNative : null,
         dividend_frequency: form.frequency.trim() || null,
         metal_type: assetClass === "metal" ? form.metal_type : null,
         p2p_group: assetClass === "p2p" ? form.p2p_group : null,
@@ -357,6 +368,15 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         }
       />
 
+      {lastPriceUpdate && (
+        <p className="-mt-2 text-xs text-muted-foreground">
+          Cotações atualizadas em {new Date(lastPriceUpdate).toLocaleString("pt-PT")} · fonte de
+          mercado (Yahoo Finance), sem estimativas.
+        </p>
+      )}
+
+
+
       <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-5">
         <MetricCard label="Valor atual" value={formatEUR(totals.current, hidden)} />
         <MetricCard label="Total investido" value={formatEUR(totals.invested, hidden)} />
@@ -399,7 +419,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                 <th className="px-4 py-3 text-right font-medium">
                   {assetClass === "metal" ? "Gramas" : assetClass === "p2p" ? "Grupo" : "Qtd."}
                 </th>
-                {isSecurity(assetClass) && (
+                {isQuantityAsset(assetClass) && (
                   <>
                     <th className="px-4 py-3 text-right font-medium">Preço compra</th>
                     <th className="px-4 py-3 text-right font-medium">Preço atual</th>
@@ -431,7 +451,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                     <td className="px-4 py-3 text-right text-muted-foreground">
                       {assetClass === "p2p" ? a.p2p_group ?? "—" : a.quantity || "—"}
                     </td>
-                    {isSecurity(assetClass) && (
+                    {isQuantityAsset(assetClass) && (
                       <>
                         <td className="px-4 py-3 text-right">
                           {formatEUR(a.average_price ?? 0, hidden)}
@@ -478,7 +498,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
-                        {isSecurity(assetClass) && (
+                        {isQuantityAsset(assetClass) && (
                           <button
                             onClick={() => setPositionAsset(a)}
                             className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -653,10 +673,10 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
             </Field>
           )}
 
-          {isSecurity(assetClass) ? (
+          {isQuantityAsset(assetClass) ? (
             <>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Quantidade">
+                <Field label={assetClass === "metal" ? "Peso (gramas)" : "Quantidade"}>
                   <TextInput inputMode="decimal" value={form.quantity} onChange={set("quantity")} placeholder="0" />
                 </Field>
                 <Field label="Moeda">
@@ -674,7 +694,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                 </Field>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label={`Preço de compra por ação (${form.currency})`}>
+                <Field label={`Preço de compra por ${assetClass === "metal" ? "grama" : "ação"} (${form.currency})`}>
                   <TextInput inputMode="decimal" value={form.purchase_price} onChange={set("purchase_price")} placeholder="0,00" />
                 </Field>
                 <Field label={`Preço atual (${form.currency})`}>
@@ -684,12 +704,8 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
             </>
           ) : (
             <>
-              {assetClass === "metal" && (
-                <Field label="Peso (gramas)">
-                  <TextInput inputMode="decimal" value={form.quantity} onChange={set("quantity")} placeholder="0" />
-                </Field>
-              )}
               <div className="grid grid-cols-2 gap-3">
+
                 <Field label="Total investido (€)">
                   <TextInput inputMode="decimal" value={form.invested_amount} onChange={set("invested_amount")} placeholder="0,00" />
                 </Field>

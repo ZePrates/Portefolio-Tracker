@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import type { Asset, Dividend } from "@/lib/portfolio-types";
 import { buyAsset, getPosition, previewSale, sellAsset, listDividends } from "@/lib/portfolio.functions";
+import { createExpense, listExpenses } from "@/lib/expenses.functions";
 import { grossOf, isReceived, lastDividend, nextDividend, totalReceived, totalScheduled } from "@/lib/dividends";
 import { formatEUR, formatMoney } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
@@ -61,8 +62,15 @@ export function AssetPositionModal({ asset, onClose }: Props) {
   const previewFn = useServerFn(previewSale);
   const buyFn = useServerFn(buyAsset);
   const sellFn = useServerFn(sellAsset);
+  const expensesFn = useServerFn(listExpenses);
+  const createExpenseFn = useServerFn(createExpense);
 
-  const [mode, setMode] = useState<"view" | "buy" | "sell">("view");
+
+
+  const [mode, setMode] = useState<"view" | "buy" | "sell" | "expense">("view");
+  const [expenseAmount, setExpenseAmount] = useState("");
+  const [expenseNotes, setExpenseNotes] = useState("");
+
   const [quantity, setQuantity] = useState("");
   const [price, setPrice] = useState("");
   const [fee, setFee] = useState("");
@@ -78,6 +86,17 @@ export function AssetPositionModal({ asset, onClose }: Props) {
     queryFn: () => positionFn({ data: { assetId: asset!.id } }),
     enabled: !!asset,
   });
+
+  const isMetal = asset?.class === "metal";
+  const { data: expenseRows } = useQuery({
+    queryKey: ["expenses", asset?.id],
+    queryFn: () => expensesFn({ data: { assetId: asset!.id } }),
+    enabled: !!asset && isMetal,
+  });
+  const expenses = (expenseRows ?? []) as { id: string; amount: number; incurred_at: string; notes: string | null }[];
+  const expensesTotal = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+
+
 
   const dividendsFn = useServerFn(listDividends);
   const { data: allDividends } = useQuery({
@@ -210,8 +229,40 @@ export function AssetPositionModal({ asset, onClose }: Props) {
     }
   };
 
+  const saveExpense = async () => {
+    const v = num(expenseAmount);
+    if (v <= 0) {
+      toast.error("Indica o valor da despesa.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await createExpenseFn({
+        data: {
+          assetId: asset.id,
+          type: "storage",
+          amount: v,
+          currency: "EUR",
+          fx_rate: 1,
+          incurred_at: date,
+          notes: expenseNotes || null,
+        },
+      });
+      toast.success("Despesa registada.");
+      setExpenseAmount("");
+      setExpenseNotes("");
+      setMode("view");
+      await queryClient.invalidateQueries({ queryKey: ["expenses", asset.id] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível registar a despesa.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const tone = (v: number) =>
     v > 0 ? "text-success" : v < 0 ? "text-destructive" : "text-muted-foreground";
+
 
   return (
     <Modal open={!!asset} onClose={onClose} title={asset.name}>
@@ -235,8 +286,32 @@ export function AssetPositionModal({ asset, onClose }: Props) {
               />
             </div>
 
+            {(asset.price_source || asset.price_updated_at) && (
+              <p className="text-xs text-muted-foreground">
+                Preço: {asset.price_source ?? "manual"}
+                {asset.price_updated_at
+                  ? ` · atualizado em ${new Date(asset.price_updated_at).toLocaleString("pt-PT")}`
+                  : ""}
+                {asset.fx_rate && asset.native_currency !== "EUR"
+                  ? ` · câmbio ${asset.native_currency}→EUR ${asset.fx_rate.toFixed(4)}`
+                  : ""}
+              </p>
+            )}
+
+            {isMetal && (
+              <div className="rounded-xl border border-border bg-background/50 p-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Custos de armazenamento</span>
+                  <span className="font-medium">{formatEUR(expensesTotal, hidden)}</span>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Registados como despesa — não alteram a quantidade de metal detida.
+                </p>
+              </div>
+            )}
+
             {mode === "view" ? (
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button onClick={() => setMode("buy")}>Comprar</Button>
                 <Button
                   variant="outline"
@@ -245,8 +320,46 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                 >
                   Vender
                 </Button>
+                {isMetal && (
+                  <Button variant="outline" onClick={() => setMode("expense")}>
+                    Custo de armazenamento
+                  </Button>
+                )}
+              </div>
+            ) : mode === "expense" ? (
+              <div className="space-y-3 rounded-xl border border-border bg-background/50 p-4">
+                <p className="text-sm font-medium">Novo custo de armazenamento</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Valor (EUR)">
+                    <TextInput
+                      inputMode="decimal"
+                      value={expenseAmount}
+                      onChange={(e) => setExpenseAmount(e.target.value)}
+                      placeholder="0,00"
+                    />
+                  </Field>
+                  <Field label="Data">
+                    <TextInput type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                  </Field>
+                  <Field label="Notas">
+                    <TextInput
+                      value={expenseNotes}
+                      onChange={(e) => setExpenseNotes(e.target.value)}
+                      placeholder="Ex.: cofre anual"
+                    />
+                  </Field>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={saveExpense} disabled={saving}>
+                    Registar despesa
+                  </Button>
+                  <Button variant="outline" onClick={() => setMode("view")}>
+                    Cancelar
+                  </Button>
+                </div>
               </div>
             ) : (
+
               <div className="space-y-3 rounded-xl border border-border bg-background/50 p-4">
                 <p className="text-sm font-medium">
                   {mode === "buy" ? "Nova compra" : "Nova venda"}
