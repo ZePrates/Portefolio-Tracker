@@ -689,12 +689,8 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
             </>
           ) : (
             <>
-              {assetClass === "metal" && (
-                <Field label="Peso (gramas)">
-                  <TextInput inputMode="decimal" value={form.quantity} onChange={set("quantity")} placeholder="0" />
-                </Field>
-              )}
               <div className="grid grid-cols-2 gap-3">
+
                 <Field label="Total investido (€)">
                   <TextInput inputMode="decimal" value={form.invested_amount} onChange={set("invested_amount")} placeholder="0,00" />
                 </Field>
