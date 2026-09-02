@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, Pencil, Trash2, RefreshCw, Search, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, RefreshCw, Search, Download, ArrowLeftRight } from "lucide-react";
 import { toast } from "sonner";
 import {
   type Asset,
@@ -9,7 +9,10 @@ import {
   assetCurrentValue,
   assetInvested,
   assetPL,
+  assetRealizedPL,
+  isOpenPosition,
 } from "@/lib/portfolio-types";
+import { AssetPositionModal } from "@/components/asset-position-modal";
 import { listAssets, createAsset, updateAsset, deleteAsset } from "@/lib/portfolio.functions";
 import {
   refreshPricesFromYahoo,
@@ -97,6 +100,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   const [refreshing, setRefreshing] = useState(false);
   const [looking, setLooking] = useState(false);
   const [importingId, setImportingId] = useState<string | null>(null);
+  const [positionAsset, setPositionAsset] = useState<Asset | null>(null);
   const [fxRate, setFxRate] = useState<number>(1);
 
   const { data: allAssets, isLoading } = useQuery({
@@ -104,7 +108,10 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
     queryFn: () => fetchAssets(),
   });
 
-  const assets = ((allAssets ?? []) as Asset[]).filter((a) => a.class === assetClass);
+  const classAssets = ((allAssets ?? []) as Asset[]).filter((a) => a.class === assetClass);
+  const assets = classAssets.filter(isOpenPosition);
+  const closedAssets = classAssets.filter((a) => !isOpenPosition(a));
+  const realizedTotal = classAssets.reduce((s, a) => s + assetRealizedPL(a), 0);
 
   const totals = assets.reduce(
     (acc, a) => {
@@ -340,16 +347,22 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-5">
         <MetricCard label="Valor atual" value={formatEUR(totals.current, hidden)} />
         <MetricCard label="Total investido" value={formatEUR(totals.invested, hidden)} />
         <MetricCard
-          label="Ganho/Perda"
+          label="P/L não realizado"
           value={formatEUR(pl, hidden)}
           sub={formatPercent(plPct, hidden)}
           tone={pl > 0 ? "positive" : pl < 0 ? "negative" : "default"}
         />
-        <MetricCard label="Posições" value={String(assets.length)} />
+        <MetricCard
+          label="P/L realizado"
+          value={formatEUR(realizedTotal, hidden)}
+          sub={closedAssets.length > 0 ? `${closedAssets.length} posições fechadas` : "Vendas concretizadas"}
+          tone={realizedTotal > 0 ? "positive" : realizedTotal < 0 ? "negative" : "default"}
+        />
+        <MetricCard label="Posições abertas" value={String(assets.length)} />
       </div>
 
       {isLoading ? (
@@ -455,6 +468,16 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
+                        {isSecurity(assetClass) && (
+                          <button
+                            onClick={() => setPositionAsset(a)}
+                            className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+                            aria-label={`Comprar ou vender ${a.name}`}
+                            title="Comprar / Vender"
+                          >
+                            <ArrowLeftRight className="h-4 w-4" />
+                          </button>
+                        )}
                         {paysDividends(assetClass) && a.ticker && (
                           <button
                             onClick={() => importDividends(a)}
@@ -489,6 +512,78 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
           </table>
         </div>
       )}
+
+      {closedAssets.length > 0 && (
+        <section className="space-y-3">
+          <div>
+            <h2 className="text-lg font-semibold">Posições fechadas</h2>
+            <p className="text-sm text-muted-foreground">
+              Ativos totalmente vendidos — o histórico permanece disponível.
+            </p>
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-border bg-card">
+            <table className="w-full min-w-[620px] text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+                  <th className="px-4 py-3 font-medium">Ativo</th>
+                  <th className="px-4 py-3 text-right font-medium">P/L realizado</th>
+                  <th className="px-4 py-3 text-right font-medium">Comissões</th>
+                  <th className="px-4 py-3 text-right font-medium">Fecho</th>
+                  <th className="px-4 py-3 text-right font-medium">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {closedAssets.map((a) => {
+                  const r = assetRealizedPL(a);
+                  return (
+                    <tr key={a.id} className="border-b border-border/60 last:border-0 hover:bg-accent/40">
+                      <td className="px-4 py-3">
+                        <p className="font-medium">{a.name}</p>
+                        {a.ticker && <p className="text-xs text-muted-foreground">{a.ticker}</p>}
+                      </td>
+                      <td
+                        className={cn(
+                          "px-4 py-3 text-right font-medium",
+                          r > 0 ? "text-success" : r < 0 ? "text-destructive" : "text-muted-foreground",
+                        )}
+                      >
+                        {formatEUR(r, hidden)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-muted-foreground">
+                        {formatEUR(a.total_fees ?? 0, hidden)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-muted-foreground">
+                        {a.closed_at ? a.closed_at.slice(0, 10) : "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end gap-1">
+                          <button
+                            onClick={() => setPositionAsset(a)}
+                            className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+                            aria-label={`Ver histórico de ${a.name}`}
+                            title="Ver histórico"
+                          >
+                            <ArrowLeftRight className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => remove(a)}
+                            className="rounded-lg p-2 text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
+                            aria-label={`Eliminar ${a.name}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      <AssetPositionModal asset={positionAsset} onClose={() => setPositionAsset(null)} />
 
       <Modal
         open={dialogOpen}
