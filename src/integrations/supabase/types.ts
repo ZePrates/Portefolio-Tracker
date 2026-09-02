@@ -14,6 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      asset_expenses: {
+        Row: {
+          amount: number
+          amount_native: number | null
+          asset_id: string | null
+          created_at: string
+          currency: string
+          fx_rate: number
+          id: string
+          incurred_at: string
+          notes: string | null
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          amount_native?: number | null
+          asset_id?: string | null
+          created_at?: string
+          currency?: string
+          fx_rate?: number
+          id?: string
+          incurred_at?: string
+          notes?: string | null
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          amount_native?: number | null
+          asset_id?: string | null
+          created_at?: string
+          currency?: string
+          fx_rate?: number
+          id?: string
+          incurred_at?: string
+          notes?: string | null
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_expenses_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assets: {
         Row: {
           annual_yield: number | null
@@ -26,6 +79,8 @@ export type Database = {
           current_price_native: number | null
           current_value: number
           dividend_frequency: string | null
+          fx_rate: number | null
+          fx_updated_at: string | null
           id: string
           invested_amount: number
           last_dividend_import: string | null
@@ -35,6 +90,8 @@ export type Database = {
           native_currency: string
           notes: string | null
           p2p_group: string | null
+          price_source: string | null
+          price_updated_at: string | null
           purchase_price_native: number | null
           quantity: number
           realized_pl: number
@@ -55,6 +112,8 @@ export type Database = {
           current_price_native?: number | null
           current_value?: number
           dividend_frequency?: string | null
+          fx_rate?: number | null
+          fx_updated_at?: string | null
           id?: string
           invested_amount?: number
           last_dividend_import?: string | null
@@ -64,6 +123,8 @@ export type Database = {
           native_currency?: string
           notes?: string | null
           p2p_group?: string | null
+          price_source?: string | null
+          price_updated_at?: string | null
           purchase_price_native?: number | null
           quantity?: number
           realized_pl?: number
@@ -84,6 +145,8 @@ export type Database = {
           current_price_native?: number | null
           current_value?: number
           dividend_frequency?: string | null
+          fx_rate?: number | null
+          fx_updated_at?: string | null
           id?: string
           invested_amount?: number
           last_dividend_import?: string | null
@@ -93,6 +156,8 @@ export type Database = {
           native_currency?: string
           notes?: string | null
           p2p_group?: string | null
+          price_source?: string | null
+          price_updated_at?: string | null
           purchase_price_native?: number | null
           quantity?: number
           realized_pl?: number
