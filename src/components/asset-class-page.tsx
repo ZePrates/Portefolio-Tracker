@@ -404,7 +404,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                 <th className="px-4 py-3 text-right font-medium">
                   {assetClass === "metal" ? "Gramas" : assetClass === "p2p" ? "Grupo" : "Qtd."}
                 </th>
-                {isSecurity(assetClass) && (
+                {isQuantityAsset(assetClass) && (
                   <>
                     <th className="px-4 py-3 text-right font-medium">Preço compra</th>
                     <th className="px-4 py-3 text-right font-medium">Preço atual</th>
@@ -436,7 +436,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                     <td className="px-4 py-3 text-right text-muted-foreground">
                       {assetClass === "p2p" ? a.p2p_group ?? "—" : a.quantity || "—"}
                     </td>
-                    {isSecurity(assetClass) && (
+                    {isQuantityAsset(assetClass) && (
                       <>
                         <td className="px-4 py-3 text-right">
                           {formatEUR(a.average_price ?? 0, hidden)}
@@ -483,7 +483,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
-                        {isSecurity(assetClass) && (
+                        {isQuantityAsset(assetClass) && (
                           <button
                             onClick={() => setPositionAsset(a)}
                             className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
