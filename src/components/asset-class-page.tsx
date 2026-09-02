@@ -347,16 +347,22 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-5">
         <MetricCard label="Valor atual" value={formatEUR(totals.current, hidden)} />
         <MetricCard label="Total investido" value={formatEUR(totals.invested, hidden)} />
         <MetricCard
-          label="Ganho/Perda"
+          label="P/L não realizado"
           value={formatEUR(pl, hidden)}
           sub={formatPercent(plPct, hidden)}
           tone={pl > 0 ? "positive" : pl < 0 ? "negative" : "default"}
         />
-        <MetricCard label="Posições" value={String(assets.length)} />
+        <MetricCard
+          label="P/L realizado"
+          value={formatEUR(realizedTotal, hidden)}
+          sub={closedAssets.length > 0 ? `${closedAssets.length} posições fechadas` : "Vendas concretizadas"}
+          tone={realizedTotal > 0 ? "positive" : realizedTotal < 0 ? "negative" : "default"}
+        />
+        <MetricCard label="Posições abertas" value={String(assets.length)} />
       </div>
 
       {isLoading ? (
