@@ -79,6 +79,33 @@ export function AssetPositionModal({ asset, onClose }: Props) {
     enabled: !!asset,
   });
 
+  const dividendsFn = useServerFn(listDividends);
+  const { data: allDividends } = useQuery({
+    queryKey: ["dividends"],
+    queryFn: () => dividendsFn(),
+    enabled: !!asset,
+  });
+
+  const assetDividends = useMemo(
+    () =>
+      ((allDividends ?? []) as Dividend[])
+        .filter((d) => d.asset_id === asset?.id)
+        .sort((a, b) => (b.payment_date ?? b.paid_at).localeCompare(a.payment_date ?? a.paid_at)),
+    [allDividends, asset?.id],
+  );
+
+  const divStats = useMemo(() => {
+    const rows = assetDividends as never[];
+    return {
+      received: totalReceived(rows),
+      scheduled: totalScheduled(rows),
+      last: lastDividend(rows) as (Dividend & { payment_date?: string | null }) | null,
+      next: nextDividend(rows) as (Dividend & { payment_date?: string | null }) | null,
+    };
+  }, [assetDividends]);
+
+
+
   useEffect(() => {
     if (!asset) return;
     setMode("view");
