@@ -67,6 +67,124 @@ export type Database = {
           },
         ]
       }
+      asset_exposures: {
+        Row: {
+          as_of_date: string | null
+          asset_id: string
+          created_at: string
+          dimension: string
+          id: string
+          source: string | null
+          updated_at: string
+          user_id: string
+          value: string
+          weight: number
+        }
+        Insert: {
+          as_of_date?: string | null
+          asset_id: string
+          created_at?: string
+          dimension: string
+          id?: string
+          source?: string | null
+          updated_at?: string
+          user_id: string
+          value: string
+          weight?: number
+        }
+        Update: {
+          as_of_date?: string | null
+          asset_id?: string
+          created_at?: string
+          dimension?: string
+          id?: string
+          source?: string | null
+          updated_at?: string
+          user_id?: string
+          value?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_exposures_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      asset_profiles: {
+        Row: {
+          as_of_date: string | null
+          asset_id: string
+          asset_type: string | null
+          category: string | null
+          created_at: string
+          currency: string | null
+          distribution_frequency: string | null
+          dividend_yield: number | null
+          domicile_country: string | null
+          fund_family: string | null
+          holdings_count: number | null
+          id: string
+          index_tracked: string | null
+          isin: string | null
+          official_name: string | null
+          source: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          as_of_date?: string | null
+          asset_id: string
+          asset_type?: string | null
+          category?: string | null
+          created_at?: string
+          currency?: string | null
+          distribution_frequency?: string | null
+          dividend_yield?: number | null
+          domicile_country?: string | null
+          fund_family?: string | null
+          holdings_count?: number | null
+          id?: string
+          index_tracked?: string | null
+          isin?: string | null
+          official_name?: string | null
+          source?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          as_of_date?: string | null
+          asset_id?: string
+          asset_type?: string | null
+          category?: string | null
+          created_at?: string
+          currency?: string | null
+          distribution_frequency?: string | null
+          dividend_yield?: number | null
+          domicile_country?: string | null
+          fund_family?: string | null
+          holdings_count?: number | null
+          id?: string
+          index_tracked?: string | null
+          isin?: string | null
+          official_name?: string | null
+          source?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_profiles_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: true
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assets: {
         Row: {
           annual_yield: number | null
@@ -260,6 +378,95 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      etf_holdings: {
+        Row: {
+          as_of_date: string | null
+          asset_id: string
+          country: string | null
+          created_at: string
+          currency: string | null
+          holding_name: string
+          holding_symbol: string | null
+          id: string
+          sector: string | null
+          source: string | null
+          updated_at: string
+          user_id: string
+          weight: number
+        }
+        Insert: {
+          as_of_date?: string | null
+          asset_id: string
+          country?: string | null
+          created_at?: string
+          currency?: string | null
+          holding_name: string
+          holding_symbol?: string | null
+          id?: string
+          sector?: string | null
+          source?: string | null
+          updated_at?: string
+          user_id: string
+          weight?: number
+        }
+        Update: {
+          as_of_date?: string | null
+          asset_id?: string
+          country?: string | null
+          created_at?: string
+          currency?: string | null
+          holding_name?: string
+          holding_symbol?: string | null
+          id?: string
+          sector?: string | null
+          source?: string | null
+          updated_at?: string
+          user_id?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "etf_holdings_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      security_profiles: {
+        Row: {
+          country: string | null
+          currency: string | null
+          industry: string | null
+          name: string | null
+          sector: string | null
+          source: string | null
+          symbol: string
+          updated_at: string
+        }
+        Insert: {
+          country?: string | null
+          currency?: string | null
+          industry?: string | null
+          name?: string | null
+          sector?: string | null
+          source?: string | null
+          symbol: string
+          updated_at?: string
+        }
+        Update: {
+          country?: string | null
+          currency?: string | null
+          industry?: string | null
+          name?: string | null
+          sector?: string | null
+          source?: string | null
+          symbol?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       transactions: {
         Row: {
