@@ -17,6 +17,7 @@ import { Route as AuthenticatedAcoesDividendosRouteImport } from './routes/_auth
 import { Route as AuthenticatedAnaliseRouteImport } from './routes/_authenticated/analise'
 import { Route as AuthenticatedDividendosRouteImport } from './routes/_authenticated/dividendos'
 import { Route as AuthenticatedEtfsRouteImport } from './routes/_authenticated/etfs'
+import { Route as AuthenticatedExposicaoRouteImport } from './routes/_authenticated/exposicao'
 import { Route as AuthenticatedMetaisRouteImport } from './routes/_authenticated/metais'
 import { Route as AuthenticatedP2pRouteImport } from './routes/_authenticated/p2p'
 import { Route as AuthenticatedReitsRouteImport } from './routes/_authenticated/reits'
@@ -62,6 +63,11 @@ const AuthenticatedEtfsRoute = AuthenticatedEtfsRouteImport.update({
   path: '/etfs',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedExposicaoRoute = AuthenticatedExposicaoRouteImport.update({
+  id: '/exposicao',
+  path: '/exposicao',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedMetaisRoute = AuthenticatedMetaisRouteImport.update({
   id: '/metais',
   path: '/metais',
@@ -86,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/analise': typeof AuthenticatedAnaliseRoute
   '/dividendos': typeof AuthenticatedDividendosRoute
   '/etfs': typeof AuthenticatedEtfsRoute
+  '/exposicao': typeof AuthenticatedExposicaoRoute
   '/metais': typeof AuthenticatedMetaisRoute
   '/p2p': typeof AuthenticatedP2pRoute
   '/reits': typeof AuthenticatedReitsRoute
@@ -97,6 +104,7 @@ export interface FileRoutesByTo {
   '/analise': typeof AuthenticatedAnaliseRoute
   '/dividendos': typeof AuthenticatedDividendosRoute
   '/etfs': typeof AuthenticatedEtfsRoute
+  '/exposicao': typeof AuthenticatedExposicaoRoute
   '/metais': typeof AuthenticatedMetaisRoute
   '/p2p': typeof AuthenticatedP2pRoute
   '/reits': typeof AuthenticatedReitsRoute
@@ -111,6 +119,7 @@ export interface FileRoutesById {
   '/_authenticated/analise': typeof AuthenticatedAnaliseRoute
   '/_authenticated/dividendos': typeof AuthenticatedDividendosRoute
   '/_authenticated/etfs': typeof AuthenticatedEtfsRoute
+  '/_authenticated/exposicao': typeof AuthenticatedExposicaoRoute
   '/_authenticated/metais': typeof AuthenticatedMetaisRoute
   '/_authenticated/p2p': typeof AuthenticatedP2pRoute
   '/_authenticated/reits': typeof AuthenticatedReitsRoute
@@ -126,6 +135,7 @@ export interface FileRouteTypes {
     | '/analise'
     | '/dividendos'
     | '/etfs'
+    | '/exposicao'
     | '/metais'
     | '/p2p'
     | '/reits'
@@ -137,6 +147,7 @@ export interface FileRouteTypes {
     | '/analise'
     | '/dividendos'
     | '/etfs'
+    | '/exposicao'
     | '/metais'
     | '/p2p'
     | '/reits'
@@ -150,6 +161,7 @@ export interface FileRouteTypes {
     | '/_authenticated/analise'
     | '/_authenticated/dividendos'
     | '/_authenticated/etfs'
+    | '/_authenticated/exposicao'
     | '/_authenticated/metais'
     | '/_authenticated/p2p'
     | '/_authenticated/reits'
@@ -219,6 +231,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEtfsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/exposicao': {
+      id: '/_authenticated/exposicao'
+      path: '/exposicao'
+      fullPath: '/exposicao'
+      preLoaderRoute: typeof AuthenticatedExposicaoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/metais': {
       id: '/_authenticated/metais'
       path: '/metais'
@@ -249,6 +268,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAnaliseRoute: typeof AuthenticatedAnaliseRoute
   AuthenticatedDividendosRoute: typeof AuthenticatedDividendosRoute
   AuthenticatedEtfsRoute: typeof AuthenticatedEtfsRoute
+  AuthenticatedExposicaoRoute: typeof AuthenticatedExposicaoRoute
   AuthenticatedMetaisRoute: typeof AuthenticatedMetaisRoute
   AuthenticatedP2pRoute: typeof AuthenticatedP2pRoute
   AuthenticatedReitsRoute: typeof AuthenticatedReitsRoute
@@ -261,6 +281,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAnaliseRoute: AuthenticatedAnaliseRoute,
   AuthenticatedDividendosRoute: AuthenticatedDividendosRoute,
   AuthenticatedEtfsRoute: AuthenticatedEtfsRoute,
+  AuthenticatedExposicaoRoute: AuthenticatedExposicaoRoute,
   AuthenticatedMetaisRoute: AuthenticatedMetaisRoute,
   AuthenticatedP2pRoute: AuthenticatedP2pRoute,
   AuthenticatedReitsRoute: AuthenticatedReitsRoute,

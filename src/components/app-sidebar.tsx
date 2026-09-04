@@ -31,6 +31,7 @@ const NAV_ITEMS = [
   { to: "/p2p", label: "P2P", icon: Handshake },
   { to: "/dividendos", label: "Dividendos", icon: Coins },
   { to: "/analise", label: "Análise", icon: PieChart },
+  { to: "/exposicao", label: "Exposição", icon: Globe },
 ] as const;
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
