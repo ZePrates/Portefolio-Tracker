@@ -13,6 +13,7 @@ import {
   EyeOff,
   LogOut,
   ChartColumn,
+  Globe,
   Menu,
   X,
 } from "lucide-react";
