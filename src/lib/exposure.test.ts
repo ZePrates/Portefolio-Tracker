@@ -149,3 +149,15 @@ describe("exposição da carteira", () => {
     expect(r.byClass.map((c) => c.value).sort()).toEqual(["Ações Crescimento", "ETFs"]);
   });
 });
+
+describe("exposição direta + indireta (cenário de referência)", () => {
+  it("ETF €10.000 com Apple a 7% (€700) + €1.000 direto = €1.700", () => {
+    const r = computeExposure([stock({ value: 1000 }), etf({ value: 10000 })]);
+    const apple = r.companies.find((c) => c.symbol === "AAPL");
+    expect(apple?.direct).toBeCloseTo(1000, 6);
+    expect(apple?.indirect).toBeCloseTo(700, 6);
+    expect(apple?.amount).toBeCloseTo(1700, 6);
+    expect(r.total).toBe(11000);
+    expect(apple?.pct).toBeCloseTo((1700 / 11000) * 100, 6);
+  });
+});
