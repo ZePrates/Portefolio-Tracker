@@ -440,6 +440,8 @@ export function AssetPositionModal({ asset, onClose }: Props) {
               </div>
             )}
 
+            <UnderlyingExposure assetId={asset.id} hidden={hidden} />
+
             <section>
               <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Dividendos
