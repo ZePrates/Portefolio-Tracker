@@ -377,3 +377,120 @@ export const getExposure = createServerFn({ method: "GET" })
 
     return { report: computeExposure(positions), meta };
   });
+
+export interface AssetExposureDetail {
+  assetId: string;
+  value: number;
+  coverage: number;
+  asOfDate: string | null;
+  source: string | null;
+  profile: {
+    officialName: string | null;
+    assetType: string | null;
+    currency: string | null;
+    domicile: string | null;
+    category: string | null;
+    family: string | null;
+    dividendYield: number | null;
+    holdingsCount: number | null;
+  } | null;
+  /** Dimensões declaradas pela fonte para este ativo. */
+  dimensions: Array<{ dimension: string; value: string; pct: number }>;
+  /** Composição (holdings) com o valor económico correspondente. */
+  holdings: Array<{
+    name: string;
+    symbol: string | null;
+    pct: number;
+    amount: number;
+    country: string | null;
+    sector: string | null;
+    currency: string | null;
+  }>;
+  /** Datas distintas de composição já registadas (histórico por as_of_date). */
+  history: string[];
+}
+
+/** Exposição subjacente de um único ativo — lê da mesma fonte persistida. */
+export const getAssetExposure = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ assetId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }): Promise<AssetExposureDetail> => {
+    const [assetRes, exRes, hsRes, prRes] = await Promise.all([
+      context.supabase.from("assets").select("*").eq("id", data.assetId).maybeSingle(),
+      context.supabase.from("asset_exposures").select("*").eq("asset_id", data.assetId),
+      context.supabase.from("etf_holdings").select("*").eq("asset_id", data.assetId),
+      context.supabase.from("asset_profiles").select("*").eq("asset_id", data.assetId).maybeSingle(),
+    ]);
+    if (assetRes.error) throw new Error(assetRes.error.message);
+    if (!assetRes.data) throw new Error("Ativo não encontrado.");
+
+    const asset = assetRes.data as Asset;
+    const value = assetCurrentValue(asset);
+    const ex = (exRes.data ?? []) as Array<{
+      dimension: string;
+      value: string;
+      weight: number;
+      source: string | null;
+      as_of_date: string | null;
+    }>;
+    const hs = (hsRes.data ?? []) as Array<{
+      holding_name: string;
+      holding_symbol: string | null;
+      weight: number;
+      country: string | null;
+      sector: string | null;
+      currency: string | null;
+      as_of_date: string | null;
+      source: string | null;
+    }>;
+    const pr = (prRes.data ?? null) as {
+      official_name: string | null;
+      asset_type: string | null;
+      currency: string | null;
+      domicile_country: string | null;
+      category: string | null;
+      fund_family: string | null;
+      dividend_yield: number | null;
+      holdings_count: number | null;
+      source: string | null;
+      as_of_date: string | null;
+    } | null;
+
+    const holdingCoverage = hs.reduce((s, h) => s + (Number(h.weight) || 0), 0);
+    const hasCountryDim = ex.some((e) => e.dimension === "country");
+
+    return {
+      assetId: asset.id,
+      value,
+      coverage: Math.min(100, (hasCountryDim ? 1 : holdingCoverage) * 100),
+      asOfDate: hs[0]?.as_of_date ?? ex[0]?.as_of_date ?? pr?.as_of_date ?? null,
+      source: hs[0]?.source ?? ex[0]?.source ?? pr?.source ?? null,
+      profile: pr
+        ? {
+            officialName: pr.official_name,
+            assetType: pr.asset_type,
+            currency: pr.currency,
+            domicile: pr.domicile_country,
+            category: pr.category,
+            family: pr.fund_family,
+            dividendYield: pr.dividend_yield,
+            holdingsCount: pr.holdings_count,
+          }
+        : null,
+      dimensions: ex
+        .map((e) => ({ dimension: e.dimension, value: e.value, pct: (Number(e.weight) || 0) * 100 }))
+        .sort((a, b) => a.dimension.localeCompare(b.dimension) || b.pct - a.pct),
+      holdings: hs
+        .map((h) => ({
+          name: h.holding_name,
+          symbol: h.holding_symbol,
+          pct: (Number(h.weight) || 0) * 100,
+          amount: value * (Number(h.weight) || 0),
+          country: h.country,
+          sector: h.sector,
+          currency: h.currency,
+        }))
+        .sort((a, b) => b.pct - a.pct),
+      history: [...new Set(hs.map((h) => h.as_of_date).filter((d): d is string => !!d))].sort().reverse(),
+    };
+  });

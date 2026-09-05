@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import type { Asset, Dividend } from "@/lib/portfolio-types";
 import { buyAsset, getPosition, previewSale, sellAsset, listDividends } from "@/lib/portfolio.functions";
 import { createExpense, listExpenses } from "@/lib/expenses.functions";
+import { getAssetExposure, syncAssetExposure, type AssetExposureDetail } from "@/lib/exposure.functions";
 import { grossOf, isReceived, lastDividend, nextDividend, totalReceived, totalScheduled } from "@/lib/dividends";
 import { formatEUR, formatMoney } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
@@ -440,6 +441,8 @@ export function AssetPositionModal({ asset, onClose }: Props) {
               </div>
             )}
 
+            <UnderlyingExposure assetId={asset.id} hidden={hidden} />
+
             <section>
               <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Dividendos
@@ -579,3 +582,126 @@ function Row({ label, value, className }: { label: string; value: string; classN
     </div>
   );
 }
+
+/** Exposição subjacente do ativo — lê a mesma fonte persistida da página Exposição. */
+function UnderlyingExposure({ assetId, hidden }: { assetId: string; hidden: boolean }) {
+  const queryClient = useQueryClient();
+  const fetchFn = useServerFn(getAssetExposure);
+  const syncFn = useServerFn(syncAssetExposure);
+  const [syncing, setSyncing] = useState(false);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["asset-exposure", assetId],
+    queryFn: () => fetchFn({ data: { assetId } }),
+  });
+
+  const sync = async () => {
+    setSyncing(true);
+    try {
+      const res = (await syncFn({ data: { assetId } })) as { ok: boolean; message?: string };
+      toast[res.ok ? "success" : "message"](
+        res.ok ? "Composição atualizada." : (res.message ?? "Sem dados novos — dados anteriores preservados."),
+      );
+      await queryClient.invalidateQueries({ queryKey: ["asset-exposure", assetId] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível atualizar a composição.");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const d = data as AssetExposureDetail | undefined;
+  const hasData = !!d && (d.holdings.length > 0 || d.dimensions.length > 0 || !!d.profile);
+
+  return (
+    <section>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Exposição subjacente
+        </h3>
+        <Button variant="outline" onClick={sync} disabled={syncing}>
+          {syncing ? "A sincronizar…" : "Atualizar composição"}
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">A carregar composição…</p>
+      ) : !hasData ? (
+        <p className="text-sm text-muted-foreground">
+          Dados não disponíveis. Usa “Atualizar composição” para consultar a fonte.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Cobertura conhecida: {d!.coverage.toFixed(1)}%
+            {d!.asOfDate ? ` · dados de ${d!.asOfDate}` : ""}
+            {d!.source ? ` · fonte ${d!.source}` : ""}
+            {d!.history.length > 1 ? ` · histórico: ${d!.history.length} datas` : ""}
+          </p>
+
+          {d!.profile && (
+            <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+              <Stat label="Tipo" value={d!.profile.assetType ?? "Não disponível"} />
+              <Stat label="Moeda de cotação" value={d!.profile.currency ?? "Não disponível"} />
+              <Stat label="Domicílio" value={d!.profile.domicile ?? "Não disponível"} />
+              <Stat
+                label="Yield"
+                value={d!.profile.dividendYield != null ? `${d!.profile.dividendYield.toFixed(2)}%` : "Não disponível"}
+              />
+            </div>
+          )}
+
+          {d!.dimensions.length > 0 && (
+            <ul className="space-y-1 text-xs text-muted-foreground">
+              {d!.dimensions.map((x, i) => (
+                <li key={`${x.dimension}-${x.value}-${i}`} className="flex justify-between gap-4">
+                  <span>
+                    {DIM_LABELS[x.dimension] ?? x.dimension}: {x.value}
+                  </span>
+                  <span>{x.pct.toFixed(1)}%</span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {d!.holdings.length > 0 && (
+            <div className="overflow-x-auto rounded-lg border border-border">
+              <table className="w-full text-sm">
+                <thead className="text-xs uppercase text-muted-foreground">
+                  <tr className="border-b border-border text-left">
+                    <th className="px-3 py-2 font-medium">Empresa</th>
+                    <th className="hidden px-3 py-2 font-medium sm:table-cell">País</th>
+                    <th className="hidden px-3 py-2 font-medium sm:table-cell">Setor</th>
+                    <th className="px-3 py-2 text-right font-medium">Peso</th>
+                    <th className="px-3 py-2 text-right font-medium">Valor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {d!.holdings.map((h, i) => (
+                    <tr key={`${h.symbol ?? h.name}-${i}`} className="border-b border-border/60 last:border-0">
+                      <td className="px-3 py-2">
+                        {h.name}
+                        {h.symbol ? <span className="ml-1 text-xs text-muted-foreground">{h.symbol}</span> : null}
+                      </td>
+                      <td className="hidden px-3 py-2 sm:table-cell">{h.country ?? "Não disponível"}</td>
+                      <td className="hidden px-3 py-2 sm:table-cell">{h.sector ?? "Não disponível"}</td>
+                      <td className="px-3 py-2 text-right">{h.pct.toFixed(2)}%</td>
+                      <td className="px-3 py-2 text-right">{formatEUR(h.amount, hidden)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+const DIM_LABELS: Record<string, string> = {
+  country: "País",
+  sector: "Setor",
+  industry: "Indústria",
+  currency: "Moeda",
+};
