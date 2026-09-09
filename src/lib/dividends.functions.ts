@@ -68,15 +68,17 @@ async function syncAsset(
     if (rate == null) continue; // sem taxa fiável: não inventar valor
     events.push({
       exDate: d.date,
-      // O Yahoo publica a data ex-dividendo; a data de pagamento não está disponível,
-      // pelo que eventos já passados usam a ex-date como data de pagamento efetiva.
-      paymentDate: d.date,
+      // O Yahoo só publica distribuições já efetivadas (com a respetiva ex-date);
+      // para eventos passados a ex-date é a data efetiva conhecida. Para eventos
+      // futuros NÃO se inventa data de pagamento: ficam por confirmar.
+      paymentDate: d.date <= today ? d.date : null,
       perShareNative,
       currency,
       fxRate: rate,
       fxDate: d.date,
     });
   }
+
 
   const computed = computeDividendHistory(trades, events, today);
 
