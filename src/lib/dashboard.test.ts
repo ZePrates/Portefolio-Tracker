@@ -165,7 +165,7 @@ describe("alocação e performance", () => {
 
   it("melhores e piores desempenhos usam o custo real do investidor", () => {
     const rows = assetPerformance(ASSETS);
-    expect(bestPerformers(rows, 1)[0]!.id).toBe("ag"); // +25%
+    expect(bestPerformers(rows, 1)[0]!.id).toBe("aapl"); // +50%
     expect(worstPerformers(rows, 1)[0]!.id).toBe("etf"); // -10%
     const weights = rows.reduce((s, r) => s + r.weight, 0);
     expect(weights).toBeCloseTo(100, 6);
