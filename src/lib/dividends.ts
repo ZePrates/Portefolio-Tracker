@@ -153,8 +153,119 @@ export function computeDividendHistory(
 }
 
 /* ------------------------------------------------------------------ */
+/* Identidade determinística e auditoria                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Chave determinística de um evento de dividendos.
+ * Usada para deduplicação/idempotência: correr a sincronização N vezes
+ * produz sempre a mesma chave e, portanto, o mesmo registo.
+ */
+export function dividendEventKey(input: {
+  source: string;
+  symbol: string;
+  exDate: string;
+  currency?: string | null;
+  perShareNative?: number | null;
+}): string {
+  const cur = (input.currency ?? "EUR").toUpperCase();
+  const per = input.perShareNative == null ? "" : `:${Number(input.perShareNative).toFixed(6)}`;
+  return `${input.source}:${input.symbol.toUpperCase()}:${input.exDate}:${cur}${per}`;
+}
+
+export type DividendIssue =
+  | "future_marked_received"
+  | "missing_payment_date"
+  | "before_first_purchase"
+  | "not_eligible_at_ex_date"
+  | "eligible_quantity_mismatch"
+  | "amount_mismatch"
+  | "missing_fx_rate"
+  | "wrong_status";
+
+export interface AuditableDividend extends DividendRecord {
+  ex_date?: string | null;
+  per_share_native?: number | null;
+  fx_rate?: number | null;
+  eligible_quantity?: number | null;
+}
+
+/**
+ * Audita um registo face ao ledger real. Puro e determinístico:
+ * devolve os problemas encontrados e os valores corretos (quando calculáveis).
+ */
+export function auditDividendRecord(
+  row: AuditableDividend,
+  trades: DividendTrade[],
+  today = todayISO(),
+): { issues: DividendIssue[]; expected: ComputedDividend | null } {
+  const issues: DividendIssue[] = [];
+  const pay = row.payment_date ?? null;
+
+  if (!pay) issues.push("missing_payment_date");
+  if (pay && pay > today && row.status === "received") issues.push("future_marked_received");
+  if (pay && classifyDividend(pay, today) !== (row.status ?? "")) issues.push("wrong_status");
+
+  if (!row.ex_date) return { issues, expected: null };
+
+  const first = firstPurchaseDate(trades);
+  if (!first || row.ex_date <= first) {
+    issues.push("before_first_purchase");
+    return { issues, expected: null };
+  }
+
+  const currency = (row.currency ?? "EUR").toUpperCase();
+  const fxRate = Number(row.fx_rate ?? (currency === "EUR" ? 1 : 0)) || 0;
+  if (!(fxRate > 0)) issues.push("missing_fx_rate");
+
+  const perShare = Number(row.per_share_native ?? 0) || 0;
+  const expected = computeDividend(
+    trades,
+    {
+      exDate: row.ex_date,
+      paymentDate: pay,
+      perShareNative: perShare,
+      currency,
+      fxRate: fxRate > 0 ? fxRate : 1,
+    },
+    today,
+  );
+
+  if (!expected) {
+    issues.push("not_eligible_at_ex_date");
+    return { issues, expected: null };
+  }
+  if (Math.abs(Number(row.eligible_quantity ?? -1) - expected.eligibleQuantity) > 1e-6) {
+    issues.push("eligible_quantity_mismatch");
+  }
+  if (Math.abs(grossOf(row) - expected.grossAmount) > 1e-6) issues.push("amount_mismatch");
+
+  return { issues, expected };
+}
+
+/** Agrupa registos por chave determinística; grupos com >1 item são duplicados. */
+export function findDuplicateGroups<T extends AuditableDividend & { id?: string }>(
+  rows: T[],
+): T[][] {
+  const map = new Map<string, T[]>();
+  for (const r of rows) {
+    const key = [
+      r.asset_id ?? `name:${r.asset_name}`,
+      r.ex_date ?? r.payment_date ?? r.paid_at,
+      (r.currency ?? "EUR").toUpperCase(),
+      (Number(r.per_share_native ?? 0) || 0).toFixed(6),
+    ].join("|");
+    const list = map.get(key) ?? [];
+    list.push(r);
+    map.set(key, list);
+  }
+  return [...map.values()].filter((g) => g.length > 1);
+}
+
+/* ------------------------------------------------------------------ */
 /* Agregações                                                          */
 /* ------------------------------------------------------------------ */
+
 
 export interface DividendRecord {
   asset_id: string | null;
