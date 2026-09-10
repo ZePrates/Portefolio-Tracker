@@ -382,7 +382,13 @@ function DividendosPage() {
               </tr>
             </thead>
             <tbody>
-              {dividends.map((d) => {
+              {dividends
+                .filter((d) => {
+                  if (filter === "all") return true;
+                  const r = isReceived(d as never);
+                  return filter === "received" ? r : !r;
+                })
+                .map((d) => {
                 const received = isReceived(d as never);
                 const cur = (d.currency ?? "EUR").toUpperCase();
                 return (
