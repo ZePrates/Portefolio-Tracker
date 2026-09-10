@@ -286,3 +286,58 @@ export const recalculateDividends = createServerFn({ method: "POST" })
 
     return { reviewed: (rows ?? []).length, corrected, dropped };
   });
+
+/**
+ * Auditoria só de leitura: verifica todos os registos face ao ledger real
+ * e devolve os problemas encontrados (sem alterar dados).
+ */
+export const auditDividends = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { auditDividendRecord, findDuplicateGroups } = await import("@/lib/dividends");
+    const { data: rows, error } = await context.supabase.from("dividends").select("*");
+    if (error) throw new Error(error.message);
+
+    const today = new Date().toISOString().slice(0, 10);
+    const tradesByAsset = new Map<string, DividendTrade[]>();
+    const findings: Array<{ id: string; assetName: string; exDate: string | null; issues: string[] }> = [];
+
+    for (const d of rows ?? []) {
+      let trades: DividendTrade[] = [];
+      if (d.asset_id) {
+        if (!tradesByAsset.has(d.asset_id)) {
+          const { data: txs } = await context.supabase
+            .from("transactions")
+            .select("type, quantity, traded_at, created_at")
+            .eq("asset_id", d.asset_id);
+          tradesByAsset.set(
+            d.asset_id,
+            (txs ?? []).map((t) => ({
+              type: t.type,
+              quantity: Number(t.quantity),
+              traded_at: String(t.traded_at).slice(0, 10),
+              created_at: t.created_at ?? undefined,
+            })),
+          );
+        }
+        trades = tradesByAsset.get(d.asset_id)!;
+      }
+      const { issues } = auditDividendRecord(d as never, trades, today);
+      if (issues.length > 0) {
+        findings.push({
+          id: d.id,
+          assetName: d.asset_name,
+          exDate: d.ex_date ?? null,
+          issues,
+        });
+      }
+    }
+
+    const duplicates = findDuplicateGroups((rows ?? []) as never[]).map((g) => ({
+      assetName: (g[0] as any).asset_name as string,
+      exDate: ((g[0] as any).ex_date ?? (g[0] as any).paid_at) as string,
+      count: g.length,
+    }));
+
+    return { reviewed: (rows ?? []).length, findings, duplicates, auditedAt: new Date().toISOString() };
+  });
