@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, Trash2, RefreshCw } from "lucide-react";
+import { Plus, Trash2, RefreshCw, ShieldCheck } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -14,7 +14,7 @@ import {
 } from "recharts";
 import { toast } from "sonner";
 import { listAssets, listDividends, createDividend, deleteDividend } from "@/lib/portfolio.functions";
-import { syncAllDividends, recalculateDividends } from "@/lib/dividends.functions";
+import { syncAllDividends, recalculateDividends, auditDividends } from "@/lib/dividends.functions";
 import { type Asset, type Dividend, assetInvested } from "@/lib/portfolio-types";
 import {
   isReceived,
@@ -61,6 +61,7 @@ function DividendosPage() {
   const deleteFn = useServerFn(deleteDividend);
   const syncFn = useServerFn(syncAllDividends);
   const recalcFn = useServerFn(recalculateDividends);
+  const auditFn = useServerFn(auditDividends);
 
   const [open, setOpen] = useState(false);
   const [assetId, setAssetId] = useState("");
@@ -70,6 +71,8 @@ function DividendosPage() {
   const [tax, setTax] = useState("");
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [auditing, setAuditing] = useState(false);
+  const [filter, setFilter] = useState<"all" | "received" | "pending">("all");
 
   const { data: assetsRaw } = useQuery({ queryKey: ["assets"], queryFn: () => fetchAssets() });
   const { data: dividendsRaw, isLoading } = useQuery({
@@ -140,6 +143,32 @@ function DividendosPage() {
     }
   };
 
+  const runAudit = async () => {
+    setAuditing(true);
+    const id = toast.loading("A auditar dividendos…");
+    try {
+      const res = (await auditFn()) as {
+        reviewed: number;
+        findings: Array<{ assetName: string; issues: string[] }>;
+        duplicates: Array<{ assetName: string; count: number }>;
+      };
+      if (res.findings.length === 0 && res.duplicates.length === 0) {
+        toast.success(`${res.reviewed} registos verificados, sem problemas.`, { id });
+      } else {
+        toast.warning(
+          `${res.findings.length} registos com problemas${
+            res.duplicates.length > 0 ? ` · ${res.duplicates.length} duplicados` : ""
+          }. Usa Sincronizar para recalcular.`,
+          { id },
+        );
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha na auditoria.", { id });
+    } finally {
+      setAuditing(false);
+    }
+  };
+
   const save = async () => {
     const value = parseFloat(amount.replace(",", "."));
     if (!Number.isFinite(value) || value <= 0) {
@@ -197,6 +226,10 @@ function DividendosPage() {
         subtitle="Dividendos efetivamente recebidos, calculados sobre a posição elegível em cada data ex-dividendo."
         actions={
           <div className="flex gap-2">
+            <Button variant="outline" onClick={runAudit} disabled={auditing}>
+              <ShieldCheck className="h-4 w-4" />
+              Auditar
+            </Button>
             <Button variant="outline" onClick={sync} disabled={syncing}>
               <RefreshCw className={syncing ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
               Sincronizar
@@ -315,6 +348,25 @@ function DividendosPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card">
+          <div className="flex flex-wrap gap-2 border-b border-border p-3">
+            {([
+              ["all", `Todos (${dividends.length})`],
+              ["received", `Recebidos (${dividends.filter((d) => isReceived(d as never)).length})`],
+              ["pending", `Previstos (${upcoming.length})`],
+            ] as const).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setFilter(key)}
+                className={
+                  filter === key
+                    ? "rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground"
+                    : "rounded-full border border-border px-3 py-1 text-xs text-muted-foreground hover:bg-accent"
+                }
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <table className="w-full min-w-[860px] text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
@@ -330,7 +382,13 @@ function DividendosPage() {
               </tr>
             </thead>
             <tbody>
-              {dividends.map((d) => {
+              {dividends
+                .filter((d) => {
+                  if (filter === "all") return true;
+                  const r = isReceived(d as never);
+                  return filter === "received" ? r : !r;
+                })
+                .map((d) => {
                 const received = isReceived(d as never);
                 const cur = (d.currency ?? "EUR").toUpperCase();
                 return (
