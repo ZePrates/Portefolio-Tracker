@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  auditDividendRecord,
+  findDuplicateGroups,
   classifyDividend,
   computeDividend,
   computeDividendHistory,
@@ -160,6 +162,70 @@ describe("sincronização idempotente", () => {
     const keys = (rows: typeof run1) => new Set(rows.map((r) => `yahoo:X:${r.exDate}`));
     expect(keys(run1)).toEqual(keys(run2));
     expect(keys(run1).size).toBe(2);
+  });
+});
+
+describe("auditoria", () => {
+  const trades = [buy("2026-01-10", 10)];
+
+  it("deteta futuro marcado como recebido e quantidade errada", () => {
+    const { issues } = auditDividendRecord(
+      {
+        asset_id: "a",
+        asset_name: "X",
+        amount: 99,
+        gross_amount: 99,
+        ex_date: "2026-06-10",
+        payment_date: "2026-12-01",
+        paid_at: "2026-12-01",
+        status: "received",
+        currency: "EUR",
+        fx_rate: 1,
+        per_share_native: 1,
+        eligible_quantity: 50,
+      },
+      trades,
+      TODAY,
+    );
+    expect(issues).toContain("future_marked_received");
+    expect(issues).toContain("eligible_quantity_mismatch");
+    expect(issues).toContain("amount_mismatch");
+  });
+
+  it("registo correto não gera problemas", () => {
+    const { issues } = auditDividendRecord(
+      {
+        asset_id: "a",
+        asset_name: "X",
+        amount: 10,
+        gross_amount: 10,
+        ex_date: "2026-06-10",
+        payment_date: "2026-06-25",
+        paid_at: "2026-06-25",
+        status: "received",
+        currency: "EUR",
+        fx_rate: 1,
+        per_share_native: 1,
+        eligible_quantity: 10,
+      },
+      trades,
+      TODAY,
+    );
+    expect(issues).toEqual([]);
+  });
+
+  it("agrupa duplicados pelo mesmo evento", () => {
+    const row = {
+      asset_id: "a",
+      asset_name: "X",
+      amount: 10,
+      ex_date: "2026-06-10",
+      paid_at: "2026-06-25",
+      currency: "EUR",
+      per_share_native: 1,
+    };
+    expect(findDuplicateGroups([{ ...row, id: "1" }, { ...row, id: "2" }])).toHaveLength(1);
+    expect(findDuplicateGroups([{ ...row, id: "1" }])).toHaveLength(0);
   });
 });
 
