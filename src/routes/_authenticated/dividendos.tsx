@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, Trash2, RefreshCw } from "lucide-react";
+import { Plus, Trash2, RefreshCw, ShieldCheck } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -14,7 +14,7 @@ import {
 } from "recharts";
 import { toast } from "sonner";
 import { listAssets, listDividends, createDividend, deleteDividend } from "@/lib/portfolio.functions";
-import { syncAllDividends, recalculateDividends } from "@/lib/dividends.functions";
+import { syncAllDividends, recalculateDividends, auditDividends } from "@/lib/dividends.functions";
 import { type Asset, type Dividend, assetInvested } from "@/lib/portfolio-types";
 import {
   isReceived,
@@ -61,6 +61,7 @@ function DividendosPage() {
   const deleteFn = useServerFn(deleteDividend);
   const syncFn = useServerFn(syncAllDividends);
   const recalcFn = useServerFn(recalculateDividends);
+  const auditFn = useServerFn(auditDividends);
 
   const [open, setOpen] = useState(false);
   const [assetId, setAssetId] = useState("");
@@ -70,6 +71,8 @@ function DividendosPage() {
   const [tax, setTax] = useState("");
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [auditing, setAuditing] = useState(false);
+  const [filter, setFilter] = useState<"all" | "received" | "pending">("all");
 
   const { data: assetsRaw } = useQuery({ queryKey: ["assets"], queryFn: () => fetchAssets() });
   const { data: dividendsRaw, isLoading } = useQuery({
