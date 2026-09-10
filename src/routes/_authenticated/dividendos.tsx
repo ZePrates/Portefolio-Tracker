@@ -143,6 +143,32 @@ function DividendosPage() {
     }
   };
 
+  const runAudit = async () => {
+    setAuditing(true);
+    const id = toast.loading("A auditar dividendos…");
+    try {
+      const res = (await auditFn()) as {
+        reviewed: number;
+        findings: Array<{ assetName: string; issues: string[] }>;
+        duplicates: Array<{ assetName: string; count: number }>;
+      };
+      if (res.findings.length === 0 && res.duplicates.length === 0) {
+        toast.success(`${res.reviewed} registos verificados, sem problemas.`, { id });
+      } else {
+        toast.warning(
+          `${res.findings.length} registos com problemas${
+            res.duplicates.length > 0 ? ` · ${res.duplicates.length} duplicados` : ""
+          }. Usa Sincronizar para recalcular.`,
+          { id },
+        );
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha na auditoria.", { id });
+    } finally {
+      setAuditing(false);
+    }
+  };
+
   const save = async () => {
     const value = parseFloat(amount.replace(",", "."));
     if (!Number.isFinite(value) || value <= 0) {
