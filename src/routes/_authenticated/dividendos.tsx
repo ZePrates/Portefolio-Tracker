@@ -226,6 +226,10 @@ function DividendosPage() {
         subtitle="Dividendos efetivamente recebidos, calculados sobre a posição elegível em cada data ex-dividendo."
         actions={
           <div className="flex gap-2">
+            <Button variant="outline" onClick={runAudit} disabled={auditing}>
+              <ShieldCheck className="h-4 w-4" />
+              Auditar
+            </Button>
             <Button variant="outline" onClick={sync} disabled={syncing}>
               <RefreshCw className={syncing ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
               Sincronizar
@@ -344,6 +348,25 @@ function DividendosPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card">
+          <div className="flex flex-wrap gap-2 border-b border-border p-3">
+            {([
+              ["all", `Todos (${dividends.length})`],
+              ["received", `Recebidos (${dividends.filter((d) => isReceived(d as never)).length})`],
+              ["pending", `Previstos (${upcoming.length})`],
+            ] as const).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setFilter(key)}
+                className={
+                  filter === key
+                    ? "rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground"
+                    : "rounded-full border border-border px-3 py-1 text-xs text-muted-foreground hover:bg-accent"
+                }
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <table className="w-full min-w-[860px] text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
