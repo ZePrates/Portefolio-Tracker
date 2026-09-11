@@ -84,7 +84,15 @@ async function loadCompanyProfiles(
     out.set(symbol, profile);
     upserts.push({ symbol, name: d.name, ...profile, source: "yahoo", updated_at: new Date().toISOString() });
   }
-  if (upserts.length > 0) await supabase.from("security_profiles").upsert(upserts, { onConflict: "symbol" });
+  if (upserts.length > 0) {
+    // security_profiles is a shared reference/cache table. Writes use the
+    // trusted server-side client so authenticated users retain read-only access.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("security_profiles")
+      .upsert(upserts, { onConflict: "symbol" });
+    if (error) console.error("[Exposure] security profile cache update failed:", error.message);
+  }
   return out;
 }
 

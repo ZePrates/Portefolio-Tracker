@@ -24,3 +24,7 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## Estado do desenvolvimento
+
+O tracker inclui módulos de desempenho histórico, projeções determinísticas, simulador de compra, análise de concentração/inteligência e funções de normalização/deteção de duplicados no histórico. As métricas são calculadas a partir dos dados persistidos e as simulações não alteram a carteira.
