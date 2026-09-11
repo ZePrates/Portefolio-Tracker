@@ -1,30 +1,37 @@
-# Portefolio Tracker
+# 📊 Portefólio Tracker
 
-Vou te dar link de um app que fiz no base44, consegues clonar?
+Aplicação pessoal para acompanhar, analisar e projetar uma carteira de investimentos multi-classe de ativos — ações, ETFs, dividendos, REITs, metais preciosos e P2P.
 
-This project was built with [Lovable](https://lovable.dev).
+**App em produção:** https://asset-replicator-bot.lovable.app
 
-**Live app**: https://asset-replicator-bot.lovable.app
+## O que faz
 
-## Build with Lovable
+- **Dashboard de exposição** — visão global da carteira por classe de ativo e métricas agregadas
+- **Mais-valias por FIFO** — cálculo automático de ganhos/perdas realizados
+- **Desempenho histórico e projeções** — evolução da carteira e projeções determinísticas para o futuro
+- **Simulador de decisões** — testa cenários de compra sem alterar a carteira real
+- **Análise de concentração e inteligência** — deteta sobreposição e risco de concentração entre posições
+- **Importação de histórico** — carregamento de transações com normalização e deteção de duplicados
+- **Dividendos auditados** — acompanhamento de rendimentos com verificação automática face ao histórico de transações
+- **Câmbios em tempo real** — conversão automática para ativos denominados em moeda estrangeira
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/fb89b30f-b81a-4611-baa2-9ab7f69a190f).
+## Stack
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+- **Frontend:** TanStack Start + TypeScript
+- **Backend:** Supabase
+- Construído e mantido no [Lovable](https://lovable.dev) — as alterações no editor sincronizam automaticamente com este repositório, e vice-versa
 
-## Development
+## Desenvolvimento local
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+Precisas de Node.js e npm ([instala via nvm](https://github.com/nvm-sh/nvm#installing-and-updating)):
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
+git clone <url-deste-repositório>
+cd Portefolio-Tracker
 npm i
 npm run dev
 ```
 
-## Estado do desenvolvimento
+## Continuar no Lovable
 
-O tracker inclui módulos de desempenho histórico, projeções determinísticas, simulador de compra, análise de concentração/inteligência e funções de normalização/deteção de duplicados no histórico. As métricas são calculadas a partir dos dados persistidos e as simulações não alteram a carteira.
+Para desenvolver via prompt em vez de código, usa o [editor Lovable](https://lovable.dev/projects/fb89b30f-b81a-4611-baa2-9ab7f69a190f) — descreve o que queres construir e o Lovable trata da implementação, sincronizando diretamente com o `main` deste repositório.
