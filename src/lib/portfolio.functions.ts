@@ -2,20 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database } from "@/integrations/supabase/types";
-import {
-  applySale,
-  buildOpenLots,
-  totalCost,
-  totalQuantity,
-  type LedgerEntry,
-} from "@/lib/fifo";
+import { applySale, buildOpenLots, totalCost, totalQuantity, type LedgerEntry } from "@/lib/fifo";
 
 type AssetUpdate = Database["public"]["Tables"]["assets"]["Update"];
 type AssetRow = Database["public"]["Tables"]["assets"]["Row"];
 import type { SupabaseClient } from "@supabase/supabase-js";
 type SupabaseLike = SupabaseClient<Database>;
-
-
 
 const assetClassSchema = z.enum([
   "etf",
@@ -155,7 +147,6 @@ export const createDividend = createServerFn({ method: "POST" })
     return row;
   });
 
-
 export const deleteDividend = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
@@ -280,7 +271,8 @@ export const buyAsset = createServerFn({ method: "POST" })
         invested_amount: cost,
         average_price: quantity > 0 ? cost / quantity : 0,
         current_value: quantity * (asset.current_price || 0),
-        purchase_price_native: rate > 0 && quantity > 0 ? cost / quantity / rate : asset.purchase_price_native,
+        purchase_price_native:
+          rate > 0 && quantity > 0 ? cost / quantity / rate : asset.purchase_price_native,
         total_fees: Number(asset.total_fees ?? 0) + fee,
         status: "open",
         closed_at: null,

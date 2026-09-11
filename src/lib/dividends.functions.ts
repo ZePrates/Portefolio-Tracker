@@ -1,7 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { computeDividendHistory, type DividendTrade, type DividendEventInput } from "@/lib/dividends";
+import {
+  computeDividendHistory,
+  type DividendTrade,
+  type DividendEventInput,
+  type AuditableDividend,
+} from "@/lib/dividends";
 
 const YAHOO_SOURCE = "yahoo";
 
@@ -14,13 +21,32 @@ interface SyncOutcome {
   updated: number;
 }
 
+interface TransactionRow {
+  type: string;
+  quantity: number | string;
+  traded_at: string;
+  created_at?: string | null;
+}
+
+interface ExistingDividendRow {
+  id: string;
+  source: string;
+  source_event_id: string | null;
+  ex_date: string | null;
+}
+
+interface DividendRow extends AuditableDividend {
+  id: string;
+  asset_id: string | null;
+}
+
 /**
  * Sincroniza os dividendos de um ativo a partir do Yahoo Finance.
  * Idempotente: identifica cada evento por `source_event_id` e nunca duplica.
  * A quantidade elegível é sempre reconstruída a partir do histórico de compras/vendas.
  */
 async function syncAsset(
-  supabase: any,
+  supabase: SupabaseClient<Database>,
   userId: string,
   asset: {
     id: string;
@@ -33,9 +59,8 @@ async function syncAsset(
   const base = { assetId: asset.id, assetName: asset.name, inserted: 0, updated: 0 };
   if (!asset.ticker) return { ...base, status: "skipped", reason: "Ativo sem ticker." };
 
-  const { toYahooSymbol, fetchYahoo, normalize, getRateOnDate, getRateToEUR } = await import(
-    "@/lib/yahoo.server"
-  );
+  const { toYahooSymbol, fetchYahoo, normalize, getRateOnDate, getRateToEUR } =
+    await import("@/lib/yahoo.server");
   const symbol = toYahooSymbol(asset.ticker);
   if (!symbol) return { ...base, status: "skipped", reason: "Ticker inválido." };
 
@@ -44,11 +69,11 @@ async function syncAsset(
     .select("type, quantity, traded_at, created_at")
     .eq("asset_id", asset.id);
   if (txErr) throw new Error(txErr.message);
-  const trades: DividendTrade[] = (txs ?? []).map((t: any) => ({
+  const trades: DividendTrade[] = (txs ?? []).map((t: TransactionRow) => ({
     type: t.type,
     quantity: Number(t.quantity),
     traded_at: String(t.traded_at).slice(0, 10),
-    created_at: t.created_at ?? undefined,
+    ...(t.created_at != null ? { created_at: t.created_at } : {}),
   }));
   if (trades.length === 0) {
     return { ...base, status: "skipped", reason: "Sem histórico de compras registado." };
@@ -79,7 +104,6 @@ async function syncAsset(
     });
   }
 
-
   const computed = computeDividendHistory(trades, events, today);
 
   const { data: existing, error: exErr } = await supabase
@@ -88,8 +112,8 @@ async function syncAsset(
     .eq("asset_id", asset.id);
   if (exErr) throw new Error(exErr.message);
 
-  const byEventId = new Map<string, any>();
-  const byExDate = new Map<string, any>();
+  const byEventId = new Map<string, ExistingDividendRow>();
+  const byExDate = new Map<string, ExistingDividendRow>();
   for (const row of existing ?? []) {
     if (row.source_event_id) byEventId.set(row.source_event_id, row);
     if (row.ex_date) byExDate.set(row.ex_date, row);
@@ -135,7 +159,10 @@ async function syncAsset(
 
   await supabase
     .from("assets")
-    .update({ last_dividend_sync: new Date().toISOString(), last_dividend_import: new Date().toISOString() })
+    .update({
+      last_dividend_sync: new Date().toISOString(),
+      last_dividend_import: new Date().toISOString(),
+    })
     .eq("id", asset.id);
 
   return { ...base, status: "ok", inserted, updated };
@@ -151,7 +178,7 @@ export const syncDividendsForAsset = createServerFn({ method: "POST" })
       .eq("id", data.assetId)
       .single();
     if (error || !asset) throw new Error(error?.message ?? "Ativo não encontrado.");
-    return syncAsset(context.supabase, context.userId, asset as any, new Map());
+    return syncAsset(context.supabase, context.userId, asset, new Map());
   });
 
 /** Sincroniza todos os ativos com ticker (opcionalmente de uma classe). */
@@ -177,7 +204,7 @@ export const syncAllDividends = createServerFn({ method: "POST" })
     const results: SyncOutcome[] = [];
     for (const a of targets) {
       try {
-        results.push(await syncAsset(context.supabase, context.userId, a as any, fxCache));
+        results.push(await syncAsset(context.supabase, context.userId, a, fxCache));
       } catch (e) {
         results.push({
           assetId: a.id,
@@ -257,7 +284,13 @@ export const recalculateDividends = createServerFn({ method: "POST" })
         // Sem posição elegível: mantém o histórico mas zera o valor contabilizado.
         await context.supabase
           .from("dividends")
-          .update({ eligible_quantity: 0, amount: 0, gross_amount: 0, net_amount: 0, status: "unknown" })
+          .update({
+            eligible_quantity: 0,
+            amount: 0,
+            gross_amount: 0,
+            net_amount: 0,
+            status: "unknown",
+          })
           .eq("id", d.id);
         dropped += 1;
         continue;
@@ -295,14 +328,20 @@ export const auditDividends = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { auditDividendRecord, findDuplicateGroups } = await import("@/lib/dividends");
-    const { data: rows, error } = await context.supabase.from("dividends").select("*");
+    const { data, error } = await context.supabase.from("dividends").select("*");
     if (error) throw new Error(error.message);
+    const rows = (data ?? []) as DividendRow[];
 
     const today = new Date().toISOString().slice(0, 10);
     const tradesByAsset = new Map<string, DividendTrade[]>();
-    const findings: Array<{ id: string; assetName: string; exDate: string | null; issues: string[] }> = [];
+    const findings: Array<{
+      id: string;
+      assetName: string;
+      exDate: string | null;
+      issues: string[];
+    }> = [];
 
-    for (const d of rows ?? []) {
+    for (const d of rows) {
       let trades: DividendTrade[] = [];
       if (d.asset_id) {
         if (!tradesByAsset.has(d.asset_id)) {
@@ -312,17 +351,17 @@ export const auditDividends = createServerFn({ method: "POST" })
             .eq("asset_id", d.asset_id);
           tradesByAsset.set(
             d.asset_id,
-            (txs ?? []).map((t) => ({
+            (txs ?? []).map((t: TransactionRow) => ({
               type: t.type,
               quantity: Number(t.quantity),
               traded_at: String(t.traded_at).slice(0, 10),
-              created_at: t.created_at ?? undefined,
+              ...(t.created_at != null ? { created_at: t.created_at } : {}),
             })),
           );
         }
         trades = tradesByAsset.get(d.asset_id)!;
       }
-      const { issues } = auditDividendRecord(d as never, trades, today);
+      const { issues } = auditDividendRecord(d, trades, today);
       if (issues.length > 0) {
         findings.push({
           id: d.id,
@@ -333,11 +372,16 @@ export const auditDividends = createServerFn({ method: "POST" })
       }
     }
 
-    const duplicates = findDuplicateGroups((rows ?? []) as never[]).map((g) => ({
-      assetName: (g[0] as any).asset_name as string,
-      exDate: ((g[0] as any).ex_date ?? (g[0] as any).paid_at) as string,
+    const duplicates = findDuplicateGroups(rows).map((g) => ({
+      assetName: g[0]!.asset_name,
+      exDate: g[0]!.ex_date ?? g[0]!.paid_at,
       count: g.length,
     }));
 
-    return { reviewed: (rows ?? []).length, findings, duplicates, auditedAt: new Date().toISOString() };
+    return {
+      reviewed: rows.length,
+      findings,
+      duplicates,
+      auditedAt: new Date().toISOString(),
+    };
   });

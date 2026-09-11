@@ -11,10 +11,12 @@ Já consegui aceder ao app sem login e explorei todas as páginas. Estrutura e d
 Réplica fiel do app: gestão e análise de carteira de investimentos com autenticação e base de dados no Lovable Cloud.
 
 ### Layout
+
 - Sidebar fixa: logo "Portefólio TRACKER", itens com ícones, "Modo privado" e "VALORES EM EUR" no rodapé.
 - Cabeçalho de página: título + subtítulo descritivo + botões de ação ("Atualizar preços", "Importar exposição", "Adicionar").
 
 ### Páginas (rotas reais do original)
+
 - `/` Dashboard — visão global; métricas e gráficos; estado vazio com "Adicionar primeiro ativo".
 - `/etfs` — "Fundos negociados em bolsa — exposição diversificada por índice, setor ou geografia."
 - `/reits` — "Fundos de investimento imobiliário — rendimento via dividendos."
@@ -26,23 +28,28 @@ Réplica fiel do app: gestão e análise de carteira de investimentos com autent
 - `/analise` — exposição, alocação e rentabilidade detalhadas.
 
 ### Cada página de classe de ativo
+
 Cartões de métricas no topo (Valor atual, Total investido, Ganho/Perda com %, Posições), tabela de posições, adicionar/editar/eliminar ativo, e gráficos.
 
 ## Dados
+
 - Tabelas: `assets` (classe, ticker, nome), `positions`, `transactions` (compra/venda), `dividends`, `price_snapshots`, `p2p_accounts`/`p2p_loans`, `metals_holdings`.
 - Cada utilizador só vê os seus dados (RLS por utilizador).
 - Importação CSV/JSON dos dados exportados do Base44.
 
 ## Preços
+
 Fase 1: preços manuais/importados. Fase 2 (opcional): fornecedor de cotações (Finnhub, Twelve Data, etc.) com a tua chave API para o botão "Atualizar preços".
 
 ## Detalhes técnicos
+
 - TanStack Start + Tailwind, tokens semânticos; tema escuro com dourado como cor primária.
 - Lovable Cloud: auth (email/password + Google), Postgres com RLS por `auth.uid()`, rotas protegidas sob `_authenticated/`.
 - Gráficos com Recharts; formatação EUR (pt-PT).
 - Importação CSV em server function com validação Zod.
 
 ## Faseamento
+
 1. Cloud + auth + esquema + layout/sidebar + Dashboard.
 2. Páginas por classe de ativo com CRUD e métricas.
 3. Dividendos e Análise.

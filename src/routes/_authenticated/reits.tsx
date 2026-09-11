@@ -5,9 +5,15 @@ export const Route = createFileRoute("/_authenticated/reits")({
   head: () => ({
     meta: [
       { title: "REITs — Portefólio Tracker" },
-      { name: "description", content: "Fundos de investimento imobiliário — rendimento via dividendos." },
+      {
+        name: "description",
+        content: "Fundos de investimento imobiliário — rendimento via dividendos.",
+      },
       { property: "og:title", content: "REITs — Portefólio Tracker" },
-      { property: "og:description", content: "Fundos de investimento imobiliário — rendimento via dividendos." },
+      {
+        property: "og:description",
+        content: "Fundos de investimento imobiliário — rendimento via dividendos.",
+      },
     ],
   }),
   component: ReitsPage,

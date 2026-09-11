@@ -18,7 +18,8 @@ async function getSession(): Promise<{ cookie: string; crumb: string } | null> {
     const res = await fetch("https://fc.yahoo.com", { headers: { "User-Agent": UA } });
     const raw =
       // Cloudflare/undici expõem getSetCookie() quando há vários cabeçalhos
-      (typeof (res.headers as unknown as { getSetCookie?: () => string[] }).getSetCookie === "function"
+      (typeof (res.headers as unknown as { getSetCookie?: () => string[] }).getSetCookie ===
+      "function"
         ? (res.headers as unknown as { getSetCookie: () => string[] }).getSetCookie().join(", ")
         : res.headers.get("set-cookie")) ?? "";
     const cookie = raw
@@ -48,7 +49,12 @@ const n = (v: Num): number | null => {
 };
 
 export interface QuoteSummary {
-  assetProfile?: { country?: string; sector?: string; industry?: string; longBusinessSummary?: string };
+  assetProfile?: {
+    country?: string;
+    sector?: string;
+    industry?: string;
+    longBusinessSummary?: string;
+  };
   summaryProfile?: { country?: string; sector?: string; industry?: string };
   fundProfile?: {
     family?: string;
@@ -76,7 +82,9 @@ export async function fetchQuoteSummary(symbol: string): Promise<QuoteSummary | 
     symbol,
   )}?modules=${modules}&crumb=${encodeURIComponent(s.crumb)}`;
   try {
-    const res = await fetch(url, { headers: { "User-Agent": UA, Cookie: s.cookie, Accept: "application/json" } });
+    const res = await fetch(url, {
+      headers: { "User-Agent": UA, Cookie: s.cookie, Accept: "application/json" },
+    });
     if (res.status === 401 || res.status === 403) {
       session = null;
       return null;
@@ -118,11 +126,15 @@ export function parseQuoteSummary(qs: QuoteSummary): FundData {
       Object.entries(entry).map(([sector, w]) => ({ sector, weight: n(w as Num) ?? 0 })),
     )
     .filter((s) => s.weight > 0);
-  const y = n(qs.summaryDetail?.yield) ?? n(qs.defaultKeyStatistics?.yield) ?? n(qs.summaryDetail?.trailingAnnualDividendYield);
+  const y =
+    n(qs.summaryDetail?.yield) ??
+    n(qs.defaultKeyStatistics?.yield) ??
+    n(qs.summaryDetail?.trailingAnnualDividendYield);
   return {
     name: qs.price?.longName || qs.price?.shortName || null,
     quoteType: qs.price?.quoteType ?? null,
-    currency: qs.price?.currency?.toUpperCase() ?? qs.summaryDetail?.currency?.toUpperCase() ?? null,
+    currency:
+      qs.price?.currency?.toUpperCase() ?? qs.summaryDetail?.currency?.toUpperCase() ?? null,
     category: qs.fundProfile?.categoryName ?? null,
     family: qs.fundProfile?.family ?? null,
     legalType: qs.fundProfile?.legalType ?? null,

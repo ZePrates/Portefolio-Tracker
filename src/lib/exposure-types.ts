@@ -5,13 +5,7 @@
  */
 
 export type Dimension =
-  | "country"
-  | "region"
-  | "continent"
-  | "development"
-  | "sector"
-  | "industry"
-  | "currency";
+  "country" | "region" | "continent" | "development" | "sector" | "industry" | "currency";
 
 export const UNKNOWN = "Não disponível";
 
@@ -191,7 +185,14 @@ const DEVELOPED = new Set([
   "Finland",
 ]);
 
-const EUROPE_EMERGING = new Set(["Poland", "Czech Republic", "Hungary", "Greece", "Turkey", "Russia"]);
+const EUROPE_EMERGING = new Set([
+  "Poland",
+  "Czech Republic",
+  "Hungary",
+  "Greece",
+  "Turkey",
+  "Russia",
+]);
 
 /** País → moeda oficial (exposição económica subjacente). */
 const CURRENCY_BY_COUNTRY: Record<string, string> = {
@@ -259,7 +260,8 @@ export function continentOf(country: string | null | undefined): string {
 export function regionOf(country: string | null | undefined): string {
   if (!country) return UNKNOWN;
   if (REGION[country]) return REGION[country] as string;
-  if (CONTINENT[country] === "Europa") return EUROPE_EMERGING.has(country) ? "Europa Emergente" : "Europa Desenvolvida";
+  if (CONTINENT[country] === "Europa")
+    return EUROPE_EMERGING.has(country) ? "Europa Emergente" : "Europa Desenvolvida";
   return CONTINENT[country] ?? UNKNOWN;
 }
 

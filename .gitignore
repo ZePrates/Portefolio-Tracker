@@ -30,3 +30,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment variables (contains Supabase config; never commit)
+.env
+.env.*
+!.env.example
+package-lock.json

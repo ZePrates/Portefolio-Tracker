@@ -375,13 +375,9 @@ export function dividendSummary(
 
   return {
     period: received.filter((d) => inRange(dateOf(d), range)).reduce((s, d) => s + netOf(d), 0),
-    year: received
-      .filter((d) => dateOf(d).slice(0, 4) === year)
-      .reduce((s, d) => s + netOf(d), 0),
+    year: received.filter((d) => dateOf(d).slice(0, 4) === year).reduce((s, d) => s + netOf(d), 0),
     total: received.reduce((s, d) => s + netOf(d), 0),
-    scheduled: dividends
-      .filter((d) => !isReceived(d, today))
-      .reduce((s, d) => s + netOf(d), 0),
+    scheduled: dividends.filter((d) => !isReceived(d, today)).reduce((s, d) => s + netOf(d), 0),
     byAsset: [...byAssetMap.values()].sort((a, b) => b.total - a.total),
     byMonth: [...monthMap.entries()]
       .map(([key, amount]) => ({ key, amount }))

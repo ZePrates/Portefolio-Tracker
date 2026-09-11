@@ -35,9 +35,7 @@ export function MetricCard({
 }) {
   return (
     <div className="rounded-xl border border-border bg-card p-4 md:p-5">
-      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        {label}
-      </p>
+      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
       <p
         className={cn(
           "mt-2 text-xl font-bold md:text-2xl",
@@ -95,8 +93,7 @@ export function Button({
     <button
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-        variant === "primary" &&
-          "bg-primary text-primary-foreground hover:bg-primary/90",
+        variant === "primary" && "bg-primary text-primary-foreground hover:bg-primary/90",
         variant === "outline" &&
           "border border-input bg-transparent text-foreground hover:bg-accent",
         variant === "ghost" && "text-muted-foreground hover:bg-accent hover:text-foreground",
@@ -108,13 +105,7 @@ export function Button({
   );
 }
 
-export function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
+export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
       <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{label}</span>

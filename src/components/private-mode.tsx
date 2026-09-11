@@ -25,9 +25,7 @@ export function PrivateModeProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <PrivateModeContext.Provider value={{ hidden, toggle }}>
-      {children}
-    </PrivateModeContext.Provider>
+    <PrivateModeContext.Provider value={{ hidden, toggle }}>{children}</PrivateModeContext.Provider>
   );
 }
 

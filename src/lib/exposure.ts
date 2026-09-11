@@ -53,7 +53,10 @@ const CLASS_LABELS: Record<string, string> = {
   p2p: "P2P",
 };
 
-type Bucket = Map<string, { amount: number; contributors: Map<string, { name: string; amount: number }> }>;
+type Bucket = Map<
+  string,
+  { amount: number; contributors: Map<string, { name: string; amount: number }> }
+>;
 
 function add(bucket: Bucket, key: string, amount: number, assetId: string, assetName: string) {
   if (!(amount > 0)) return;
@@ -101,7 +104,10 @@ function weightsFor(position: PositionInput, dimension: Dimension): Map<string, 
 }
 
 /** Pesos derivados da composição (holdings) quando a fonte não publica a dimensão. */
-function weightsFromHoldings(position: PositionInput, field: "country" | "sector"): Map<string, number> {
+function weightsFromHoldings(
+  position: PositionInput,
+  field: "country" | "sector",
+): Map<string, number> {
   const out = new Map<string, number>();
   for (const h of position.holdings) {
     const w = Number(h.weight) || 0;

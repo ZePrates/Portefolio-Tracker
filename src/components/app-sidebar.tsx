@@ -88,10 +88,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           {hidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           Modo privado
           <span
-            className={cn(
-              "ml-auto h-2 w-2 rounded-full",
-              hidden ? "bg-primary" : "bg-muted",
-            )}
+            className={cn("ml-auto h-2 w-2 rounded-full", hidden ? "bg-primary" : "bg-muted")}
           />
         </button>
         <button

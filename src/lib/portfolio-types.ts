@@ -1,10 +1,4 @@
-export type AssetClass =
-  | "etf"
-  | "reit"
-  | "acao_dividendo"
-  | "acao_crescimento"
-  | "metal"
-  | "p2p";
+export type AssetClass = "etf" | "reit" | "acao_dividendo" | "acao_crescimento" | "metal" | "p2p";
 
 export interface Asset {
   id: string;
@@ -37,7 +31,6 @@ export interface Asset {
   fx_updated_at?: string | null;
   created_at: string;
   updated_at: string;
-
 }
 
 export interface Dividend {
@@ -68,7 +61,6 @@ export interface Dividend {
   status?: string | null;
   updated_at?: string | null;
 }
-
 
 export interface Transaction {
   id: string;
@@ -127,7 +119,6 @@ export function assetInvested(a: Asset): number {
   if (a.quantity > 0 && a.average_price > 0) return a.quantity * a.average_price;
   return a.invested_amount || 0;
 }
-
 
 export function assetPL(a: Asset): { abs: number; pct: number } {
   const invested = assetInvested(a);

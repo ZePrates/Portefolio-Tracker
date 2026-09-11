@@ -92,7 +92,10 @@ function todayISO(): string {
 }
 
 /** Classifica um evento: só é "recebido" com data de pagamento efetiva já passada. */
-export function classifyDividend(paymentDate: string | null | undefined, today = todayISO()): DividendStatus {
+export function classifyDividend(
+  paymentDate: string | null | undefined,
+  today = todayISO(),
+): DividendStatus {
   if (!paymentDate) return "unknown";
   return paymentDate <= today ? "received" : "scheduled";
 }
@@ -266,7 +269,6 @@ export function findDuplicateGroups<T extends AuditableDividend & { id?: string 
 /* Agregações                                                          */
 /* ------------------------------------------------------------------ */
 
-
 export interface DividendRecord {
   asset_id: string | null;
   asset_name: string;
@@ -307,11 +309,16 @@ export function totalScheduled(rows: DividendRecord[], today = todayISO()): numb
 
 export function receivedInYear(rows: DividendRecord[], year: number, today = todayISO()): number {
   return rows
-    .filter((d) => isReceived(d, today) && (d.payment_date ?? d.paid_at).slice(0, 4) === String(year))
+    .filter(
+      (d) => isReceived(d, today) && (d.payment_date ?? d.paid_at).slice(0, 4) === String(year),
+    )
     .reduce((s, d) => s + grossOf(d), 0);
 }
 
-export function receivedByMonth(rows: DividendRecord[], today = todayISO()): Record<string, number> {
+export function receivedByMonth(
+  rows: DividendRecord[],
+  today = todayISO(),
+): Record<string, number> {
   const out: Record<string, number> = {};
   for (const d of rows) {
     if (!isReceived(d, today)) continue;
@@ -331,17 +338,28 @@ export function receivedByYear(rows: DividendRecord[], today = todayISO()): Reco
   return out;
 }
 
-export function receivedByAsset(rows: DividendRecord[], today = todayISO()): Array<{
+export function receivedByAsset(
+  rows: DividendRecord[],
+  today = todayISO(),
+): Array<{
   assetId: string | null;
   assetName: string;
   total: number;
   count: number;
 }> {
-  const map = new Map<string, { assetId: string | null; assetName: string; total: number; count: number }>();
+  const map = new Map<
+    string,
+    { assetId: string | null; assetName: string; total: number; count: number }
+  >();
   for (const d of rows) {
     if (!isReceived(d, today)) continue;
     const key = d.asset_id ?? `name:${d.asset_name}`;
-    const cur = map.get(key) ?? { assetId: d.asset_id, assetName: d.asset_name, total: 0, count: 0 };
+    const cur = map.get(key) ?? {
+      assetId: d.asset_id,
+      assetName: d.asset_name,
+      total: 0,
+      count: 0,
+    };
     cur.total += grossOf(d);
     cur.count += 1;
     map.set(key, cur);
@@ -350,7 +368,10 @@ export function receivedByAsset(rows: DividendRecord[], today = todayISO()): Arr
 }
 
 /** Totais na moeda original, por moeda. */
-export function receivedByCurrency(rows: DividendRecord[], today = todayISO()): Record<string, number> {
+export function receivedByCurrency(
+  rows: DividendRecord[],
+  today = todayISO(),
+): Record<string, number> {
   const out: Record<string, number> = {};
   for (const d of rows) {
     if (!isReceived(d, today)) continue;

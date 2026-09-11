@@ -18,12 +18,12 @@ import { Route as AuthenticatedAnaliseRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedDividendosRouteImport } from './routes/_authenticated/dividendos'
 import { Route as AuthenticatedEtfsRouteImport } from './routes/_authenticated/etfs'
 import { Route as AuthenticatedExposicaoRouteImport } from './routes/_authenticated/exposicao'
+import { Route as AuthenticatedInteligenciaRouteImport } from './routes/_authenticated/inteligencia'
 import { Route as AuthenticatedMetaisRouteImport } from './routes/_authenticated/metais'
 import { Route as AuthenticatedP2pRouteImport } from './routes/_authenticated/p2p'
 import { Route as AuthenticatedProjecoesRouteImport } from './routes/_authenticated/projecoes'
-import { Route as AuthenticatedSimuladorRouteImport } from './routes/_authenticated/simulador'
-import { Route as AuthenticatedInteligenciaRouteImport } from './routes/_authenticated/inteligencia'
 import { Route as AuthenticatedReitsRouteImport } from './routes/_authenticated/reits'
+import { Route as AuthenticatedSimuladorRouteImport } from './routes/_authenticated/simulador'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
@@ -71,9 +71,20 @@ const AuthenticatedExposicaoRoute = AuthenticatedExposicaoRouteImport.update({
   path: '/exposicao',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedInteligenciaRoute =
+  AuthenticatedInteligenciaRouteImport.update({
+    id: '/inteligencia',
+    path: '/inteligencia',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedMetaisRoute = AuthenticatedMetaisRouteImport.update({
   id: '/metais',
   path: '/metais',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedP2pRoute = AuthenticatedP2pRouteImport.update({
+  id: '/p2p',
+  path: '/p2p',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedProjecoesRoute = AuthenticatedProjecoesRouteImport.update({
@@ -81,16 +92,14 @@ const AuthenticatedProjecoesRoute = AuthenticatedProjecoesRouteImport.update({
   path: '/projecoes',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedSimuladorRoute = AuthenticatedSimuladorRouteImport.update({ id: '/simulador', path: '/simulador', getParentRoute: () => AuthenticatedRouteRoute, } as any)
-const AuthenticatedInteligenciaRoute = AuthenticatedInteligenciaRouteImport.update({ id: '/inteligencia', path: '/inteligencia', getParentRoute: () => AuthenticatedRouteRoute, } as any)
-const AuthenticatedP2pRoute = AuthenticatedP2pRouteImport.update({
-  id: '/p2p',
-  path: '/p2p',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedReitsRoute = AuthenticatedReitsRouteImport.update({
   id: '/reits',
   path: '/reits',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSimuladorRoute = AuthenticatedSimuladorRouteImport.update({
+  id: '/simulador',
+  path: '/simulador',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 
@@ -103,12 +112,12 @@ export interface FileRoutesByFullPath {
   '/dividendos': typeof AuthenticatedDividendosRoute
   '/etfs': typeof AuthenticatedEtfsRoute
   '/exposicao': typeof AuthenticatedExposicaoRoute
+  '/inteligencia': typeof AuthenticatedInteligenciaRoute
   '/metais': typeof AuthenticatedMetaisRoute
   '/p2p': typeof AuthenticatedP2pRoute
   '/projecoes': typeof AuthenticatedProjecoesRoute
   '/reits': typeof AuthenticatedReitsRoute
   '/simulador': typeof AuthenticatedSimuladorRoute
-  '/inteligencia': typeof AuthenticatedInteligenciaRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
@@ -118,12 +127,12 @@ export interface FileRoutesByTo {
   '/dividendos': typeof AuthenticatedDividendosRoute
   '/etfs': typeof AuthenticatedEtfsRoute
   '/exposicao': typeof AuthenticatedExposicaoRoute
+  '/inteligencia': typeof AuthenticatedInteligenciaRoute
   '/metais': typeof AuthenticatedMetaisRoute
   '/p2p': typeof AuthenticatedP2pRoute
   '/projecoes': typeof AuthenticatedProjecoesRoute
   '/reits': typeof AuthenticatedReitsRoute
   '/simulador': typeof AuthenticatedSimuladorRoute
-  '/inteligencia': typeof AuthenticatedInteligenciaRoute
   '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesById {
@@ -136,12 +145,12 @@ export interface FileRoutesById {
   '/_authenticated/dividendos': typeof AuthenticatedDividendosRoute
   '/_authenticated/etfs': typeof AuthenticatedEtfsRoute
   '/_authenticated/exposicao': typeof AuthenticatedExposicaoRoute
+  '/_authenticated/inteligencia': typeof AuthenticatedInteligenciaRoute
   '/_authenticated/metais': typeof AuthenticatedMetaisRoute
   '/_authenticated/p2p': typeof AuthenticatedP2pRoute
   '/_authenticated/projecoes': typeof AuthenticatedProjecoesRoute
   '/_authenticated/reits': typeof AuthenticatedReitsRoute
   '/_authenticated/simulador': typeof AuthenticatedSimuladorRoute
-  '/_authenticated/inteligencia': typeof AuthenticatedInteligenciaRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
 }
 export interface FileRouteTypes {
@@ -155,12 +164,12 @@ export interface FileRouteTypes {
     | '/dividendos'
     | '/etfs'
     | '/exposicao'
+    | '/inteligencia'
     | '/metais'
     | '/p2p'
     | '/projecoes'
     | '/reits'
     | '/simulador'
-    | '/inteligencia'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -170,12 +179,12 @@ export interface FileRouteTypes {
     | '/dividendos'
     | '/etfs'
     | '/exposicao'
+    | '/inteligencia'
     | '/metais'
     | '/p2p'
     | '/projecoes'
     | '/reits'
     | '/simulador'
-    | '/inteligencia'
     | '/'
   id:
     | '__root__'
@@ -187,12 +196,12 @@ export interface FileRouteTypes {
     | '/_authenticated/dividendos'
     | '/_authenticated/etfs'
     | '/_authenticated/exposicao'
+    | '/_authenticated/inteligencia'
     | '/_authenticated/metais'
     | '/_authenticated/p2p'
     | '/_authenticated/projecoes'
     | '/_authenticated/reits'
     | '/_authenticated/simulador'
-    | '/_authenticated/inteligencia'
     | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
@@ -266,6 +275,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedExposicaoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/inteligencia': {
+      id: '/_authenticated/inteligencia'
+      path: '/inteligencia'
+      fullPath: '/inteligencia'
+      preLoaderRoute: typeof AuthenticatedInteligenciaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/metais': {
       id: '/_authenticated/metais'
       path: '/metais'
@@ -287,13 +303,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProjecoesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/simulador': { id: '/_authenticated/simulador', path: '/simulador', fullPath: '/simulador', preLoaderRoute: typeof AuthenticatedSimuladorRouteImport, parentRoute: typeof AuthenticatedRouteRoute }
-    '/_authenticated/inteligencia': { id: '/_authenticated/inteligencia', path: '/inteligencia', fullPath: '/inteligencia', preLoaderRoute: typeof AuthenticatedInteligenciaRouteImport, parentRoute: typeof AuthenticatedRouteRoute }
     '/_authenticated/reits': {
       id: '/_authenticated/reits'
       path: '/reits'
       fullPath: '/reits'
       preLoaderRoute: typeof AuthenticatedReitsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/simulador': {
+      id: '/_authenticated/simulador'
+      path: '/simulador'
+      fullPath: '/simulador'
+      preLoaderRoute: typeof AuthenticatedSimuladorRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
   }
@@ -306,12 +327,12 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDividendosRoute: typeof AuthenticatedDividendosRoute
   AuthenticatedEtfsRoute: typeof AuthenticatedEtfsRoute
   AuthenticatedExposicaoRoute: typeof AuthenticatedExposicaoRoute
+  AuthenticatedInteligenciaRoute: typeof AuthenticatedInteligenciaRoute
   AuthenticatedMetaisRoute: typeof AuthenticatedMetaisRoute
   AuthenticatedP2pRoute: typeof AuthenticatedP2pRoute
   AuthenticatedProjecoesRoute: typeof AuthenticatedProjecoesRoute
   AuthenticatedReitsRoute: typeof AuthenticatedReitsRoute
   AuthenticatedSimuladorRoute: typeof AuthenticatedSimuladorRoute
-  AuthenticatedInteligenciaRoute: typeof AuthenticatedInteligenciaRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
@@ -322,12 +343,12 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDividendosRoute: AuthenticatedDividendosRoute,
   AuthenticatedEtfsRoute: AuthenticatedEtfsRoute,
   AuthenticatedExposicaoRoute: AuthenticatedExposicaoRoute,
+  AuthenticatedInteligenciaRoute: AuthenticatedInteligenciaRoute,
   AuthenticatedMetaisRoute: AuthenticatedMetaisRoute,
   AuthenticatedP2pRoute: AuthenticatedP2pRoute,
   AuthenticatedProjecoesRoute: AuthenticatedProjecoesRoute,
   AuthenticatedReitsRoute: AuthenticatedReitsRoute,
   AuthenticatedSimuladorRoute: AuthenticatedSimuladorRoute,
-  AuthenticatedInteligenciaRoute: AuthenticatedInteligenciaRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 

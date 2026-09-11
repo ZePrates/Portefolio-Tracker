@@ -61,7 +61,17 @@ function monthDate(start: Date, month: number): string {
   return date.toISOString().slice(0, 10);
 }
 
-/** Projeta mês a mês; o aporte entra no fim de cada mês. */
+/**
+ * Projeta mês a mês; o aporte entra no fim de cada mês.
+ *
+ * Convenção de capitalização: `annualReturnPct` é a taxa ANUAL EFETIVA.
+ * A taxa mensal usada é `(1+anual)^(1/12) - 1`, ou seja, capitalizar 12
+ * meses reproduz exatamente a taxa anual indicada (nem mais, nem menos).
+ * Não se trata de uma taxa nominal (APR) dividida por 12 — essa convenção
+ * daria um retorno EFETIVO superior ao indicado (ex.: 12% nominal/mês
+ * composto mensalmente equivaleria a ~12,68% efetivo ao ano), o que
+ * inflacionaria silenciosamente as projeções mostradas ao utilizador.
+ */
 export function projectPortfolio(input: ProjectionInput): ProjectionSummary {
   const currentValue = Math.max(0, safeNumber(input.currentValue));
   const monthlyContribution = Math.max(0, safeNumber(input.monthlyContribution));

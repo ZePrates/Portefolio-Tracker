@@ -27,7 +27,13 @@ const etf = (over: Partial<PositionInput> = {}): PositionInput => ({
   exposures: [],
   holdings: [
     { name: "Apple", symbol: "AAPL", weight: 0.07, country: "United States", sector: "Technology" },
-    { name: "Nestle", symbol: "NESN", weight: 0.03, country: "Switzerland", sector: "Consumer Defensive" },
+    {
+      name: "Nestle",
+      symbol: "NESN",
+      weight: 0.03,
+      country: "Switzerland",
+      sector: "Consumer Defensive",
+    },
     { name: "Toyota", symbol: "7203", weight: 0.02, country: "Japan", sector: "Consumer Cyclical" },
     { name: "TSMC", symbol: "TSM", weight: 0.02, country: "Taiwan", sector: "Technology" },
   ],

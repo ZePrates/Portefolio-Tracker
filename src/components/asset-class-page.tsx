@@ -19,7 +19,15 @@ import { syncDividendsForAsset } from "@/lib/dividends.functions";
 
 import { formatEUR, formatMoney, formatPercent } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
-import { PageHeader, MetricCard, EmptyState, Button, Modal, Field, TextInput } from "@/components/ui-bits";
+import {
+  PageHeader,
+  MetricCard,
+  EmptyState,
+  Button,
+  Modal,
+  Field,
+  TextInput,
+} from "@/components/ui-bits";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -127,11 +135,10 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   const pl = totals.current - totals.invested;
   const plPct = totals.invested > 0 ? (pl / totals.invested) * 100 : 0;
   const lastPriceUpdate = assets.reduce<string | null>(
-    (acc, a) => (a.price_updated_at && (!acc || a.price_updated_at > acc) ? a.price_updated_at : acc),
+    (acc, a) =>
+      a.price_updated_at && (!acc || a.price_updated_at > acc) ? a.price_updated_at : acc,
     null,
   );
-
-
 
   const openCreate = () => {
     setEditing(null);
@@ -266,7 +273,6 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
             /* sincronização é best-effort */
           }
         }
-
       }
       setDialogOpen(false);
       await queryClient.invalidateQueries({ queryKey: ["assets"] });
@@ -306,7 +312,6 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
     }
   };
 
-
   const remove = async (a: Asset) => {
     if (!window.confirm(`Eliminar "${a.name}"?`)) return;
     try {
@@ -332,10 +337,9 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
       if (res.updated === 0 && res.total === 0) {
         toast.info("Não há ativos com ticker nesta página.", { id: toastId });
       } else if (res.failed.length > 0) {
-        toast.warning(
-          `${res.updated} preços atualizados. Sem cotação: ${res.failed.join(", ")}`,
-          { id: toastId },
-        );
+        toast.warning(`${res.updated} preços atualizados. Sem cotação: ${res.failed.join(", ")}`, {
+          id: toastId,
+        });
       } else {
         toast.success(`${res.updated} preços atualizados.`, { id: toastId });
       }
@@ -346,8 +350,9 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
     }
   };
 
-  const set = (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setForm((f) => ({ ...f, [key]: e.target.value }));
+  const set =
+    (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setForm((f) => ({ ...f, [key]: e.target.value }));
 
   return (
     <div className="space-y-6">
@@ -375,8 +380,6 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         </p>
       )}
 
-
-
       <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-5">
         <MetricCard label="Valor atual" value={formatEUR(totals.current, hidden)} />
         <MetricCard label="Total investido" value={formatEUR(totals.invested, hidden)} />
@@ -389,7 +392,11 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         <MetricCard
           label="P/L realizado"
           value={formatEUR(realizedTotal, hidden)}
-          sub={closedAssets.length > 0 ? `${closedAssets.length} posições fechadas` : "Vendas concretizadas"}
+          sub={
+            closedAssets.length > 0
+              ? `${closedAssets.length} posições fechadas`
+              : "Vendas concretizadas"
+          }
           tone={realizedTotal > 0 ? "positive" : realizedTotal < 0 ? "negative" : "default"}
         />
         <MetricCard label="Posições abertas" value={String(assets.length)} />
@@ -441,15 +448,16 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                     ? a.current_price / a.current_price_native
                     : 1;
                 return (
-                  <tr key={a.id} className="border-b border-border/60 last:border-0 hover:bg-accent/40">
+                  <tr
+                    key={a.id}
+                    className="border-b border-border/60 last:border-0 hover:bg-accent/40"
+                  >
                     <td className="px-4 py-3">
                       <p className="font-medium">{a.name}</p>
-                      {a.ticker && (
-                        <p className="text-xs text-muted-foreground">{a.ticker}</p>
-                      )}
+                      {a.ticker && <p className="text-xs text-muted-foreground">{a.ticker}</p>}
                     </td>
                     <td className="px-4 py-3 text-right text-muted-foreground">
-                      {assetClass === "p2p" ? a.p2p_group ?? "—" : a.quantity || "—"}
+                      {assetClass === "p2p" ? (a.p2p_group ?? "—") : a.quantity || "—"}
                     </td>
                     {isQuantityAsset(assetClass) && (
                       <>
@@ -490,7 +498,11 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                     <td
                       className={cn(
                         "px-4 py-3 text-right font-medium",
-                        p.abs > 0 ? "text-success" : p.abs < 0 ? "text-destructive" : "text-muted-foreground",
+                        p.abs > 0
+                          ? "text-success"
+                          : p.abs < 0
+                            ? "text-destructive"
+                            : "text-muted-foreground",
                       )}
                     >
                       {formatEUR(p.abs, hidden)}
@@ -566,7 +578,10 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                 {closedAssets.map((a) => {
                   const r = assetRealizedPL(a);
                   return (
-                    <tr key={a.id} className="border-b border-border/60 last:border-0 hover:bg-accent/40">
+                    <tr
+                      key={a.id}
+                      className="border-b border-border/60 last:border-0 hover:bg-accent/40"
+                    >
                       <td className="px-4 py-3">
                         <p className="font-medium">{a.name}</p>
                         {a.ticker && <p className="text-xs text-muted-foreground">{a.ticker}</p>}
@@ -574,7 +589,11 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                       <td
                         className={cn(
                           "px-4 py-3 text-right font-medium",
-                          r > 0 ? "text-success" : r < 0 ? "text-destructive" : "text-muted-foreground",
+                          r > 0
+                            ? "text-success"
+                            : r < 0
+                              ? "text-destructive"
+                              : "text-muted-foreground",
                         )}
                       >
                         {formatEUR(r, hidden)}
@@ -642,7 +661,11 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
               value={form.name}
               onChange={set("name")}
               placeholder={
-                assetClass === "p2p" ? "Ex.: Mintos" : assetClass === "metal" ? "Ex.: Barra de ouro 50g" : "Ex.: Realty Income"
+                assetClass === "p2p"
+                  ? "Ex.: Mintos"
+                  : assetClass === "metal"
+                    ? "Ex.: Barra de ouro 50g"
+                    : "Ex.: Realty Income"
               }
             />
           </Field>
@@ -677,7 +700,12 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
             <>
               <div className="grid grid-cols-2 gap-3">
                 <Field label={assetClass === "metal" ? "Peso (gramas)" : "Quantidade"}>
-                  <TextInput inputMode="decimal" value={form.quantity} onChange={set("quantity")} placeholder="0" />
+                  <TextInput
+                    inputMode="decimal"
+                    value={form.quantity}
+                    onChange={set("quantity")}
+                    placeholder="0"
+                  />
                 </Field>
                 <Field label="Moeda">
                   <select
@@ -694,23 +722,44 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                 </Field>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label={`Preço de compra por ${assetClass === "metal" ? "grama" : "ação"} (${form.currency})`}>
-                  <TextInput inputMode="decimal" value={form.purchase_price} onChange={set("purchase_price")} placeholder="0,00" />
+                <Field
+                  label={`Preço de compra por ${assetClass === "metal" ? "grama" : "ação"} (${form.currency})`}
+                >
+                  <TextInput
+                    inputMode="decimal"
+                    value={form.purchase_price}
+                    onChange={set("purchase_price")}
+                    placeholder="0,00"
+                  />
                 </Field>
                 <Field label={`Preço atual (${form.currency})`}>
-                  <TextInput inputMode="decimal" value={form.current_price} onChange={set("current_price")} placeholder="0,00" />
+                  <TextInput
+                    inputMode="decimal"
+                    value={form.current_price}
+                    onChange={set("current_price")}
+                    placeholder="0,00"
+                  />
                 </Field>
               </div>
             </>
           ) : (
             <>
               <div className="grid grid-cols-2 gap-3">
-
                 <Field label="Total investido (€)">
-                  <TextInput inputMode="decimal" value={form.invested_amount} onChange={set("invested_amount")} placeholder="0,00" />
+                  <TextInput
+                    inputMode="decimal"
+                    value={form.invested_amount}
+                    onChange={set("invested_amount")}
+                    placeholder="0,00"
+                  />
                 </Field>
                 <Field label="Valor atual (€)">
-                  <TextInput inputMode="decimal" value={form.current_value} onChange={set("current_value")} placeholder="0,00" />
+                  <TextInput
+                    inputMode="decimal"
+                    value={form.current_value}
+                    onChange={set("current_value")}
+                    placeholder="0,00"
+                  />
                 </Field>
               </div>
             </>
@@ -719,11 +768,20 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
           {(assetClass === "p2p" || paysDividends(assetClass)) && (
             <div className="grid grid-cols-2 gap-3">
               <Field label="Yield anual (%)">
-                <TextInput inputMode="decimal" value={form.annual_yield} onChange={set("annual_yield")} placeholder="Ex.: 5,2" />
+                <TextInput
+                  inputMode="decimal"
+                  value={form.annual_yield}
+                  onChange={set("annual_yield")}
+                  placeholder="Ex.: 5,2"
+                />
               </Field>
               {assetClass !== "p2p" && (
                 <Field label="Frequência">
-                  <TextInput value={form.frequency} onChange={set("frequency")} placeholder="Ex.: Mensal" />
+                  <TextInput
+                    value={form.frequency}
+                    onChange={set("frequency")}
+                    placeholder="Ex.: Mensal"
+                  />
                 </Field>
               )}
             </div>

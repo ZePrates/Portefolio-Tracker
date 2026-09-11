@@ -3,15 +3,31 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import type { Asset, Dividend } from "@/lib/portfolio-types";
-import { buyAsset, getPosition, previewSale, sellAsset, listDividends } from "@/lib/portfolio.functions";
+import {
+  buyAsset,
+  getPosition,
+  previewSale,
+  sellAsset,
+  listDividends,
+} from "@/lib/portfolio.functions";
 import { createExpense, listExpenses } from "@/lib/expenses.functions";
-import { getAssetExposure, syncAssetExposure, type AssetExposureDetail } from "@/lib/exposure.functions";
-import { grossOf, isReceived, lastDividend, nextDividend, totalReceived, totalScheduled } from "@/lib/dividends";
+import {
+  getAssetExposure,
+  syncAssetExposure,
+  type AssetExposureDetail,
+} from "@/lib/exposure.functions";
+import {
+  grossOf,
+  isReceived,
+  lastDividend,
+  nextDividend,
+  totalReceived,
+  totalScheduled,
+} from "@/lib/dividends";
 import { formatEUR, formatMoney } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
 import { Button, Field, Modal, TextInput } from "@/components/ui-bits";
 import { cn } from "@/lib/utils";
-
 
 interface Props {
   asset: Asset | null;
@@ -66,8 +82,6 @@ export function AssetPositionModal({ asset, onClose }: Props) {
   const expensesFn = useServerFn(listExpenses);
   const createExpenseFn = useServerFn(createExpense);
 
-
-
   const [mode, setMode] = useState<"view" | "buy" | "sell" | "expense">("view");
   const [expenseAmount, setExpenseAmount] = useState("");
   const [expenseNotes, setExpenseNotes] = useState("");
@@ -94,10 +108,13 @@ export function AssetPositionModal({ asset, onClose }: Props) {
     queryFn: () => expensesFn({ data: { assetId: asset!.id } }),
     enabled: !!asset && isMetal,
   });
-  const expenses = (expenseRows ?? []) as { id: string; amount: number; incurred_at: string; notes: string | null }[];
+  const expenses = (expenseRows ?? []) as {
+    id: string;
+    amount: number;
+    incurred_at: string;
+    notes: string | null;
+  }[];
   const expensesTotal = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
-
-
 
   const dividendsFn = useServerFn(listDividends);
   const { data: allDividends } = useQuery({
@@ -123,8 +140,6 @@ export function AssetPositionModal({ asset, onClose }: Props) {
       next: nextDividend(rows) as (Dividend & { payment_date?: string | null }) | null,
     };
   }, [assetDividends]);
-
-
 
   useEffect(() => {
     if (!asset) return;
@@ -264,7 +279,6 @@ export function AssetPositionModal({ asset, onClose }: Props) {
   const tone = (v: number) =>
     v > 0 ? "text-success" : v < 0 ? "text-destructive" : "text-muted-foreground";
 
-
   return (
     <Modal open={!!asset} onClose={onClose} title={asset.name}>
       <div className="space-y-5">
@@ -360,7 +374,6 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                 </div>
               </div>
             ) : (
-
               <div className="space-y-3 rounded-xl border border-border bg-background/50 p-4">
                 <p className="text-sm font-medium">
                   {mode === "buy" ? "Nova compra" : "Nova venda"}
@@ -406,9 +419,15 @@ export function AssetPositionModal({ asset, onClose }: Props) {
 
                 {mode === "sell" && preview && (
                   <div className="space-y-1 rounded-lg border border-border bg-card p-3 text-sm">
-                    <Row label="Quantidade disponível" value={String(Number(preview.available.toFixed(6)))} />
+                    <Row
+                      label="Quantidade disponível"
+                      value={String(Number(preview.available.toFixed(6)))}
+                    />
                     <Row label="Quantidade a vender" value={String(num(quantity))} />
-                    <Row label={`Preço de venda (${currency})`} value={formatMoney(num(price), currency, hidden)} />
+                    <Row
+                      label={`Preço de venda (${currency})`}
+                      value={formatMoney(num(price), currency, hidden)}
+                    />
                     <Row label="Receita bruta" value={formatEUR(preview.proceeds, hidden)} />
                     <Row label="Cost basis (FIFO)" value={formatEUR(preview.costBasis, hidden)} />
                     <Row label="Comissão" value={formatEUR(preview.fee, hidden)} />
@@ -424,7 +443,10 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                     <p className="pt-1 text-xs text-muted-foreground">
                       Lotes consumidos:{" "}
                       {preview.breakdown
-                        .map((b) => `${Number(b.quantity.toFixed(4))} @ ${formatEUR(b.unitCost, hidden)} (${b.traded_at})`)
+                        .map(
+                          (b) =>
+                            `${Number(b.quantity.toFixed(4))} @ ${formatEUR(b.unitCost, hidden)} (${b.traded_at})`,
+                        )
                         .join(" · ")}
                     </p>
                   </div>
@@ -435,7 +457,11 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                     Cancelar
                   </Button>
                   <Button onClick={confirm} disabled={saving || (mode === "sell" && !preview)}>
-                    {saving ? "A registar…" : mode === "buy" ? "Confirmar compra" : "Confirmar venda"}
+                    {saving
+                      ? "A registar…"
+                      : mode === "buy"
+                        ? "Confirmar compra"
+                        : "Confirmar venda"}
                   </Button>
                 </div>
               </div>
@@ -450,7 +476,9 @@ export function AssetPositionModal({ asset, onClose }: Props) {
               <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
                 <div className="rounded-lg border border-border p-3">
                   <div className="text-xs text-muted-foreground">Recebidos</div>
-                  <div className="font-medium text-success">{formatEUR(divStats.received, hidden)}</div>
+                  <div className="font-medium text-success">
+                    {formatEUR(divStats.received, hidden)}
+                  </div>
                 </div>
                 <div className="rounded-lg border border-border p-3">
                   <div className="text-xs text-muted-foreground">Previstos</div>
@@ -489,12 +517,13 @@ export function AssetPositionModal({ asset, onClose }: Props) {
             </section>
 
             <section>
-
               <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Lotes abertos
               </h3>
               {pos.lots.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Sem lotes abertos — posição fechada.</p>
+                <p className="text-sm text-muted-foreground">
+                  Sem lotes abertos — posição fechada.
+                </p>
               ) : (
                 <div className="overflow-x-auto rounded-lg border border-border">
                   <table className="w-full text-sm">
@@ -510,7 +539,9 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                       {pos.lots.map((l, i) => (
                         <tr key={l.id ?? i} className="border-b border-border/60 last:border-0">
                           <td className="px-3 py-2">{l.traded_at}</td>
-                          <td className="px-3 py-2 text-right">{Number(l.originalQuantity.toFixed(6))}</td>
+                          <td className="px-3 py-2 text-right">
+                            {Number(l.originalQuantity.toFixed(6))}
+                          </td>
                           <td className="px-3 py-2 text-right">{Number(l.quantity.toFixed(6))}</td>
                           <td className="px-3 py-2 text-right">{formatEUR(l.unitCost, hidden)}</td>
                         </tr>
@@ -545,10 +576,21 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                         <tr key={t.id} className="border-b border-border/60 last:border-0">
                           <td className="px-3 py-2">{t.traded_at}</td>
                           <td className="px-3 py-2">{t.type === "buy" ? "Compra" : "Venda"}</td>
-                          <td className="px-3 py-2 text-right">{Number(Number(t.quantity).toFixed(6))}</td>
-                          <td className="px-3 py-2 text-right">{formatEUR(Number(t.price), hidden)}</td>
-                          <td className="px-3 py-2 text-right">{formatEUR(Number(t.fee ?? 0), hidden)}</td>
-                          <td className={cn("px-3 py-2 text-right", t.realized_pl != null && tone(Number(t.realized_pl)))}>
+                          <td className="px-3 py-2 text-right">
+                            {Number(Number(t.quantity).toFixed(6))}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            {formatEUR(Number(t.price), hidden)}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            {formatEUR(Number(t.fee ?? 0), hidden)}
+                          </td>
+                          <td
+                            className={cn(
+                              "px-3 py-2 text-right",
+                              t.realized_pl != null && tone(Number(t.realized_pl)),
+                            )}
+                          >
                             {t.realized_pl != null ? formatEUR(Number(t.realized_pl), hidden) : "—"}
                           </td>
                         </tr>
@@ -600,7 +642,9 @@ function UnderlyingExposure({ assetId, hidden }: { assetId: string; hidden: bool
     try {
       const res = (await syncFn({ data: { assetId } })) as { ok: boolean; message?: string };
       toast[res.ok ? "success" : "message"](
-        res.ok ? "Composição atualizada." : (res.message ?? "Sem dados novos — dados anteriores preservados."),
+        res.ok
+          ? "Composição atualizada."
+          : (res.message ?? "Sem dados novos — dados anteriores preservados."),
       );
       await queryClient.invalidateQueries({ queryKey: ["asset-exposure", assetId] });
     } catch (e) {
@@ -646,7 +690,11 @@ function UnderlyingExposure({ assetId, hidden }: { assetId: string; hidden: bool
               <Stat label="Domicílio" value={d!.profile.domicile ?? "Não disponível"} />
               <Stat
                 label="Yield"
-                value={d!.profile.dividendYield != null ? `${d!.profile.dividendYield.toFixed(2)}%` : "Não disponível"}
+                value={
+                  d!.profile.dividendYield != null
+                    ? `${d!.profile.dividendYield.toFixed(2)}%`
+                    : "Não disponível"
+                }
               />
             </div>
           )}
@@ -678,13 +726,22 @@ function UnderlyingExposure({ assetId, hidden }: { assetId: string; hidden: bool
                 </thead>
                 <tbody>
                   {d!.holdings.map((h, i) => (
-                    <tr key={`${h.symbol ?? h.name}-${i}`} className="border-b border-border/60 last:border-0">
+                    <tr
+                      key={`${h.symbol ?? h.name}-${i}`}
+                      className="border-b border-border/60 last:border-0"
+                    >
                       <td className="px-3 py-2">
                         {h.name}
-                        {h.symbol ? <span className="ml-1 text-xs text-muted-foreground">{h.symbol}</span> : null}
+                        {h.symbol ? (
+                          <span className="ml-1 text-xs text-muted-foreground">{h.symbol}</span>
+                        ) : null}
                       </td>
-                      <td className="hidden px-3 py-2 sm:table-cell">{h.country ?? "Não disponível"}</td>
-                      <td className="hidden px-3 py-2 sm:table-cell">{h.sector ?? "Não disponível"}</td>
+                      <td className="hidden px-3 py-2 sm:table-cell">
+                        {h.country ?? "Não disponível"}
+                      </td>
+                      <td className="hidden px-3 py-2 sm:table-cell">
+                        {h.sector ?? "Não disponível"}
+                      </td>
                       <td className="px-3 py-2 text-right">{h.pct.toFixed(2)}%</td>
                       <td className="px-3 py-2 text-right">{formatEUR(h.amount, hidden)}</td>
                     </tr>

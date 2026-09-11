@@ -104,9 +104,33 @@ const CLOSED = asset({
 const ASSETS = [AAPL, ETF, SILVER, P2P, CLOSED];
 
 const DIVS: DividendRecord[] = [
-  div({ asset_id: "aapl", asset_name: "Apple", amount: 100, net_amount: 80, payment_date: "2026-03-10", paid_at: "2026-03-10", status: "received" }),
-  div({ asset_id: "aapl", asset_name: "Apple", amount: 100, net_amount: 80, payment_date: "2026-09-01", paid_at: "2026-09-01", status: "received" }),
-  div({ asset_id: "etf", asset_name: "VWCE", amount: 50, net_amount: 50, payment_date: "2026-12-01", paid_at: "2026-12-01", status: "scheduled" }),
+  div({
+    asset_id: "aapl",
+    asset_name: "Apple",
+    amount: 100,
+    net_amount: 80,
+    payment_date: "2026-03-10",
+    paid_at: "2026-03-10",
+    status: "received",
+  }),
+  div({
+    asset_id: "aapl",
+    asset_name: "Apple",
+    amount: 100,
+    net_amount: 80,
+    payment_date: "2026-09-01",
+    paid_at: "2026-09-01",
+    status: "received",
+  }),
+  div({
+    asset_id: "etf",
+    asset_name: "VWCE",
+    amount: 50,
+    net_amount: 50,
+    payment_date: "2026-12-01",
+    paid_at: "2026-12-01",
+    status: "scheduled",
+  }),
 ];
 
 describe("KPIs do dashboard", () => {
@@ -184,7 +208,9 @@ describe("filtros temporais", () => {
     expect(periodRange("month", TODAY).from).toBe("2026-09-01");
     expect(periodRange("ytd", TODAY).from).toBe("2026-01-01");
     expect(periodRange("1y", TODAY).from).toBe("2025-09-06");
-    expect(periodRange("custom", TODAY, { from: "2026-02-01", to: "2026-02-28" }).to).toBe("2026-02-28");
+    expect(periodRange("custom", TODAY, { from: "2026-02-01", to: "2026-02-28" }).to).toBe(
+      "2026-02-28",
+    );
   });
 
   it("dividendos do período respeitam o intervalo", () => {

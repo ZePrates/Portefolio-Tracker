@@ -23,8 +23,16 @@ const eur = (exDate: string, perShare: number, paymentDate = exDate) => ({
   fxRate: 1,
 });
 
-const buy = (traded_at: string, quantity: number): DividendTrade => ({ type: "buy", quantity, traded_at });
-const sell = (traded_at: string, quantity: number): DividendTrade => ({ type: "sell", quantity, traded_at });
+const buy = (traded_at: string, quantity: number): DividendTrade => ({
+  type: "buy",
+  quantity,
+  traded_at,
+});
+const sell = (traded_at: string, quantity: number): DividendTrade => ({
+  type: "sell",
+  quantity,
+  traded_at,
+});
 
 describe("quantidade elegível na data ex-dividendo", () => {
   it("compra 10 ações → dividendo de €1 → €10", () => {
@@ -61,7 +69,11 @@ describe("quantidade elegível na data ex-dividendo", () => {
 
   it("posição totalmente vendida mantém dividendos anteriores no histórico", () => {
     const trades = [buy("2026-01-10", 10), sell("2026-08-20", 10)];
-    const history = computeDividendHistory(trades, [eur("2026-06-10", 1), eur("2026-09-01", 1)], TODAY);
+    const history = computeDividendHistory(
+      trades,
+      [eur("2026-06-10", 1), eur("2026-09-01", 1)],
+      TODAY,
+    );
     expect(history).toHaveLength(1);
     expect(history[0]!.grossAmount).toBe(10);
     expect(quantityHeldBefore(trades, TODAY)).toBe(0);
@@ -130,7 +142,12 @@ describe("previstos vs recebidos", () => {
 
   it("sem data de pagamento o evento fica por confirmar", () => {
     expect(classifyDividend(null, TODAY)).toBe("unknown");
-    expect(isReceived({ asset_id: "a", asset_name: "X", amount: 5, paid_at: "2026-01-01", status: "unknown" }, TODAY)).toBe(false);
+    expect(
+      isReceived(
+        { asset_id: "a", asset_name: "X", amount: 5, paid_at: "2026-01-01", status: "unknown" },
+        TODAY,
+      ),
+    ).toBe(false);
   });
 
   it("dividendo pago no passado conta como recebido", () => {
@@ -224,16 +241,51 @@ describe("auditoria", () => {
       currency: "EUR",
       per_share_native: 1,
     };
-    expect(findDuplicateGroups([{ ...row, id: "1" }, { ...row, id: "2" }])).toHaveLength(1);
+    expect(
+      findDuplicateGroups([
+        { ...row, id: "1" },
+        { ...row, id: "2" },
+      ]),
+    ).toHaveLength(1);
     expect(findDuplicateGroups([{ ...row, id: "1" }])).toHaveLength(0);
   });
 });
 
 describe("agregações", () => {
   const rows = [
-    { asset_id: "a", asset_name: "A", amount: 10, gross_amount: 10, currency: "USD", amount_native: 11, payment_date: "2026-08-20", paid_at: "2026-08-20", status: "received" },
-    { asset_id: "a", asset_name: "A", amount: 5, gross_amount: 5, currency: "USD", amount_native: 5.5, payment_date: "2026-05-20", paid_at: "2026-05-20", status: "received" },
-    { asset_id: "b", asset_name: "B", amount: 7, gross_amount: 7, currency: "EUR", amount_native: 7, payment_date: "2026-12-20", paid_at: "2026-12-20", status: "scheduled" },
+    {
+      asset_id: "a",
+      asset_name: "A",
+      amount: 10,
+      gross_amount: 10,
+      currency: "USD",
+      amount_native: 11,
+      payment_date: "2026-08-20",
+      paid_at: "2026-08-20",
+      status: "received",
+    },
+    {
+      asset_id: "a",
+      asset_name: "A",
+      amount: 5,
+      gross_amount: 5,
+      currency: "USD",
+      amount_native: 5.5,
+      payment_date: "2026-05-20",
+      paid_at: "2026-05-20",
+      status: "received",
+    },
+    {
+      asset_id: "b",
+      asset_name: "B",
+      amount: 7,
+      gross_amount: 7,
+      currency: "EUR",
+      amount_native: 7,
+      payment_date: "2026-12-20",
+      paid_at: "2026-12-20",
+      status: "scheduled",
+    },
   ];
 
   it("totais mensais e por moeda ignoram previstos", () => {

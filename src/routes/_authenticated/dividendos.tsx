@@ -3,17 +3,14 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Plus, Trash2, RefreshCw, ShieldCheck } from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
-import { listAssets, listDividends, createDividend, deleteDividend } from "@/lib/portfolio.functions";
+import {
+  listAssets,
+  listDividends,
+  createDividend,
+  deleteDividend,
+} from "@/lib/portfolio.functions";
 import { syncAllDividends, recalculateDividends, auditDividends } from "@/lib/dividends.functions";
 import { type Asset, type Dividend, assetInvested } from "@/lib/portfolio-types";
 import {
@@ -30,7 +27,15 @@ import {
 } from "@/lib/dividends";
 import { formatEUR, formatMoney, formatDatePt, formatPercent } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
-import { PageHeader, MetricCard, EmptyState, Button, Modal, Field, TextInput } from "@/components/ui-bits";
+import {
+  PageHeader,
+  MetricCard,
+  EmptyState,
+  Button,
+  Modal,
+  Field,
+  TextInput,
+} from "@/components/ui-bits";
 
 export const Route = createFileRoute("/_authenticated/dividendos")({
   head: () => ({
@@ -42,7 +47,10 @@ export const Route = createFileRoute("/_authenticated/dividendos")({
           "Dividendos efetivamente recebidos, previstos, histórico mensal e yield sobre o custo do teu portefólio.",
       },
       { property: "og:title", content: "Dividendos — Portefólio Tracker" },
-      { property: "og:description", content: "Rendimentos passivos: recebidos, previstos e histórico." },
+      {
+        property: "og:description",
+        content: "Rendimentos passivos: recebidos, previstos e histórico.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -244,7 +252,11 @@ function DividendosPage() {
 
       <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
         <MetricCard label={`Recebidos em ${year}`} value={formatEUR(stats.receivedYear, hidden)} />
-        <MetricCard label="Total recebido" value={formatEUR(stats.received, hidden)} sub="Desde o início" />
+        <MetricCard
+          label="Total recebido"
+          value={formatEUR(stats.received, hidden)}
+          sub="Desde o início"
+        />
         <MetricCard
           label="Previstos"
           value={formatEUR(stats.scheduled, hidden)}
@@ -349,11 +361,16 @@ function DividendosPage() {
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card">
           <div className="flex flex-wrap gap-2 border-b border-border p-3">
-            {([
-              ["all", `Todos (${dividends.length})`],
-              ["received", `Recebidos (${dividends.filter((d) => isReceived(d as never)).length})`],
-              ["pending", `Previstos (${upcoming.length})`],
-            ] as const).map(([key, label]) => (
+            {(
+              [
+                ["all", `Todos (${dividends.length})`],
+                [
+                  "received",
+                  `Recebidos (${dividends.filter((d) => isReceived(d as never)).length})`,
+                ],
+                ["pending", `Previstos (${upcoming.length})`],
+              ] as const
+            ).map(([key, label]) => (
               <button
                 key={key}
                 onClick={() => setFilter(key)}
@@ -389,59 +406,66 @@ function DividendosPage() {
                   return filter === "received" ? r : !r;
                 })
                 .map((d) => {
-                const received = isReceived(d as never);
-                const cur = (d.currency ?? "EUR").toUpperCase();
-                return (
-                  <tr key={d.id} className="border-b border-border/60 last:border-0 hover:bg-accent/40">
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {formatDatePt(d.payment_date ?? d.paid_at)}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{formatDatePt(d.ex_date)}</td>
-                    <td className="px-4 py-3 font-medium">{d.asset_name}</td>
-                    <td className="px-4 py-3 text-right text-muted-foreground">
-                      {d.eligible_quantity == null ? "—" : d.eligible_quantity}
-                    </td>
-                    <td className="px-4 py-3 text-right text-muted-foreground">
-                      {d.per_share_native == null
-                        ? "—"
-                        : formatMoney(d.per_share_native, cur, hidden)}
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium text-success">
-                      <div>{formatEUR(d.gross_amount ?? d.amount, hidden)}</div>
-                      {cur !== "EUR" && d.amount_native != null && (
-                        <div className="text-xs font-normal text-muted-foreground">
-                          {formatMoney(d.amount_native, cur, hidden)}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {formatEUR(d.net_amount ?? d.gross_amount ?? d.amount, hidden)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={
-                          received
-                            ? "rounded-full bg-success/15 px-2 py-1 text-xs text-success"
-                            : "rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"
-                        }
-                      >
-                        {received ? "Recebido" : d.status === "unknown" ? "Por confirmar" : "Previsto"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end">
-                        <button
-                          onClick={() => remove(d)}
-                          className="rounded-lg p-2 text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
-                          aria-label="Eliminar registo"
+                  const received = isReceived(d as never);
+                  const cur = (d.currency ?? "EUR").toUpperCase();
+                  return (
+                    <tr
+                      key={d.id}
+                      className="border-b border-border/60 last:border-0 hover:bg-accent/40"
+                    >
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {formatDatePt(d.payment_date ?? d.paid_at)}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">{formatDatePt(d.ex_date)}</td>
+                      <td className="px-4 py-3 font-medium">{d.asset_name}</td>
+                      <td className="px-4 py-3 text-right text-muted-foreground">
+                        {d.eligible_quantity == null ? "—" : d.eligible_quantity}
+                      </td>
+                      <td className="px-4 py-3 text-right text-muted-foreground">
+                        {d.per_share_native == null
+                          ? "—"
+                          : formatMoney(d.per_share_native, cur, hidden)}
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium text-success">
+                        <div>{formatEUR(d.gross_amount ?? d.amount, hidden)}</div>
+                        {cur !== "EUR" && d.amount_native != null && (
+                          <div className="text-xs font-normal text-muted-foreground">
+                            {formatMoney(d.amount_native, cur, hidden)}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {formatEUR(d.net_amount ?? d.gross_amount ?? d.amount, hidden)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={
+                            received
+                              ? "rounded-full bg-success/15 px-2 py-1 text-xs text-success"
+                              : "rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"
+                          }
                         >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                          {received
+                            ? "Recebido"
+                            : d.status === "unknown"
+                              ? "Por confirmar"
+                              : "Previsto"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end">
+                          <button
+                            onClick={() => remove(d)}
+                            className="rounded-lg p-2 text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
+                            aria-label="Eliminar registo"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>

@@ -1,7 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, RefreshCw, PieChart as PieIcon, TrendingUp, TrendingDown, Globe, Coins } from "lucide-react";
+import {
+  Plus,
+  RefreshCw,
+  PieChart as PieIcon,
+  TrendingUp,
+  TrendingDown,
+  Globe,
+  Coins,
+} from "lucide-react";
 import {
   PieChart,
   Pie,
@@ -52,7 +60,10 @@ export const Route = createFileRoute("/_authenticated/")({
           "Cockpit do portefólio: valor total, resultado realizado e latente, dividendos, alocação, exposição e desempenho por ativo.",
       },
       { property: "og:title", content: "Dashboard — Portefólio Tracker" },
-      { property: "og:description", content: "Visão consolidada do teu portefólio de investimentos." },
+      {
+        property: "og:description",
+        content: "Visão consolidada do teu portefólio de investimentos.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -193,7 +204,13 @@ function DashboardPage() {
   const realizedPeriod = useMemo(() => realizedInRange(transactions, range), [transactions, range]);
 
   const exposure = exposureRaw as
-    | { report: { countries: Array<{ value: string; amount: number; pct: number }>; sectors: Array<{ value: string; amount: number; pct: number }>; companies: Array<{ name: string; amount: number; pct: number }> } }
+    | {
+        report: {
+          countries: Array<{ value: string; amount: number; pct: number }>;
+          sectors: Array<{ value: string; amount: number; pct: number }>;
+          companies: Array<{ name: string; amount: number; pct: number }>;
+        };
+      }
     | undefined;
 
   const year = new Date().getFullYear();
@@ -224,7 +241,12 @@ function DashboardPage() {
         title="Dashboard"
         subtitle="Visão consolidada — detalhe nas páginas de posições, exposição e dividendos."
         actions={
-          <Button variant="outline" onClick={refreshPrices} disabled={refreshing} title="Obter cotações">
+          <Button
+            variant="outline"
+            onClick={refreshPrices}
+            disabled={refreshing}
+            title="Obter cotações"
+          >
             <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
             Atualizar preços
           </Button>
@@ -243,13 +265,21 @@ function DashboardPage() {
           label="Não realizado"
           value={formatEUR(summary.unrealizedPL, hidden)}
           sub={formatPercent(summary.unrealizedPct, hidden)}
-          tone={summary.unrealizedPL > 0 ? "positive" : summary.unrealizedPL < 0 ? "negative" : "default"}
+          tone={
+            summary.unrealizedPL > 0
+              ? "positive"
+              : summary.unrealizedPL < 0
+                ? "negative"
+                : "default"
+          }
         />
         <MetricCard
           label="Realizado"
           value={formatEUR(summary.realizedPL, hidden)}
           sub={`${summary.closedPositions} posições fechadas`}
-          tone={summary.realizedPL > 0 ? "positive" : summary.realizedPL < 0 ? "negative" : "default"}
+          tone={
+            summary.realizedPL > 0 ? "positive" : summary.realizedPL < 0 ? "negative" : "default"
+          }
         />
         <MetricCard
           label="Dividendos recebidos"
@@ -264,17 +294,33 @@ function DashboardPage() {
           label="Resultado histórico"
           value={formatEUR(summary.totalResult, hidden)}
           sub="realizado + latente + dividendos"
-          tone={summary.totalResult > 0 ? "positive" : summary.totalResult < 0 ? "negative" : "default"}
+          tone={
+            summary.totalResult > 0 ? "positive" : summary.totalResult < 0 ? "negative" : "default"
+          }
         />
         <MetricCard
           label="Rentabilidade total"
-          value={summary.totalReturnPct === null ? "Dados não disponíveis" : formatPercent(summary.totalReturnPct, hidden)}
+          value={
+            summary.totalReturnPct === null
+              ? "Dados não disponíveis"
+              : formatPercent(summary.totalReturnPct, hidden)
+          }
           sub={`sobre ${formatEUR(summary.returnBasis, hidden)} de capital aplicado`}
-          tone={(summary.totalReturnPct ?? 0) > 0 ? "positive" : (summary.totalReturnPct ?? 0) < 0 ? "negative" : "default"}
+          tone={
+            (summary.totalReturnPct ?? 0) > 0
+              ? "positive"
+              : (summary.totalReturnPct ?? 0) < 0
+                ? "negative"
+                : "default"
+          }
         />
         <MetricCard
           label="Yield sobre custo (12m)"
-          value={summary.yieldOnCost === null ? "Dados não disponíveis" : formatPercent(summary.yieldOnCost, hidden)}
+          value={
+            summary.yieldOnCost === null
+              ? "Dados não disponíveis"
+              : formatPercent(summary.yieldOnCost, hidden)
+          }
           sub="dividendos líquidos / custo atual"
         />
       </div>
@@ -310,7 +356,10 @@ function DashboardPage() {
       </div>
 
       {/* Evolução */}
-      <Card title="Evolução (movimentos registados)" icon={<TrendingUp className="h-4 w-4 text-primary" />}>
+      <Card
+        title="Evolução (movimentos registados)"
+        icon={<TrendingUp className="h-4 w-4 text-primary" />}
+      >
         {timeline.length < 2 ? (
           <NoData label="Sem histórico suficiente no período selecionado." />
         ) : (
@@ -318,7 +367,11 @@ function DashboardPage() {
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={timeline}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                <XAxis dataKey="key" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
+                <XAxis
+                  dataKey="key"
+                  tick={{ fontSize: 11 }}
+                  stroke="var(--color-muted-foreground)"
+                />
                 <YAxis tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" width={60} />
                 <Tooltip
                   contentStyle={TOOLTIP_STYLE}
@@ -368,12 +421,22 @@ function DashboardPage() {
               <div className="h-52 w-52 shrink-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={allocation} dataKey="value" nameKey="label" innerRadius={55} outerRadius={90} strokeWidth={0}>
+                    <Pie
+                      data={allocation}
+                      dataKey="value"
+                      nameKey="label"
+                      innerRadius={55}
+                      outerRadius={90}
+                      strokeWidth={0}
+                    >
                       {allocation.map((_, i) => (
                         <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(v: number) => formatEUR(v, hidden)} contentStyle={TOOLTIP_STYLE} />
+                    <Tooltip
+                      formatter={(v: number) => formatEUR(v, hidden)}
+                      contentStyle={TOOLTIP_STYLE}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -384,7 +447,10 @@ function DashboardPage() {
                       className="h-2.5 w-2.5 rounded-full"
                       style={{ background: CHART_COLORS[i % CHART_COLORS.length] }}
                     />
-                    <Link to={CLASS_ROUTES[c.class]} className="text-muted-foreground hover:text-foreground">
+                    <Link
+                      to={CLASS_ROUTES[c.class]}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
                       {CLASS_LABELS[c.class]}
                     </Link>
                     <span className="ml-auto font-medium">{formatEUR(c.value, hidden)}</span>
@@ -412,11 +478,28 @@ function DashboardPage() {
             <NoData label="Dados não disponíveis — atualize a composição em Exposição." />
           ) : (
             <div className="grid gap-4 sm:grid-cols-3">
-              {([
-                ["Países", exposure.report.countries.slice(0, 4).map((s) => ({ label: s.value, pct: s.pct }))],
-                ["Setores", exposure.report.sectors.slice(0, 4).map((s) => ({ label: s.value, pct: s.pct }))],
-                ["Empresas", exposure.report.companies.slice(0, 4).map((s) => ({ label: s.name, pct: s.pct }))],
-              ] as Array<[string, Array<{ label: string; pct: number }>]>).map(([title, rows]) => (
+              {(
+                [
+                  [
+                    "Países",
+                    exposure.report.countries
+                      .slice(0, 4)
+                      .map((s) => ({ label: s.value, pct: s.pct })),
+                  ],
+                  [
+                    "Setores",
+                    exposure.report.sectors
+                      .slice(0, 4)
+                      .map((s) => ({ label: s.value, pct: s.pct })),
+                  ],
+                  [
+                    "Empresas",
+                    exposure.report.companies
+                      .slice(0, 4)
+                      .map((s) => ({ label: s.name, pct: s.pct })),
+                  ],
+                ] as Array<[string, Array<{ label: string; pct: number }>]>
+              ).map(([title, rows]) => (
                 <div key={title}>
                   <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     {title}
@@ -454,7 +537,8 @@ function DashboardPage() {
                     {r.weight.toFixed(1)}% da carteira
                   </span>
                   <span className="w-28 shrink-0 text-right font-medium text-success">
-                    {formatEUR(r.unrealized, hidden)} ({formatPercent(r.unrealizedPct ?? 0, hidden)})
+                    {formatEUR(r.unrealized, hidden)} ({formatPercent(r.unrealizedPct ?? 0, hidden)}
+                    )
                   </span>
                 </li>
               ))}
@@ -463,7 +547,10 @@ function DashboardPage() {
         </Card>
 
         {/* Piores */}
-        <Card title="Piores desempenhos" icon={<TrendingDown className="h-4 w-4 text-destructive" />}>
+        <Card
+          title="Piores desempenhos"
+          icon={<TrendingDown className="h-4 w-4 text-destructive" />}
+        >
           {worst.length === 0 ? (
             <NoData />
           ) : (
@@ -482,7 +569,8 @@ function DashboardPage() {
                       r.unrealized < 0 ? "text-destructive" : "text-success",
                     )}
                   >
-                    {formatEUR(r.unrealized, hidden)} ({formatPercent(r.unrealizedPct ?? 0, hidden)})
+                    {formatEUR(r.unrealized, hidden)} ({formatPercent(r.unrealizedPct ?? 0, hidden)}
+                    )
                   </span>
                 </li>
               ))}
@@ -507,10 +595,26 @@ function DashboardPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={divs.byMonth.slice(-18)}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                  <XAxis dataKey="key" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
-                  <YAxis tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" width={55} />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => formatEUR(v, hidden)} />
-                  <Bar dataKey="amount" name="Dividendos" fill="var(--color-chart-3)" radius={[4, 4, 0, 0]} />
+                  <XAxis
+                    dataKey="key"
+                    tick={{ fontSize: 11 }}
+                    stroke="var(--color-muted-foreground)"
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    stroke="var(--color-muted-foreground)"
+                    width={55}
+                  />
+                  <Tooltip
+                    contentStyle={TOOLTIP_STYLE}
+                    formatter={(v: number) => formatEUR(v, hidden)}
+                  />
+                  <Bar
+                    dataKey="amount"
+                    name="Dividendos"
+                    fill="var(--color-chart-3)"
+                    radius={[4, 4, 0, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -524,10 +628,17 @@ function DashboardPage() {
           ) : (
             <ul className="space-y-2">
               {divs.byAsset.slice(0, 8).map((r) => (
-                <li key={r.assetId ?? r.assetName} className="flex items-center justify-between gap-3 text-sm">
+                <li
+                  key={r.assetId ?? r.assetName}
+                  className="flex items-center justify-between gap-3 text-sm"
+                >
                   <span className="truncate">{r.assetName}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground">{r.count} pagamentos</span>
-                  <span className="w-24 shrink-0 text-right font-medium">{formatEUR(r.total, hidden)}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {r.count} pagamentos
+                  </span>
+                  <span className="w-24 shrink-0 text-right font-medium">
+                    {formatEUR(r.total, hidden)}
+                  </span>
                 </li>
               ))}
             </ul>

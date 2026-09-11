@@ -49,7 +49,13 @@ const asset = (p: Partial<Asset> & { id: string }): Asset =>
     ...p,
   }) as Asset;
 
-const buy = (traded_at: string, quantity: number, price: number, asset_id = "a", fee = 0): PerfTransaction => ({
+const buy = (
+  traded_at: string,
+  quantity: number,
+  price: number,
+  asset_id = "a",
+  fee = 0,
+): PerfTransaction => ({
   asset_id,
   type: "buy",
   traded_at,
@@ -204,8 +210,22 @@ describe("estatísticas de períodos", () => {
 
 describe("contribuição e classes", () => {
   const assets = [
-    asset({ id: "a", name: "ETF World", class: "etf", quantity: 10, average_price: 100, current_price: 120 }),
-    asset({ id: "b", name: "Prata", class: "metal", quantity: 100, average_price: 1, current_price: 1.2 }),
+    asset({
+      id: "a",
+      name: "ETF World",
+      class: "etf",
+      quantity: 10,
+      average_price: 100,
+      current_price: 120,
+    }),
+    asset({
+      id: "b",
+      name: "Prata",
+      class: "metal",
+      quantity: 100,
+      average_price: 1,
+      current_price: 1.2,
+    }),
     asset({ id: "c", name: "P2P", class: "p2p", invested_amount: 500, current_value: 550 }),
   ];
   const txs = [buy("2026-01-10", 10, 100, "a"), sell("2026-05-10", 2, 150, 100, "a")];

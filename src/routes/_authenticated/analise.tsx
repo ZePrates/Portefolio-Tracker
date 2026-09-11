@@ -2,15 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Plus } from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { listAssets } from "@/lib/portfolio.functions";
 import {
   type Asset,
@@ -29,9 +21,15 @@ export const Route = createFileRoute("/_authenticated/analise")({
   head: () => ({
     meta: [
       { title: "Análise — Portefólio Tracker" },
-      { name: "description", content: "Exposição, alocação e rentabilidade detalhadas do teu portefólio." },
+      {
+        name: "description",
+        content: "Exposição, alocação e rentabilidade detalhadas do teu portefólio.",
+      },
       { property: "og:title", content: "Análise — Portefólio Tracker" },
-      { property: "og:description", content: "Exposição, alocação e rentabilidade detalhadas do teu portefólio." },
+      {
+        property: "og:description",
+        content: "Exposição, alocação e rentabilidade detalhadas do teu portefólio.",
+      },
     ],
   }),
   component: AnalisePage,
@@ -155,7 +153,11 @@ function AnalisePage() {
                 <span
                   className={cn(
                     "font-medium",
-                    c.pl > 0 ? "text-success" : c.pl < 0 ? "text-destructive" : "text-muted-foreground",
+                    c.pl > 0
+                      ? "text-success"
+                      : c.pl < 0
+                        ? "text-destructive"
+                        : "text-muted-foreground",
                   )}
                 >
                   {formatEUR(c.pl, hidden)}{" "}
@@ -189,7 +191,11 @@ function AnalisePage() {
                     <p
                       className={cn(
                         "text-xs",
-                        p.abs > 0 ? "text-success" : p.abs < 0 ? "text-destructive" : "text-muted-foreground",
+                        p.abs > 0
+                          ? "text-success"
+                          : p.abs < 0
+                            ? "text-destructive"
+                            : "text-muted-foreground",
                       )}
                     >
                       {formatPercent(p.pct, hidden)}

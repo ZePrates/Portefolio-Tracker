@@ -7,7 +7,10 @@ export const Route = createFileRoute("/_authenticated/acoes-crescimento")({
       { title: "Ações de Crescimento — Portefólio Tracker" },
       { name: "description", content: "Ações de empresas com foco em crescimento de capital." },
       { property: "og:title", content: "Ações de Crescimento — Portefólio Tracker" },
-      { property: "og:description", content: "Ações de empresas com foco em crescimento de capital." },
+      {
+        property: "og:description",
+        content: "Ações de empresas com foco em crescimento de capital.",
+      },
     ],
   }),
   component: AcoesCrescimentoPage,

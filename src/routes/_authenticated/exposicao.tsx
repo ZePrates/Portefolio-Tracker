@@ -17,12 +17,14 @@ export const Route = createFileRoute("/_authenticated/exposicao")({
       { title: "Exposição — Portefólio Tracker" },
       {
         name: "description",
-        content: "Exposição económica real da carteira: geografia, setores, moedas, empresas e concentração.",
+        content:
+          "Exposição económica real da carteira: geografia, setores, moedas, empresas e concentração.",
       },
       { property: "og:title", content: "Exposição — Portefólio Tracker" },
       {
         property: "og:description",
-        content: "Exposição económica real da carteira: geografia, setores, moedas, empresas e concentração.",
+        content:
+          "Exposição económica real da carteira: geografia, setores, moedas, empresas e concentração.",
       },
     ],
   }),
@@ -75,7 +77,10 @@ function SliceList({
             {open === s.value && (
               <ul className="space-y-1 border-t border-border/60 px-4 py-2">
                 {s.contributors.map((c) => (
-                  <li key={c.assetId} className="flex justify-between text-xs text-muted-foreground">
+                  <li
+                    key={c.assetId}
+                    className="flex justify-between text-xs text-muted-foreground"
+                  >
                     <span>{c.name}</span>
                     <span>{formatEUR(c.amount, hidden)}</span>
                   </li>
@@ -122,7 +127,11 @@ function ExposicaoPage() {
   if (!isLoading && (!report || report.total === 0)) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Exposição" subtitle="Exposição económica real da carteira." actions={actions} />
+        <PageHeader
+          title="Exposição"
+          subtitle="Exposição económica real da carteira."
+          actions={actions}
+        />
         <EmptyState
           title="Sem exposição calculada"
           description="Adicione ativos e atualize a composição para ver a exposição subjacente."
@@ -134,7 +143,11 @@ function ExposicaoPage() {
   if (!report) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Exposição" subtitle="Exposição económica real da carteira." actions={actions} />
+        <PageHeader
+          title="Exposição"
+          subtitle="Exposição económica real da carteira."
+          actions={actions}
+        />
         <p className="text-sm text-muted-foreground">A calcular…</p>
       </div>
     );
@@ -159,19 +172,28 @@ function ExposicaoPage() {
           value={pct(report.coverage, hidden)}
           sub="Parte da carteira com composição conhecida"
         />
-        <MetricCard label="Maior empresa" value={pct(c.largest, hidden)} sub={report.companies[0]?.name ?? "—"} />
-        <MetricCard label="Top 10 empresas" value={pct(c.top10, hidden)} sub={`Top 5: ${pct(c.top5, hidden)}`} />
+        <MetricCard
+          label="Maior empresa"
+          value={pct(c.largest, hidden)}
+          sub={report.companies[0]?.name ?? "—"}
+        />
+        <MetricCard
+          label="Top 10 empresas"
+          value={pct(c.top10, hidden)}
+          sub={`Top 5: ${pct(c.top5, hidden)}`}
+        />
       </div>
 
       {lowCoverage.length > 0 && (
         <div className="rounded-xl border border-border bg-card/60 p-4 text-xs text-muted-foreground">
-          A fonte publica apenas as principais posições de alguns ETFs, pelo que a composição não representa
-          100% do fundo. Ativos com cobertura parcial:{" "}
+          A fonte publica apenas as principais posições de alguns ETFs, pelo que a composição não
+          representa 100% do fundo. Ativos com cobertura parcial:{" "}
           {lowCoverage.map((m) => `${m.name} (${m.coverage.toFixed(0)}%)`).join(", ")}.
           {derived.length > 0 && (
             <>
               {" "}
-              Geografia e setores derivados das holdings em: {derived.map((m) => m.name).join(", ")}.
+              Geografia e setores derivados das holdings em: {derived.map((m) => m.name).join(", ")}
+              .
             </>
           )}
         </div>
@@ -187,7 +209,12 @@ function ExposicaoPage() {
         />
         <SliceList title="Por região" slices={report.region} hidden={hidden} />
         <SliceList title="Por continente" slices={report.continent} hidden={hidden} />
-        <SliceList title="Desenvolvido vs. emergente" slices={report.development} hidden={hidden} limit={4} />
+        <SliceList
+          title="Desenvolvido vs. emergente"
+          slices={report.development}
+          hidden={hidden}
+          limit={4}
+        />
         <SliceList title="Por setor" slices={report.sector} hidden={hidden} limit={12} />
         <SliceList
           title="Por moeda económica"
@@ -218,13 +245,21 @@ function ExposicaoPage() {
                 <tr key={(co.symbol ?? co.name) + co.name} className="border-b border-border/50">
                   <td className="py-2 pr-3 font-medium">
                     {co.name}
-                    {co.symbol && <span className="ml-2 text-xs text-muted-foreground">{co.symbol}</span>}
+                    {co.symbol && (
+                      <span className="ml-2 text-xs text-muted-foreground">{co.symbol}</span>
+                    )}
                   </td>
-                  <td className="py-2 pr-3 text-muted-foreground">{co.country ?? "Não disponível"}</td>
-                  <td className="py-2 pr-3 text-muted-foreground">{co.sector ?? "Não disponível"}</td>
+                  <td className="py-2 pr-3 text-muted-foreground">
+                    {co.country ?? "Não disponível"}
+                  </td>
+                  <td className="py-2 pr-3 text-muted-foreground">
+                    {co.sector ?? "Não disponível"}
+                  </td>
                   <td className="py-2 pr-3 text-right">{formatEUR(co.direct, hidden)}</td>
                   <td className="py-2 pr-3 text-right">{formatEUR(co.indirect, hidden)}</td>
-                  <td className="py-2 pr-3 text-right font-medium">{formatEUR(co.amount, hidden)}</td>
+                  <td className="py-2 pr-3 text-right font-medium">
+                    {formatEUR(co.amount, hidden)}
+                  </td>
                   <td className="py-2 text-right text-muted-foreground">{pct(co.pct, hidden)}</td>
                 </tr>
               ))}
@@ -234,13 +269,26 @@ function ExposicaoPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-3">
-        <MetricCard label="Concentração por país" value={pct(c.topCountry, hidden)} sub="Maior país" />
-        <MetricCard label="Concentração por setor" value={pct(c.topSector, hidden)} sub="Maior setor" />
-        <MetricCard label="Concentração por moeda" value={pct(c.topCurrency, hidden)} sub="Maior moeda" />
+        <MetricCard
+          label="Concentração por país"
+          value={pct(c.topCountry, hidden)}
+          sub="Maior país"
+        />
+        <MetricCard
+          label="Concentração por setor"
+          value={pct(c.topSector, hidden)}
+          sub="Maior setor"
+        />
+        <MetricCard
+          label="Concentração por moeda"
+          value={pct(c.topCurrency, hidden)}
+          sub="Maior moeda"
+        />
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Fonte dos dados de composição: Yahoo Finance (quoteSummary). Nenhum dado financeiro é gerado por IA.
+        Fonte dos dados de composição: Yahoo Finance (quoteSummary). Nenhum dado financeiro é gerado
+        por IA.
       </p>
     </div>
   );

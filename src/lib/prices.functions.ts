@@ -10,7 +10,8 @@ export const lookupTicker = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ ticker: z.string().min(1) }).parse(input))
   .handler(async ({ data }) => {
-    const { toYahooSymbol, fetchYahoo, normalize, getRateToEUR } = await import("@/lib/yahoo.server");
+    const { toYahooSymbol, fetchYahoo, normalize, getRateToEUR } =
+      await import("@/lib/yahoo.server");
     const symbol = toYahooSymbol(data.ticker);
     if (!symbol) throw new Error("Ticker inválido.");
     const quote = await fetchYahoo(symbol, "5y");
@@ -59,16 +60,22 @@ export const updateAllPrices = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
     z
-      .object({ class: z.string().nullable().default(null), assetId: z.string().uuid().nullable().default(null) })
+      .object({
+        class: z.string().nullable().default(null),
+        assetId: z.string().uuid().nullable().default(null),
+      })
       .parse(input ?? { class: null, assetId: null }),
   )
   .handler(async ({ data, context }) => {
-    const { toYahooSymbol, fetchYahoo, normalize, getRateToEUR } = await import("@/lib/yahoo.server");
+    const { toYahooSymbol, fetchYahoo, normalize, getRateToEUR } =
+      await import("@/lib/yahoo.server");
     const { fetchMetalSpot } = await import("@/lib/metals.server");
 
     let query = context.supabase
       .from("assets")
-      .select("id, name, class, ticker, metal_type, quantity, current_price, current_price_native, native_currency, status")
+      .select(
+        "id, name, class, ticker, metal_type, quantity, current_price, current_price_native, native_currency, status",
+      )
       .neq("status", "closed");
     if (data.class) query = query.eq("class", data.class);
     if (data.assetId) query = query.eq("id", data.assetId);

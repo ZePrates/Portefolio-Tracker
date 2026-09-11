@@ -7,7 +7,10 @@ export const Route = createFileRoute("/_authenticated/acoes-dividendos")({
       { title: "Ações de Dividendos — Portefólio Tracker" },
       { name: "description", content: "Ações de empresas que distribuem dividendos regularmente." },
       { property: "og:title", content: "Ações de Dividendos — Portefólio Tracker" },
-      { property: "og:description", content: "Ações de empresas que distribuem dividendos regularmente." },
+      {
+        property: "og:description",
+        content: "Ações de empresas que distribuem dividendos regularmente.",
+      },
     ],
   }),
   component: AcoesDividendosPage,

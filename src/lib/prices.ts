@@ -37,9 +37,7 @@ export interface PricePatch {
   fx_updated_at: string;
 }
 
-export type PlanResult =
-  | { ok: true; patch: PricePatch }
-  | { ok: false; error: string };
+export type PlanResult = { ok: true; patch: PricePatch } | { ok: false; error: string };
 
 export function isValidPrice(v: unknown): v is number {
   return typeof v === "number" && Number.isFinite(v) && v > 0;
@@ -78,9 +76,12 @@ export function planPriceUpdate(
   now: Date = new Date(),
 ): PlanResult {
   if (!quote) return { ok: false, error: "Sem cotação da fonte." };
-  if (!isValidPrice(quote.price)) return { ok: false, error: "Preço inválido devolvido pela fonte." };
-  if (!isValidCurrency(quote.currency)) return { ok: false, error: "Moeda inválida devolvida pela fonte." };
-  if (!isValidPrice(fxRate)) return { ok: false, error: `Sem taxa de câmbio ${quote.currency}→EUR.` };
+  if (!isValidPrice(quote.price))
+    return { ok: false, error: "Preço inválido devolvido pela fonte." };
+  if (!isValidCurrency(quote.currency))
+    return { ok: false, error: "Moeda inválida devolvida pela fonte." };
+  if (!isValidPrice(fxRate))
+    return { ok: false, error: `Sem taxa de câmbio ${quote.currency}→EUR.` };
 
   const quantity = Number(asset.quantity ?? 0);
   if (quantity < 0) return { ok: false, error: "Quantidade negativa." };

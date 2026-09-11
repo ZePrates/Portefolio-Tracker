@@ -9,9 +9,15 @@ export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
       { title: "Entrar — Portefólio Tracker" },
-      { name: "description", content: "Inicia sessão no Portefólio Tracker para gerir os teus investimentos." },
+      {
+        name: "description",
+        content: "Inicia sessão no Portefólio Tracker para gerir os teus investimentos.",
+      },
       { property: "og:title", content: "Entrar — Portefólio Tracker" },
-      { property: "og:description", content: "Inicia sessão no Portefólio Tracker para gerir os teus investimentos." },
+      {
+        property: "og:description",
+        content: "Inicia sessão no Portefólio Tracker para gerir os teus investimentos.",
+      },
     ],
   }),
   component: AuthPage,

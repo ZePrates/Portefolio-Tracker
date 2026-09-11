@@ -4,6 +4,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { computeExposure } from "@/lib/exposure";
 import type { ExposureRecord, HoldingRecord, PositionInput } from "@/lib/exposure-types";
 import { assetCurrentValue, isOpenPosition, type Asset } from "@/lib/portfolio-types";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 
 /**
  * Sincronização de perfis, composição e exposição dos ativos.
@@ -20,7 +22,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 /** Cache partilhada de perfis de empresas (país/setor/indústria/moeda). */
 const PROFILE_TTL_DAYS = 30;
 
-type SB = { from: (t: string) => any };
+type SB = { from: SupabaseClient<Database>["from"] };
 
 interface SyncResult {
   assetId: string;
@@ -36,8 +38,26 @@ interface SyncResult {
 async function loadCompanyProfiles(
   supabase: SB,
   symbols: string[],
-): Promise<Map<string, { country: string | null; sector: string | null; industry: string | null; currency: string | null }>> {
-  const out = new Map<string, { country: string | null; sector: string | null; industry: string | null; currency: string | null }>();
+): Promise<
+  Map<
+    string,
+    {
+      country: string | null;
+      sector: string | null;
+      industry: string | null;
+      currency: string | null;
+    }
+  >
+> {
+  const out = new Map<
+    string,
+    {
+      country: string | null;
+      sector: string | null;
+      industry: string | null;
+      currency: string | null;
+    }
+  >();
   const wanted = [...new Set(symbols.map((s) => s.trim().toUpperCase()).filter(Boolean))];
   if (wanted.length === 0) return out;
 
@@ -69,7 +89,7 @@ async function loadCompanyProfiles(
   if (missing.length === 0) return out;
 
   const { fetchQuoteSummary, parseQuoteSummary } = await import("@/lib/exposure.server");
-  const upserts: Array<Record<string, unknown>> = [];
+  const upserts: Array<Database["public"]["Tables"]["security_profiles"]["Insert"]> = [];
   // Limite defensivo: evita chamadas externas desnecessárias por sincronização.
   for (const symbol of missing.slice(0, 40)) {
     const qs = await fetchQuoteSummary(symbol);
@@ -82,7 +102,13 @@ async function loadCompanyProfiles(
       currency: d.currency,
     };
     out.set(symbol, profile);
-    upserts.push({ symbol, name: d.name, ...profile, source: "yahoo", updated_at: new Date().toISOString() });
+    upserts.push({
+      symbol,
+      name: d.name,
+      ...profile,
+      source: "yahoo",
+      updated_at: new Date().toISOString(),
+    });
   }
   if (upserts.length > 0) {
     // security_profiles is a shared reference/cache table. Writes use the
@@ -97,7 +123,13 @@ async function loadCompanyProfiles(
 }
 
 async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<SyncResult> {
-  const base: SyncResult = { assetId: asset.id, ok: false, preserved: true, holdings: 0, coverage: 0 };
+  const base: SyncResult = {
+    assetId: asset.id,
+    ok: false,
+    preserved: true,
+    holdings: 0,
+    coverage: 0,
+  };
   if (!asset.ticker) return { ...base, message: "Ativo sem ticker." };
 
   const { toYahooSymbol } = await import("@/lib/yahoo.server");
@@ -136,8 +168,8 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
   if (existing?.id) await supabase.from("asset_profiles").update(profileRow).eq("id", existing.id);
   else await supabase.from("asset_profiles").insert(profileRow);
 
-  const exposures: Array<Record<string, unknown>> = [];
-  const holdingRows: Array<Record<string, unknown>> = [];
+  const exposures: Array<Database["public"]["Tables"]["asset_exposures"]["Insert"]> = [];
+  const holdingRows: Array<Database["public"]["Tables"]["etf_holdings"]["Insert"]> = [];
   let coverage = 0;
 
   if (isEtf) {
@@ -346,26 +378,22 @@ export const getExposure = createServerFn({ method: "GET" })
         ticker: a.ticker,
         value: assetCurrentValue(a),
         nativeCurrency: a.native_currency || a.currency || "EUR",
-        exposures: ex.map(
-          (e): ExposureRecord => ({
-            dimension: e.dimension as ExposureRecord["dimension"],
-            value: e.value,
-            weight: Number(e.weight) || 0,
-            source: e.source,
-            as_of_date: e.as_of_date,
-          }),
-        ),
-        holdings: hs.map(
-          (h): HoldingRecord => ({
-            name: h.holding_name,
-            symbol: h.holding_symbol,
-            weight: Number(h.weight) || 0,
-            country: h.country,
-            sector: h.sector,
-            currency: h.currency,
-            as_of_date: h.as_of_date,
-          }),
-        ),
+        exposures: ex.map((e): ExposureRecord => ({
+          dimension: e.dimension as ExposureRecord["dimension"],
+          value: e.value,
+          weight: Number(e.weight) || 0,
+          source: e.source,
+          as_of_date: e.as_of_date,
+        })),
+        holdings: hs.map((h): HoldingRecord => ({
+          name: h.holding_name,
+          symbol: h.holding_symbol,
+          weight: Number(h.weight) || 0,
+          country: h.country,
+          sector: h.sector,
+          currency: h.currency,
+          as_of_date: h.as_of_date,
+        })),
       });
 
       const holdingCoverage = hs.reduce((s, h) => s + (Number(h.weight) || 0), 0);
@@ -427,7 +455,11 @@ export const getAssetExposure = createServerFn({ method: "GET" })
       context.supabase.from("assets").select("*").eq("id", data.assetId).maybeSingle(),
       context.supabase.from("asset_exposures").select("*").eq("asset_id", data.assetId),
       context.supabase.from("etf_holdings").select("*").eq("asset_id", data.assetId),
-      context.supabase.from("asset_profiles").select("*").eq("asset_id", data.assetId).maybeSingle(),
+      context.supabase
+        .from("asset_profiles")
+        .select("*")
+        .eq("asset_id", data.assetId)
+        .maybeSingle(),
     ]);
     if (assetRes.error) throw new Error(assetRes.error.message);
     if (!assetRes.data) throw new Error("Ativo não encontrado.");
@@ -486,7 +518,11 @@ export const getAssetExposure = createServerFn({ method: "GET" })
           }
         : null,
       dimensions: ex
-        .map((e) => ({ dimension: e.dimension, value: e.value, pct: (Number(e.weight) || 0) * 100 }))
+        .map((e) => ({
+          dimension: e.dimension,
+          value: e.value,
+          pct: (Number(e.weight) || 0) * 100,
+        }))
         .sort((a, b) => a.dimension.localeCompare(b.dimension) || b.pct - a.pct),
       holdings: hs
         .map((h) => ({
@@ -499,6 +535,8 @@ export const getAssetExposure = createServerFn({ method: "GET" })
           currency: h.currency,
         }))
         .sort((a, b) => b.pct - a.pct),
-      history: [...new Set(hs.map((h) => h.as_of_date).filter((d): d is string => !!d))].sort().reverse(),
+      history: [...new Set(hs.map((h) => h.as_of_date).filter((d): d is string => !!d))]
+        .sort()
+        .reverse(),
     };
   });

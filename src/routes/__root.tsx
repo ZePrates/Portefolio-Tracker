@@ -80,9 +80,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Portefólio Tracker" },
-      { name: "description", content: "Gere e analisa o teu portefólio de investimentos: ETFs, REITs, ações, metais preciosos, P2P e dividendos." },
+      {
+        name: "description",
+        content:
+          "Gere e analisa o teu portefólio de investimentos: ETFs, REITs, ações, metais preciosos, P2P e dividendos.",
+      },
       { property: "og:title", content: "Portefólio Tracker" },
-      { property: "og:description", content: "Gere e analisa o teu portefólio de investimentos: ETFs, REITs, ações, metais preciosos, P2P e dividendos." },
+      {
+        property: "og:description",
+        content:
+          "Gere e analisa o teu portefólio de investimentos: ETFs, REITs, ações, metais preciosos, P2P e dividendos.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],

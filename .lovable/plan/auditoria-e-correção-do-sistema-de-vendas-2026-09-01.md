@@ -15,12 +15,14 @@ Conclusão: o problema é estrutural — falta um livro de movimentos. A correç
 ### 1. Base de dados (uma migração, sem apagar nada)
 
 Estender `transactions` (está vazia, portanto é seguro):
+
 - `fee` (comissão, EUR, default 0), `fee_native`
 - `native_currency`, `price_native`, `fx_rate`
 - `realized_pl` (preenchido apenas nas vendas, EUR)
 - `notes`, `updated_at` + trigger
 
 Estender `assets`:
+
 - `status` ('open' / 'closed') com default 'open'
 - `realized_pl` (acumulado, default 0)
 - `total_fees` (default 0)

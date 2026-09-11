@@ -126,9 +126,7 @@ describe("valor da posição em moeda estrangeira", () => {
 
 describe("runPriceUpdate", () => {
   it("mantém os restantes ativos quando um falha", async () => {
-    const assets = Array.from({ length: 20 }, (_, i) =>
-      asset({ id: `a${i}`, name: `Ativo ${i}` }),
-    );
+    const assets = Array.from({ length: 20 }, (_, i) => asset({ id: `a${i}`, name: `Ativo ${i}` }));
     const saved: string[] = [];
     const res = await runPriceUpdate(
       assets,

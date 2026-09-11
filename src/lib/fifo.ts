@@ -112,19 +112,12 @@ export function totalCost(lots: FifoLot[]): number {
  * Aplica uma venda a um conjunto de lotes abertos, em FIFO.
  * `price` e `fee` em EUR. Lança se a quantidade exceder a detida.
  */
-export function applySale(
-  lots: FifoLot[],
-  quantity: number,
-  price: number,
-  fee = 0,
-): SaleResult {
+export function applySale(lots: FifoLot[], quantity: number, price: number, fee = 0): SaleResult {
   const working = lots.map((l) => ({ ...l }));
   const held = totalQuantity(working);
   if (quantity <= 0) throw new Error("A quantidade vendida tem de ser positiva.");
   if (quantity > held + 1e-9) {
-    throw new Error(
-      `Não podes vender ${quantity} unidades: só tens ${Number(held.toFixed(6))}.`,
-    );
+    throw new Error(`Não podes vender ${quantity} unidades: só tens ${Number(held.toFixed(6))}.`);
   }
   const breakdown = consume(working, quantity);
   const costBasis = breakdown.reduce((s, b) => s + b.cost, 0);

@@ -92,7 +92,13 @@ export function buildLedgerSeries(
     const fee = Number(t.fee ?? 0) || 0;
     const gross = qty * price;
     if (t.type === "buy") {
-      events.push({ date: t.traded_at.slice(0, 10), net: gross + fee, cost: gross + fee, realized: 0, div: 0 });
+      events.push({
+        date: t.traded_at.slice(0, 10),
+        net: gross + fee,
+        cost: gross + fee,
+        realized: 0,
+        div: 0,
+      });
     } else if (t.type === "sell") {
       const realized = Number(t.realized_pl ?? 0) || 0;
       const proceeds = gross - fee;
@@ -147,7 +153,8 @@ export function cashFlowsFromLedger(transactions: PerfTransaction[]): CashFlow[]
     const price = Number(t.price) || 0;
     const fee = Number(t.fee ?? 0) || 0;
     const date = t.traded_at.slice(0, 10);
-    const amount = t.type === "buy" ? qty * price + fee : t.type === "sell" ? -(qty * price - fee) : 0;
+    const amount =
+      t.type === "buy" ? qty * price + fee : t.type === "sell" ? -(qty * price - fee) : 0;
     if (amount === 0) continue;
     map.set(date, (map.get(date) ?? 0) + amount);
   }
@@ -238,10 +245,7 @@ function yearFraction(from: string, to: string): number {
 }
 
 function npv(rate: number, flows: CashFlow[], base: string): number {
-  return flows.reduce(
-    (s, f) => s + f.amount / Math.pow(1 + rate, yearFraction(base, f.date)),
-    0,
-  );
+  return flows.reduce((s, f) => s + f.amount / Math.pow(1 + rate, yearFraction(base, f.date)), 0);
 }
 
 export interface XirrResult {
@@ -262,7 +266,11 @@ export function xirr(flows: CashFlow[]): XirrResult {
     .sort((a, b) => a.date.localeCompare(b.date));
 
   if (rows.length < 2) {
-    return { annualizedPct: null, unavailable: "Fluxos de caixa insuficientes.", methodology: "mwr" };
+    return {
+      annualizedPct: null,
+      unavailable: "Fluxos de caixa insuficientes.",
+      methodology: "mwr",
+    };
   }
   const hasPos = rows.some((f) => f.amount > 0);
   const hasNeg = rows.some((f) => f.amount < 0);
@@ -289,7 +297,8 @@ export function xirr(flows: CashFlow[]): XirrResult {
   for (let i = 0; i < 200; i++) {
     const mid = (lo + hi) / 2;
     const fMid = npv(mid, rows, base);
-    if (Math.abs(fMid) < 1e-9) return { annualizedPct: mid * 100, unavailable: null, methodology: "mwr" };
+    if (Math.abs(fMid) < 1e-9)
+      return { annualizedPct: mid * 100, unavailable: null, methodology: "mwr" };
     if (fLo * fMid < 0) {
       hi = mid;
       fHi = fMid;
@@ -436,7 +445,8 @@ export function returnStats(periods: PeriodReturn[], minObs = MIN_OBS): ReturnSt
     worstPct: Math.min(...rs) * 100,
     volatilityPct: rs.length >= MIN_OBS_VOL ? Math.sqrt(variance) * 100 : null,
     avgGainPct: gains.length > 0 ? (gains.reduce((s, r) => s + r, 0) / gains.length) * 100 : null,
-    avgLossPct: losses.length > 0 ? (losses.reduce((s, r) => s + r, 0) / losses.length) * 100 : null,
+    avgLossPct:
+      losses.length > 0 ? (losses.reduce((s, r) => s + r, 0) / losses.length) * 100 : null,
     positiveRatePct: (gains.length / rs.length) * 100,
     unavailable: null,
   };
@@ -628,7 +638,9 @@ export function periodPerformance(
     .filter((t) => t.type === "sell" && inRange(t.traded_at, range))
     .reduce((s, t) => s + (Number(t.realized_pl ?? 0) || 0), 0);
   const divs = dividends
-    .filter((d) => isReceived(d, today) && inRange((d.payment_date ?? d.paid_at).slice(0, 10), range))
+    .filter(
+      (d) => isReceived(d, today) && inRange((d.payment_date ?? d.paid_at).slice(0, 10), range),
+    )
     .reduce((s, d) => s + netOf(d), 0);
 
   const basis = costBasis + closedCost;
