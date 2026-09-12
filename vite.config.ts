@@ -17,7 +17,7 @@ function readEnvLocal(): Record<string, string> {
     const out: Record<string, string> = {};
     for (const line of raw.split("\n")) {
       const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*"?([^"\r\n]*)"?\s*$/);
-      if (m) out[m[1]] = m[2];
+      if (m?.[1] && m[2] !== undefined) out[m[1]] = m[2];
     }
     return out;
   } catch {
@@ -45,7 +45,6 @@ export default defineConfig({
       'process.env["SUPABASE_PUBLISHABLE_KEY"]': v("SUPABASE_PUBLISHABLE_KEY"),
       "process.env.SUPABASE_PROJECT_ID": v("SUPABASE_PROJECT_ID"),
       'process.env["SUPABASE_PROJECT_ID"]': v("SUPABASE_PROJECT_ID"),
- CLIENT_SUPABASE_URL_PLACEHOLDER: v("VITE_SUPABASE_URL"),
     },
   },
 });
