@@ -39,12 +39,6 @@ export default defineConfig({
       "import.meta.env.VITE_SUPABASE_URL": v("VITE_SUPABASE_URL"),
       "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": v("VITE_SUPABASE_PUBLISHABLE_KEY"),
       "import.meta.env.VITE_SUPABASE_PROJECT_ID": v("VITE_SUPABASE_PROJECT_ID"),
-      "process.env.SUPABASE_URL": v("SUPABASE_URL"),
-      'process.env["SUPABASE_URL"]': v("SUPABASE_URL"),
-      "process.env.SUPABASE_PUBLISHABLE_KEY": v("SUPABASE_PUBLISHABLE_KEY"),
-      'process.env["SUPABASE_PUBLISHABLE_KEY"]': v("SUPABASE_PUBLISHABLE_KEY"),
-      "process.env.SUPABASE_PROJECT_ID": v("SUPABASE_PROJECT_ID"),
-      'process.env["SUPABASE_PROJECT_ID"]': v("SUPABASE_PROJECT_ID"),
     },
   },
 });
