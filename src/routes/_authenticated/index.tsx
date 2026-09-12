@@ -206,12 +206,13 @@ function DashboardPage() {
   const exposure = exposureRaw as
     | {
         report: {
-          countries: Array<{ value: string; amount: number; pct: number }>;
-          sectors: Array<{ value: string; amount: number; pct: number }>;
+          country: Array<{ value: string; amount: number; pct: number }>;
+          sector: Array<{ value: string; amount: number; pct: number }>;
           companies: Array<{ name: string; amount: number; pct: number }>;
         };
       }
     | undefined;
+
 
   const year = new Date().getFullYear();
 
