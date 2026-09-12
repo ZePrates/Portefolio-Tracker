@@ -90,7 +90,17 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4">
-        <div className="space-y-1">{renderItems(MAIN_NAV)}</div>
+        <div className="space-y-1">{renderItems(DASHBOARD_NAV)}</div>
+
+        <div className="my-4 flex items-center gap-3 px-3">
+          <span className="h-px flex-1 bg-sidebar-border" />
+          <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground/60">
+            Ativos
+          </span>
+          <span className="h-px flex-1 bg-sidebar-border" />
+        </div>
+
+        <div className="space-y-1">{renderItems(ASSETS_NAV)}</div>
 
         <div className="my-4 flex items-center gap-3 px-3">
           <span className="h-px flex-1 bg-sidebar-border" />
