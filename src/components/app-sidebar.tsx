@@ -26,8 +26,11 @@ import { cn } from "@/lib/utils";
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard };
 
-const MAIN_NAV: NavItem[] = [
+const DASHBOARD_NAV: NavItem[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
+];
+
+const ASSETS_NAV: NavItem[] = [
   { to: "/etfs", label: "ETFs", icon: Layers },
   { to: "/reits", label: "REITs", icon: Building2 },
   { to: "/acoes-dividendos", label: "Ações Dividendos", icon: DollarSign },
