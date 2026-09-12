@@ -337,7 +337,7 @@ function PerformancePage() {
         title="Drawdown"
         note="Máxima queda desde um máximo histórico. Requer série real de valor de mercado."
       >
-        {dd.maxDrawdownPct == null ? (
+        {dd.maxPct == null ? (
           <p className="text-sm text-muted-foreground">
             Dados não disponíveis — {dd.unavailable ?? "sem histórico de valorizações"}.
           </p>
@@ -345,7 +345,7 @@ function PerformancePage() {
           <div className="flex items-center gap-3">
             <Activity className="h-4 w-4 text-muted-foreground" />
             <p className="text-sm">
-              Máximo: {pct(dd.maxDrawdownPct, hidden)} · Atual: {pct(dd.currentDrawdownPct, hidden)}
+              Máximo: {pct(dd.maxPct, hidden)} · Atual: {pct(dd.currentPct, hidden)}
             </p>
           </div>
         )}
