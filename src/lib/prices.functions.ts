@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware-external";
 import { runPriceUpdate, type PriceablePosition, type Quote } from "@/lib/prices";
 
 export { toYahooSymbol } from "@/lib/yahoo";

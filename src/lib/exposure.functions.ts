@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware-external";
 import { computeExposure } from "@/lib/exposure";
 import type { ExposureRecord, HoldingRecord, PositionInput } from "@/lib/exposure-types";
 import { assetCurrentValue, isOpenPosition, type Asset } from "@/lib/portfolio-types";
