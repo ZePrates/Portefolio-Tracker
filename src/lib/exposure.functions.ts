@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware-external";
 import { computeExposure } from "@/lib/exposure";
 import type { ExposureRecord, HoldingRecord, PositionInput } from "@/lib/exposure-types";
 import { assetCurrentValue, isOpenPosition, type Asset } from "@/lib/portfolio-types";
@@ -113,8 +113,15 @@ async function loadCompanyProfiles(
   if (upserts.length > 0) {
     // security_profiles is a shared reference/cache table. Writes use the
     // trusted server-side client so authenticated users retain read-only access.
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
+    const { getExternalAdminClient } = await import(
+      "@/integrations/supabase/admin-external.server"
+    );
+    const admin = getExternalAdminClient();
+    if (!admin) {
+      console.error("[Exposure] security profile cache update skipped: no external admin client.");
+      return out;
+    }
+    const { error } = await admin
       .from("security_profiles")
       .upsert(upserts, { onConflict: "symbol" });
     if (error) console.error("[Exposure] security profile cache update failed:", error.message);
