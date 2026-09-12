@@ -15,6 +15,7 @@ import {
   ChartColumn,
   Globe,
   Goal,
+  Activity,
   Menu,
   X,
 } from "lucide-react";
@@ -33,6 +34,7 @@ const NAV_ITEMS = [
   { to: "/p2p", label: "P2P", icon: Handshake },
   { to: "/dividendos", label: "Dividendos", icon: Coins },
   { to: "/analise", label: "Análise", icon: PieChart },
+  { to: "/performance", label: "Performance", icon: Activity },
   { to: "/exposicao", label: "Exposição", icon: Globe },
   { to: "/projecoes", label: "Projeções", icon: Goal },
   { to: "/simulador", label: "Simulador de Compra", icon: TrendingUp },
