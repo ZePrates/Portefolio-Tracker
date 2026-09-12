@@ -113,8 +113,15 @@ async function loadCompanyProfiles(
   if (upserts.length > 0) {
     // security_profiles is a shared reference/cache table. Writes use the
     // trusted server-side client so authenticated users retain read-only access.
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
+    const { getExternalAdminClient } = await import(
+      "@/integrations/supabase/admin-external.server"
+    );
+    const admin = getExternalAdminClient();
+    if (!admin) {
+      console.error("[Exposure] security profile cache update skipped: no external admin client.");
+      return out;
+    }
+    const { error } = await admin
       .from("security_profiles")
       .upsert(upserts, { onConflict: "symbol" });
     if (error) console.error("[Exposure] security profile cache update failed:", error.message);
