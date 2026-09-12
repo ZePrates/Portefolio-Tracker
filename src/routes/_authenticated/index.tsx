@@ -475,7 +475,7 @@ function DashboardPage() {
             </Link>
           }
         >
-          {!exposure || exposure.report.countries.length === 0 ? (
+          {!exposure || exposure.report.country.length === 0 ? (
             <NoData label="Dados não disponíveis — atualize a composição em Exposição." />
           ) : (
             <div className="grid gap-4 sm:grid-cols-3">
@@ -483,13 +483,13 @@ function DashboardPage() {
                 [
                   [
                     "Países",
-                    exposure.report.countries
+                    exposure.report.country
                       .slice(0, 4)
                       .map((s) => ({ label: s.value, pct: s.pct })),
                   ],
                   [
                     "Setores",
-                    exposure.report.sectors
+                    exposure.report.sector
                       .slice(0, 4)
                       .map((s) => ({ label: s.value, pct: s.pct })),
                   ],
