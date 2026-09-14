@@ -265,6 +265,18 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         toast.success("Ativo atualizado.");
       } else {
         const created = (await createFn({ data: payload })) as { id: string };
+        if (isQuantityAsset(assetClass) && quantity > 0 && created?.id) {
+          await buyFn({
+            data: {
+              assetId: created.id,
+              quantity,
+              price_native: purchaseNative,
+              fee_native: 0,
+              traded_at: form.acquired_at || new Date().toISOString().slice(0, 10),
+              notes: "Compra inicial",
+            },
+          });
+        }
         toast.success("Ativo adicionado.");
         if (paysDividends(assetClass) && payload.ticker && created?.id) {
           try {
