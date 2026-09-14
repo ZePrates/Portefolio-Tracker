@@ -50,6 +50,7 @@ interface FormState {
   annual_yield: string;
   currency: string;
   frequency: string;
+  acquired_at: string;
 }
 
 const CURRENCIES = ["USD", "EUR", "GBP", "CHF", "CAD"];
@@ -72,6 +73,7 @@ function emptyForm(c: AssetClass): FormState {
     annual_yield: "",
     currency: defaultCurrency(c),
     frequency: "",
+    acquired_at: new Date().toISOString().slice(0, 10),
   };
 }
 
