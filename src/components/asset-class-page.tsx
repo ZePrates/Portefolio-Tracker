@@ -13,7 +13,7 @@ import {
   isOpenPosition,
 } from "@/lib/portfolio-types";
 import { AssetPositionModal } from "@/components/asset-position-modal";
-import { listAssets, createAsset, updateAsset, deleteAsset } from "@/lib/portfolio.functions";
+import { listAssets, createAsset, updateAsset, deleteAsset, buyAsset } from "@/lib/portfolio.functions";
 import { updateAllPrices, lookupTicker } from "@/lib/prices.functions";
 import { syncDividendsForAsset } from "@/lib/dividends.functions";
 
@@ -100,6 +100,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   const queryClient = useQueryClient();
   const fetchAssets = useServerFn(listAssets);
   const createFn = useServerFn(createAsset);
+  const buyFn = useServerFn(buyAsset);
   const updateFn = useServerFn(updateAsset);
   const deleteFn = useServerFn(deleteAsset);
   const refreshFn = useServerFn(updateAllPrices);
