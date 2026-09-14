@@ -23,7 +23,9 @@ export default defineConfig({
   vite: {
     define: {
       "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(EXTERNAL_SUPABASE_URL),
-      "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(EXTERNAL_SUPABASE_PUBLISHABLE_KEY),
+      "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(
+        EXTERNAL_SUPABASE_PUBLISHABLE_KEY,
+      ),
       "import.meta.env.VITE_SUPABASE_PROJECT_ID": JSON.stringify(EXTERNAL_SUPABASE_PROJECT_ID),
     },
   },
