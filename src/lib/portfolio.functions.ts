@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware-external";
 import type { Database } from "@/integrations/supabase/types";
 import { applySale, buildOpenLots, totalCost, totalQuantity, type LedgerEntry } from "@/lib/fifo";
 

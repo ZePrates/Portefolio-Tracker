@@ -15,6 +15,7 @@ import {
   ChartColumn,
   Globe,
   Goal,
+  Activity,
   Menu,
   X,
 } from "lucide-react";
@@ -23,21 +24,30 @@ import { supabase } from "@/integrations/supabase/client";
 import { usePrivateMode } from "@/components/private-mode";
 import { cn } from "@/lib/utils";
 
-const NAV_ITEMS = [
+type NavItem = { to: string; label: string; icon: typeof LayoutDashboard };
+
+const DASHBOARD_NAV: NavItem[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
+];
+
+const ASSETS_NAV: NavItem[] = [
   { to: "/etfs", label: "ETFs", icon: Layers },
   { to: "/reits", label: "REITs", icon: Building2 },
   { to: "/acoes-dividendos", label: "Ações Dividendos", icon: DollarSign },
   { to: "/acoes-crescimento", label: "Ações Crescimento", icon: TrendingUp },
   { to: "/metais", label: "Metais Preciosos", icon: Gem },
   { to: "/p2p", label: "P2P", icon: Handshake },
+];
+
+const ANALYSIS_NAV: NavItem[] = [
   { to: "/dividendos", label: "Dividendos", icon: Coins },
   { to: "/analise", label: "Análise", icon: PieChart },
+  { to: "/performance", label: "Performance", icon: Activity },
   { to: "/exposicao", label: "Exposição", icon: Globe },
   { to: "/projecoes", label: "Projeções", icon: Goal },
   { to: "/simulador", label: "Simulador de Compra", icon: TrendingUp },
   { to: "/inteligencia", label: "Inteligência", icon: PieChart },
-] as const;
+];
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { hidden, toggle } = usePrivateMode();
@@ -47,6 +57,23 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
     await supabase.auth.signOut();
     navigate({ to: "/auth" });
   };
+
+  const renderItems = (items: NavItem[]) =>
+    items.map((item) => (
+      <Link
+        key={item.to}
+        to={item.to}
+        onClick={onNavigate}
+        activeOptions={{ exact: item.to === "/" }}
+        activeProps={{
+          className: "bg-sidebar-accent text-sidebar-primary",
+        }}
+        className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
+      >
+        <item.icon className="h-4 w-4 shrink-0" />
+        {item.label}
+      </Link>
+    ));
 
   return (
     <div className="flex h-full flex-col">
@@ -62,22 +89,28 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         </div>
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-        {NAV_ITEMS.map((item) => (
-          <Link
-            key={item.to}
-            to={item.to}
-            onClick={onNavigate}
-            activeOptions={{ exact: item.to === "/" }}
-            activeProps={{
-              className: "bg-sidebar-accent text-sidebar-primary",
-            }}
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
-          >
-            <item.icon className="h-4 w-4 shrink-0" />
-            {item.label}
-          </Link>
-        ))}
+      <nav className="flex-1 overflow-y-auto px-3 py-4">
+        <div className="space-y-1">{renderItems(DASHBOARD_NAV)}</div>
+
+        <div className="my-4 flex items-center gap-3 px-3">
+          <span className="h-px flex-1 bg-sidebar-border" />
+          <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground/60">
+            Ativos
+          </span>
+          <span className="h-px flex-1 bg-sidebar-border" />
+        </div>
+
+        <div className="space-y-1">{renderItems(ASSETS_NAV)}</div>
+
+        <div className="my-4 flex items-center gap-3 px-3">
+          <span className="h-px flex-1 bg-sidebar-border" />
+          <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground/60">
+            Análise
+          </span>
+          <span className="h-px flex-1 bg-sidebar-border" />
+        </div>
+
+        <div className="space-y-1">{renderItems(ANALYSIS_NAV)}</div>
       </nav>
 
       <div className="space-y-1 border-t border-sidebar-border px-3 py-4">

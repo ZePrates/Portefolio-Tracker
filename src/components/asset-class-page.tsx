@@ -57,6 +57,7 @@ interface FormState {
   annual_yield: string;
   currency: string;
   frequency: string;
+  acquired_at: string;
 }
 
 const CURRENCIES = ["USD", "EUR", "GBP", "CHF", "CAD"];
@@ -81,6 +82,7 @@ function emptyForm(c: AssetClass): FormState {
     annual_yield: "",
     currency: defaultCurrency(c),
     frequency: "",
+    acquired_at: new Date().toISOString().slice(0, 10),
   };
 }
 
@@ -179,6 +181,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
       annual_yield: a.annual_yield != null ? String(a.annual_yield) : "",
       currency: cur,
       frequency: a.dividend_frequency ?? "",
+      acquired_at: new Date().toISOString().slice(0, 10),
     });
     setDialogOpen(true);
   };
@@ -787,6 +790,17 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                   />
                 </Field>
               </div>
+              {!editing && (
+                <Field label="Data de aquisição">
+                  <input
+                    type="date"
+                    value={form.acquired_at}
+                    onChange={set("acquired_at")}
+                    max={new Date().toISOString().slice(0, 10)}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-ring"
+                  />
+                </Field>
+              )}
             </>
           ) : (
             <>
