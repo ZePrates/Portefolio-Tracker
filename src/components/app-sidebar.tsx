@@ -26,9 +26,7 @@ import { cn } from "@/lib/utils";
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard };
 
-const DASHBOARD_NAV: NavItem[] = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-];
+const DASHBOARD_NAV: NavItem[] = [{ to: "/", label: "Dashboard", icon: LayoutDashboard }];
 
 const ASSETS_NAV: NavItem[] = [
   { to: "/etfs", label: "ETFs", icon: Layers },
