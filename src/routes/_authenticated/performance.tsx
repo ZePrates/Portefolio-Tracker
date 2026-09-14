@@ -236,7 +236,11 @@ function PerformancePage() {
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chart}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 11 }}
+                  stroke="var(--color-muted-foreground)"
+                />
                 <YAxis tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
                 <Tooltip contentStyle={TOOLTIP_STYLE} />
                 <Area

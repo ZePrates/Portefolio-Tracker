@@ -57,7 +57,6 @@ interface FormState {
   annual_yield: string;
   currency: string;
   frequency: string;
-  
 }
 
 const CURRENCIES = ["USD", "EUR", "GBP", "CHF", "CAD"];
@@ -180,7 +179,6 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
       annual_yield: a.annual_yield != null ? String(a.annual_yield) : "",
       currency: cur,
       frequency: a.dividend_frequency ?? "",
-      
     });
     setDialogOpen(true);
   };

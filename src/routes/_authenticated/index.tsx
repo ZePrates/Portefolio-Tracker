@@ -213,7 +213,6 @@ function DashboardPage() {
       }
     | undefined;
 
-
   const year = new Date().getFullYear();
 
   if (!isLoading && assets.length === 0) {
@@ -489,9 +488,7 @@ function DashboardPage() {
                   ],
                   [
                     "Setores",
-                    exposure.report.sector
-                      .slice(0, 4)
-                      .map((s) => ({ label: s.value, pct: s.pct })),
+                    exposure.report.sector.slice(0, 4).map((s) => ({ label: s.value, pct: s.pct })),
                   ],
                   [
                     "Empresas",
