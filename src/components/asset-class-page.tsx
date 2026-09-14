@@ -170,6 +170,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
       annual_yield: a.annual_yield != null ? String(a.annual_yield) : "",
       currency: cur,
       frequency: a.dividend_frequency ?? "",
+      acquired_at: new Date().toISOString().slice(0, 10),
     });
     setDialogOpen(true);
   };
