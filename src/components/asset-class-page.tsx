@@ -13,7 +13,13 @@ import {
   isOpenPosition,
 } from "@/lib/portfolio-types";
 import { AssetPositionModal } from "@/components/asset-position-modal";
-import { listAssets, createAsset, updateAsset, deleteAsset, buyAsset } from "@/lib/portfolio.functions";
+import {
+  listAssets,
+  createAsset,
+  updateAsset,
+  deleteAsset,
+  buyAsset,
+} from "@/lib/portfolio.functions";
 import { updateAllPrices, lookupTicker } from "@/lib/prices.functions";
 import { syncDividendsForAsset } from "@/lib/dividends.functions";
 
@@ -42,6 +48,7 @@ interface FormState {
   ticker: string;
   quantity: string;
   purchase_price: string;
+  purchase_date: string;
   current_price: string;
   invested_amount: string;
   current_value: string;
@@ -54,6 +61,7 @@ interface FormState {
 }
 
 const CURRENCIES = ["USD", "EUR", "GBP", "CHF", "CAD"];
+const today = () => new Date().toISOString().slice(0, 10);
 
 function defaultCurrency(c: AssetClass) {
   return c === "etf" ? "EUR" : "USD";
@@ -65,6 +73,7 @@ function emptyForm(c: AssetClass): FormState {
     ticker: "",
     quantity: "",
     purchase_price: "",
+    purchase_date: today(),
     current_price: "",
     invested_amount: "",
     current_value: "",
@@ -163,6 +172,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
       ticker: a.ticker ?? "",
       quantity: a.quantity ? String(a.quantity) : "",
       purchase_price: String(a.purchase_price_native ?? a.average_price ?? "") || "",
+      purchase_date: today(),
       current_price: String(a.current_price_native ?? a.current_price ?? "") || "",
       invested_amount: a.invested_amount ? String(a.invested_amount) : "",
       current_value: a.current_value ? String(a.current_value) : "",
@@ -230,6 +240,10 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
       toast.error("Indica o nome do ativo.");
       return;
     }
+    if (!editing && isQuantityAsset(assetClass) && num(form.quantity) > 0 && !form.purchase_date) {
+      toast.error("Indica a data da compra.");
+      return;
+    }
     setSaving(true);
     try {
       const quantity = num(form.quantity);
@@ -260,34 +274,44 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         p2p_group: assetClass === "p2p" ? form.p2p_group : null,
         annual_yield: form.annual_yield ? num(form.annual_yield) : null,
       };
+      let createdId: string | undefined;
       if (editing) {
         await updateFn({ data: { id: editing.id, patch: payload } });
         toast.success("Ativo atualizado.");
+      } else if (isQuantityAsset(assetClass) && quantity > 0) {
+        // Ativos com quantidade nascem sempre com uma compra no livro FIFO
+        // (transactions), nunca com os campos agregados preenchidos
+        // diretamente — de outro modo não há data de compra registada e
+        // uma venda futura falha por não encontrar lotes abertos.
+        const created = (await createFn({
+          data: { ...payload, quantity: 0, average_price: 0, invested_amount: 0, current_value: 0 },
+        })) as { id: string };
+        await buyFn({
+          data: {
+            assetId: created.id,
+            quantity,
+            price_native: purchaseNative,
+            fee_native: 0,
+            traded_at: form.purchase_date,
+            notes: null,
+          },
+        });
+        createdId = created.id;
+        toast.success("Ativo adicionado.");
       } else {
         const created = (await createFn({ data: payload })) as { id: string };
-        if (isQuantityAsset(assetClass) && quantity > 0 && created?.id) {
-          await buyFn({
-            data: {
-              assetId: created.id,
-              quantity,
-              price_native: purchaseNative,
-              fee_native: 0,
-              traded_at: form.acquired_at || new Date().toISOString().slice(0, 10),
-              notes: "Compra inicial",
-            },
-          });
-        }
+        createdId = created.id;
         toast.success("Ativo adicionado.");
-        if (paysDividends(assetClass) && payload.ticker && created?.id) {
-          try {
-            const res = (await syncDivFn({ data: { assetId: created.id } })) as {
-              inserted: number;
-            };
-            if (res.inserted > 0)
-              toast.success(`${res.inserted} dividendos sincronizados desde a compra.`);
-          } catch {
-            /* sincronização é best-effort */
-          }
+      }
+      if (!editing && paysDividends(assetClass) && payload.ticker && createdId) {
+        try {
+          const res = (await syncDivFn({ data: { assetId: createdId } })) as {
+            inserted: number;
+          };
+          if (res.inserted > 0)
+            toast.success(`${res.inserted} dividendos sincronizados desde a compra.`);
+        } catch {
+          /* sincronização é best-effort */
         }
       }
       setDialogOpen(false);
@@ -737,6 +761,15 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                   </select>
                 </Field>
               </div>
+              {!editing && (
+                <Field label="Data da compra">
+                  <TextInput
+                    type="date"
+                    value={form.purchase_date}
+                    onChange={set("purchase_date")}
+                  />
+                </Field>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <Field
                   label={`Preço de compra por ${assetClass === "metal" ? "grama" : "ação"} (${form.currency})`}
