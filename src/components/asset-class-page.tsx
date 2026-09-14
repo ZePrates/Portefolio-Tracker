@@ -13,7 +13,7 @@ import {
   isOpenPosition,
 } from "@/lib/portfolio-types";
 import { AssetPositionModal } from "@/components/asset-position-modal";
-import { listAssets, createAsset, updateAsset, deleteAsset } from "@/lib/portfolio.functions";
+import { listAssets, createAsset, updateAsset, deleteAsset, buyAsset } from "@/lib/portfolio.functions";
 import { updateAllPrices, lookupTicker } from "@/lib/prices.functions";
 import { syncDividendsForAsset } from "@/lib/dividends.functions";
 
@@ -50,6 +50,7 @@ interface FormState {
   annual_yield: string;
   currency: string;
   frequency: string;
+  acquired_at: string;
 }
 
 const CURRENCIES = ["USD", "EUR", "GBP", "CHF", "CAD"];
@@ -72,6 +73,7 @@ function emptyForm(c: AssetClass): FormState {
     annual_yield: "",
     currency: defaultCurrency(c),
     frequency: "",
+    acquired_at: new Date().toISOString().slice(0, 10),
   };
 }
 
@@ -98,6 +100,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   const queryClient = useQueryClient();
   const fetchAssets = useServerFn(listAssets);
   const createFn = useServerFn(createAsset);
+  const buyFn = useServerFn(buyAsset);
   const updateFn = useServerFn(updateAsset);
   const deleteFn = useServerFn(deleteAsset);
   const refreshFn = useServerFn(updateAllPrices);
@@ -168,6 +171,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
       annual_yield: a.annual_yield != null ? String(a.annual_yield) : "",
       currency: cur,
       frequency: a.dividend_frequency ?? "",
+      acquired_at: new Date().toISOString().slice(0, 10),
     });
     setDialogOpen(true);
   };
@@ -261,6 +265,18 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         toast.success("Ativo atualizado.");
       } else {
         const created = (await createFn({ data: payload })) as { id: string };
+        if (isQuantityAsset(assetClass) && quantity > 0 && created?.id) {
+          await buyFn({
+            data: {
+              assetId: created.id,
+              quantity,
+              price_native: purchaseNative,
+              fee_native: 0,
+              traded_at: form.acquired_at || new Date().toISOString().slice(0, 10),
+              notes: "Compra inicial",
+            },
+          });
+        }
         toast.success("Ativo adicionado.");
         if (paysDividends(assetClass) && payload.ticker && created?.id) {
           try {
@@ -741,6 +757,17 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                   />
                 </Field>
               </div>
+              {!editing && (
+                <Field label="Data de aquisição">
+                  <input
+                    type="date"
+                    value={form.acquired_at}
+                    onChange={set("acquired_at")}
+                    max={new Date().toISOString().slice(0, 10)}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-ring"
+                  />
+                </Field>
+              )}
             </>
           ) : (
             <>
