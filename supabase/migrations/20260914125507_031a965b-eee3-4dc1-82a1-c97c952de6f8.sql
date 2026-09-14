@@ -1,0 +1,1 @@
+REVOKE ALL ON public.security_profiles FROM anon;
