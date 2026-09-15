@@ -1,5 +1,5 @@
 import type { ReactNode, ButtonHTMLAttributes, InputHTMLAttributes } from "react";
-import { Wallet } from "lucide-react";
+import { Wallet, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function PageHeader({
