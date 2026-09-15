@@ -276,6 +276,56 @@ export function AssetPositionModal({ asset, onClose }: Props) {
     }
   };
 
+  const startEdit = (t: Tx) => {
+    setEditingTx(t.id);
+    setEditDate(t.traded_at);
+    setEditQuantity(String(Number(Number(t.quantity).toFixed(6))));
+    setEditPrice(String(t.price_native ?? t.price));
+    setEditFee(String(Number(t.fee ?? 0)));
+  };
+
+  const saveTx = async () => {
+    if (!editingTx) return;
+    const q = num(editQuantity);
+    if (q <= 0) {
+      toast.error("Indica a quantidade.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateTxFn({
+        data: {
+          id: editingTx,
+          quantity: q,
+          price_native: num(editPrice),
+          fee_native: num(editFee),
+          traded_at: editDate,
+        },
+      });
+      toast.success("Movimento atualizado.");
+      setEditingTx(null);
+      await refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível atualizar o movimento.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeTx = async (t: Tx) => {
+    if (!window.confirm(`Apagar o movimento de ${t.traded_at}?`)) return;
+    setSaving(true);
+    try {
+      await deleteTxFn({ data: { id: t.id } });
+      toast.success("Movimento apagado.");
+      await refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível apagar o movimento.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const tone = (v: number) =>
     v > 0 ? "text-success" : v < 0 ? "text-destructive" : "text-muted-foreground";
 
