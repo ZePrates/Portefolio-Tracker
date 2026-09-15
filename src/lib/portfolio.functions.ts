@@ -499,8 +499,7 @@ export const updateTransaction = createServerFn({ method: "POST" })
         fee_native: data.fee_native,
         fx_rate: rate,
         traded_at: data.traded_at,
-        total:
-          tx.type === "buy" ? data.quantity * price + fee : data.quantity * price - fee,
+        total: tx.type === "buy" ? data.quantity * price + fee : data.quantity * price - fee,
       })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
