@@ -572,29 +572,93 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                       </tr>
                     </thead>
                     <tbody>
-                      {pos.transactions.map((t) => (
-                        <tr key={t.id} className="border-b border-border/60 last:border-0">
-                          <td className="px-3 py-2">{t.traded_at}</td>
-                          <td className="px-3 py-2">{t.type === "buy" ? "Compra" : "Venda"}</td>
-                          <td className="px-3 py-2 text-right">
-                            {Number(Number(t.quantity).toFixed(6))}
-                          </td>
-                          <td className="px-3 py-2 text-right">
-                            {formatEUR(Number(t.price), hidden)}
-                          </td>
-                          <td className="px-3 py-2 text-right">
-                            {formatEUR(Number(t.fee ?? 0), hidden)}
-                          </td>
-                          <td
-                            className={cn(
-                              "px-3 py-2 text-right",
-                              t.realized_pl != null && tone(Number(t.realized_pl)),
-                            )}
-                          >
-                            {t.realized_pl != null ? formatEUR(Number(t.realized_pl), hidden) : "—"}
-                          </td>
-                        </tr>
-                      ))}
+                      {pos.transactions.map((t) =>
+                        editingTx === t.id ? (
+                          <tr key={t.id} className="border-b border-border/60 last:border-0">
+                            <td className="px-3 py-2">
+                              <TextInput
+                                type="date"
+                                value={editDate}
+                                onChange={(e) => setEditDate(e.target.value)}
+                              />
+                            </td>
+                            <td className="px-3 py-2">{t.type === "buy" ? "Compra" : "Venda"}</td>
+                            <td className="px-3 py-2">
+                              <TextInput
+                                inputMode="decimal"
+                                value={editQuantity}
+                                onChange={(e) => setEditQuantity(e.target.value)}
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <TextInput
+                                inputMode="decimal"
+                                value={editPrice}
+                                onChange={(e) => setEditPrice(e.target.value)}
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <TextInput
+                                inputMode="decimal"
+                                value={editFee}
+                                onChange={(e) => setEditFee(e.target.value)}
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <div className="flex justify-end gap-2">
+                                <Button onClick={saveTx} disabled={saving}>
+                                  Guardar
+                                </Button>
+                                <Button variant="outline" onClick={() => setEditingTx(null)}>
+                                  Cancelar
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : (
+                          <tr key={t.id} className="border-b border-border/60 last:border-0">
+                            <td className="px-3 py-2">{t.traded_at}</td>
+                            <td className="px-3 py-2">{t.type === "buy" ? "Compra" : "Venda"}</td>
+                            <td className="px-3 py-2 text-right">
+                              {Number(Number(t.quantity).toFixed(6))}
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              {formatEUR(Number(t.price), hidden)}
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              {formatEUR(Number(t.fee ?? 0), hidden)}
+                            </td>
+                            <td
+                              className={cn(
+                                "px-3 py-2 text-right",
+                                t.realized_pl != null && tone(Number(t.realized_pl)),
+                              )}
+                            >
+                              {t.realized_pl != null
+                                ? formatEUR(Number(t.realized_pl), hidden)
+                                : "—"}
+                            </td>
+                            <td className="px-3 py-2">
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  type="button"
+                                  className="text-xs text-primary hover:underline"
+                                  onClick={() => startEdit(t)}
+                                >
+                                  Editar
+                                </button>
+                                <button
+                                  type="button"
+                                  className="text-xs text-destructive hover:underline"
+                                  onClick={() => removeTx(t)}
+                                >
+                                  Apagar
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ),
+                      )}
                     </tbody>
                   </table>
                 </div>
