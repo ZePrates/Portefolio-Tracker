@@ -340,12 +340,7 @@ export function AssetPositionModal({ asset, onClose }: Props) {
     v > 0 ? "text-success" : v < 0 ? "text-destructive" : "text-muted-foreground";
 
   return (
-    <Modal
-      open={!!asset}
-      onClose={onClose}
-      title={asset.name}
-      className="max-w-3xl"
-    >
+    <Modal open={!!asset} onClose={onClose} title={asset.name} className="max-w-3xl">
       <div className="space-y-5">
         {isLoading || !pos ? (
           <p className="text-sm text-muted-foreground">A carregar posição…</p>
