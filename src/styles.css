@@ -48,6 +48,7 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-active: var(--sidebar-active-bg);
 }
 
 /* Portefólio Tracker — tema escuro permanente com acento dourado */
@@ -80,14 +81,15 @@
   --chart-4: oklch(0.65 0.2 300);
   --chart-5: oklch(0.7 0.18 40);
   --chart-6: oklch(0.66 0.15 190);
-  --sidebar: oklch(0.135 0.008 264);
+  --sidebar: oklch(0.155 0.008 264);
   --sidebar-foreground: oklch(0.95 0.005 250);
   --sidebar-primary: oklch(0.82 0.155 85);
   --sidebar-primary-foreground: oklch(0.21 0.03 260);
-  --sidebar-accent: oklch(0.23 0.012 264);
+  --sidebar-accent: oklch(1 0 0 / 5%);
   --sidebar-accent-foreground: oklch(0.95 0.005 250);
-  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-border: oklch(1 0 0 / 6%);
   --sidebar-ring: oklch(0.82 0.155 85);
+  --sidebar-active-bg: oklch(0.82 0.155 85 / 0.12);
 }
 
 .dark {
@@ -118,14 +120,41 @@
   --chart-4: oklch(0.65 0.2 300);
   --chart-5: oklch(0.7 0.18 40);
   --chart-6: oklch(0.66 0.15 190);
-  --sidebar: oklch(0.135 0.008 264);
+  --sidebar: oklch(0.155 0.008 264);
   --sidebar-foreground: oklch(0.95 0.005 250);
   --sidebar-primary: oklch(0.82 0.155 85);
   --sidebar-primary-foreground: oklch(0.21 0.03 260);
-  --sidebar-accent: oklch(0.23 0.012 264);
+  --sidebar-accent: oklch(1 0 0 / 5%);
   --sidebar-accent-foreground: oklch(0.95 0.005 250);
-  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-border: oklch(1 0 0 / 6%);
   --sidebar-ring: oklch(0.82 0.155 85);
+  --sidebar-active-bg: oklch(0.82 0.155 85 / 0.12);
+}
+
+/* Item de navegação da barra lateral: indicador dourado + gradiente no ativo */
+@utility nav-link {
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    height: 1.25rem;
+    width: 2px;
+    border-radius: 0 9999px 9999px 0;
+    background: var(--color-sidebar-primary);
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 150ms ease;
+  }
+
+  &[data-status="active"] {
+    background: linear-gradient(90deg, var(--color-sidebar-active), transparent);
+    color: var(--color-sidebar-primary);
+
+    &::before {
+      opacity: 1;
+    }
+  }
 }
 
 @layer base {

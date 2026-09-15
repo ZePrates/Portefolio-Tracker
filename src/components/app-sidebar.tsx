@@ -63,10 +63,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         to={item.to}
         onClick={onNavigate}
         activeOptions={{ exact: item.to === "/" }}
-        activeProps={{
-          className: "bg-sidebar-accent text-sidebar-primary",
-        }}
-        className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
+        className="nav-link relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
       >
         <item.icon className="h-4 w-4 shrink-0" />
         {item.label}
@@ -90,12 +87,10 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         <div className="space-y-1">{renderItems(DASHBOARD_NAV)}</div>
 
-        <div className="my-4 flex items-center gap-3 px-3">
-          <span className="h-px flex-1 bg-sidebar-border" />
-          <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground/60">
+        <div className="px-3 pt-6 pb-2">
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60">
             Ativos
-          </span>
-          <span className="h-px flex-1 bg-sidebar-border" />
+          </p>
         </div>
 
         <div className="space-y-1">{renderItems(ASSETS_NAV)}</div>

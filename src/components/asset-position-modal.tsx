@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Asset, Dividend } from "@/lib/portfolio-types";
 import {
@@ -9,6 +10,8 @@ import {
   previewSale,
   sellAsset,
   listDividends,
+  updateTransaction,
+  deleteTransaction,
 } from "@/lib/portfolio.functions";
 import { createExpense, listExpenses } from "@/lib/expenses.functions";
 import {
@@ -81,6 +84,8 @@ export function AssetPositionModal({ asset, onClose }: Props) {
   const sellFn = useServerFn(sellAsset);
   const expensesFn = useServerFn(listExpenses);
   const createExpenseFn = useServerFn(createExpense);
+  const updateTxFn = useServerFn(updateTransaction);
+  const deleteTxFn = useServerFn(deleteTransaction);
 
   const [mode, setMode] = useState<"view" | "buy" | "sell" | "expense">("view");
   const [expenseAmount, setExpenseAmount] = useState("");
@@ -90,6 +95,11 @@ export function AssetPositionModal({ asset, onClose }: Props) {
   const [price, setPrice] = useState("");
   const [fee, setFee] = useState("");
   const [date, setDate] = useState(today);
+  const [editingTx, setEditingTx] = useState<string | null>(null);
+  const [editDate, setEditDate] = useState("");
+  const [editQuantity, setEditQuantity] = useState("");
+  const [editPrice, setEditPrice] = useState("");
+  const [editFee, setEditFee] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -276,11 +286,61 @@ export function AssetPositionModal({ asset, onClose }: Props) {
     }
   };
 
+  const startEdit = (t: Tx) => {
+    setEditingTx(t.id);
+    setEditDate(t.traded_at);
+    setEditQuantity(String(Number(Number(t.quantity).toFixed(6))));
+    setEditPrice(String(t.price_native ?? t.price));
+    setEditFee(String(Number(t.fee ?? 0)));
+  };
+
+  const saveTx = async () => {
+    if (!editingTx) return;
+    const q = num(editQuantity);
+    if (q <= 0) {
+      toast.error("Indica a quantidade.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateTxFn({
+        data: {
+          id: editingTx,
+          quantity: q,
+          price_native: num(editPrice),
+          fee_native: num(editFee),
+          traded_at: editDate,
+        },
+      });
+      toast.success("Movimento atualizado.");
+      setEditingTx(null);
+      await refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível atualizar o movimento.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeTx = async (t: Tx) => {
+    if (!window.confirm(`Apagar o movimento de ${t.traded_at}?`)) return;
+    setSaving(true);
+    try {
+      await deleteTxFn({ data: { id: t.id } });
+      toast.success("Movimento apagado.");
+      await refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível apagar o movimento.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const tone = (v: number) =>
     v > 0 ? "text-success" : v < 0 ? "text-destructive" : "text-muted-foreground";
 
   return (
-    <Modal open={!!asset} onClose={onClose} title={asset.name}>
+    <Modal open={!!asset} onClose={onClose} title={asset.name} className="max-w-3xl">
       <div className="space-y-5">
         {isLoading || !pos ? (
           <p className="text-sm text-muted-foreground">A carregar posição…</p>
@@ -559,9 +619,9 @@ export function AssetPositionModal({ asset, onClose }: Props) {
               {pos.transactions.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Sem movimentos registados.</p>
               ) : (
-                <div className="overflow-x-auto rounded-lg border border-border">
+                <div className="max-h-64 overflow-auto rounded-lg border border-border">
                   <table className="w-full text-sm">
-                    <thead className="text-xs uppercase text-muted-foreground">
+                    <thead className="sticky top-0 z-10 bg-popover text-xs uppercase text-muted-foreground">
                       <tr className="border-b border-border text-left">
                         <th className="px-3 py-2 font-medium">Data</th>
                         <th className="px-3 py-2 font-medium">Tipo</th>
@@ -569,32 +629,101 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                         <th className="px-3 py-2 text-right font-medium">Preço</th>
                         <th className="px-3 py-2 text-right font-medium">Comissão</th>
                         <th className="px-3 py-2 text-right font-medium">Realizado</th>
+                        <th className="px-3 py-2 text-right font-medium">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {pos.transactions.map((t) => (
-                        <tr key={t.id} className="border-b border-border/60 last:border-0">
-                          <td className="px-3 py-2">{t.traded_at}</td>
-                          <td className="px-3 py-2">{t.type === "buy" ? "Compra" : "Venda"}</td>
-                          <td className="px-3 py-2 text-right">
-                            {Number(Number(t.quantity).toFixed(6))}
-                          </td>
-                          <td className="px-3 py-2 text-right">
-                            {formatEUR(Number(t.price), hidden)}
-                          </td>
-                          <td className="px-3 py-2 text-right">
-                            {formatEUR(Number(t.fee ?? 0), hidden)}
-                          </td>
-                          <td
-                            className={cn(
-                              "px-3 py-2 text-right",
-                              t.realized_pl != null && tone(Number(t.realized_pl)),
-                            )}
-                          >
-                            {t.realized_pl != null ? formatEUR(Number(t.realized_pl), hidden) : "—"}
-                          </td>
-                        </tr>
-                      ))}
+                      {pos.transactions.map((t) =>
+                        editingTx === t.id ? (
+                          <tr key={t.id} className="border-b border-border/60 last:border-0">
+                            <td className="px-3 py-2">
+                              <TextInput
+                                type="date"
+                                value={editDate}
+                                onChange={(e) => setEditDate(e.target.value)}
+                              />
+                            </td>
+                            <td className="px-3 py-2">{t.type === "buy" ? "Compra" : "Venda"}</td>
+                            <td className="px-3 py-2">
+                              <TextInput
+                                inputMode="decimal"
+                                value={editQuantity}
+                                onChange={(e) => setEditQuantity(e.target.value)}
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <TextInput
+                                inputMode="decimal"
+                                value={editPrice}
+                                onChange={(e) => setEditPrice(e.target.value)}
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <TextInput
+                                inputMode="decimal"
+                                value={editFee}
+                                onChange={(e) => setEditFee(e.target.value)}
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <div className="flex justify-end gap-2">
+                                <Button onClick={saveTx} disabled={saving}>
+                                  Guardar
+                                </Button>
+                                <Button variant="outline" onClick={() => setEditingTx(null)}>
+                                  Cancelar
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : (
+                          <tr key={t.id} className="border-b border-border/60 last:border-0">
+                            <td className="px-3 py-2">{t.traded_at}</td>
+                            <td className="px-3 py-2">{t.type === "buy" ? "Compra" : "Venda"}</td>
+                            <td className="px-3 py-2 text-right">
+                              {Number(Number(t.quantity).toFixed(6))}
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              {formatEUR(Number(t.price), hidden)}
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              {formatEUR(Number(t.fee ?? 0), hidden)}
+                            </td>
+                            <td
+                              className={cn(
+                                "px-3 py-2 text-right",
+                                t.realized_pl != null && tone(Number(t.realized_pl)),
+                              )}
+                            >
+                              {t.realized_pl != null
+                                ? formatEUR(Number(t.realized_pl), hidden)
+                                : "—"}
+                            </td>
+                            <td className="px-3 py-2">
+                              <div className="flex justify-end gap-1">
+                                <button
+                                  type="button"
+                                  aria-label="Editar movimento"
+                                  title="Editar"
+                                  className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-sidebar-active hover:text-primary"
+                                  onClick={() => startEdit(t)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  aria-label="Apagar movimento"
+                                  title="Apagar"
+                                  className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
+                                  onClick={() => removeTx(t)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ),
+                      )}
                     </tbody>
                   </table>
                 </div>
