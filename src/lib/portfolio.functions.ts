@@ -376,6 +376,157 @@ export const getPosition = createServerFn({ method: "GET" })
     };
   });
 
+/**
+ * Recalcula toda a posição a partir do livro de movimentos (FIFO),
+ * reescrevendo o P/L realizado de cada venda e os agregados do ativo.
+ */
+async function recomputeAsset(supabase: SupabaseLike, assetId: string) {
+  const { data: asset, error } = await supabase
+    .from("assets")
+    .select("*")
+    .eq("id", assetId)
+    .single();
+  if (error || !asset) throw new Error(error?.message ?? "Ativo não encontrado.");
+
+  const { data: txs, error: txError } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("asset_id", assetId)
+    .order("traded_at", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (txError) throw new Error(txError.message);
+
+  let lots: ReturnType<typeof buildOpenLots> = [];
+  let realizedTotal = 0;
+  let feeTotal = 0;
+  const updates: { id: string; realized_pl: number; breakdown: unknown }[] = [];
+
+  for (const t of txs ?? []) {
+    const qty = Number(t.quantity) || 0;
+    const price = Number(t.price) || 0;
+    const fee = Number(t.fee ?? 0) || 0;
+    feeTotal += fee;
+    if (t.type === "buy") {
+      lots.push({
+        id: t.id,
+        originalQuantity: qty,
+        quantity: qty,
+        unitCost: price + (qty > 0 ? fee / qty : 0),
+        traded_at: t.traded_at,
+      });
+    } else if (t.type === "sell") {
+      const res = applySale(lots, qty, price, fee);
+      lots = res.remaining;
+      realizedTotal += res.realizedPL;
+      updates.push({
+        id: t.id,
+        realized_pl: res.realizedPL,
+        breakdown: JSON.parse(JSON.stringify(res.breakdown)),
+      });
+    }
+  }
+
+  for (const u of updates) {
+    const { error: uErr } = await supabase
+      .from("transactions")
+      .update({
+        realized_pl: u.realized_pl,
+        lot_breakdown: u.breakdown as never,
+      })
+      .eq("id", u.id);
+    if (uErr) throw new Error(uErr.message);
+  }
+
+  const quantity = totalQuantity(lots);
+  const cost = totalCost(lots);
+  const closed = quantity <= 1e-9;
+  const rate = fxRateOf(asset as AssetRow);
+  const { error: aErr } = await supabase
+    .from("assets")
+    .update({
+      quantity: closed ? 0 : quantity,
+      invested_amount: closed ? 0 : cost,
+      average_price: closed ? asset.average_price : cost / quantity,
+      current_value: closed ? 0 : quantity * Number(asset.current_price ?? 0),
+      purchase_price_native:
+        !closed && rate > 0 ? cost / quantity / rate : asset.purchase_price_native,
+      realized_pl: realizedTotal,
+      total_fees: feeTotal,
+      status: closed ? "closed" : "open",
+      closed_at: closed ? new Date().toISOString() : null,
+    })
+    .eq("id", assetId);
+  if (aErr) throw new Error(aErr.message);
+
+  return { quantity: closed ? 0 : quantity, realizedPL: realizedTotal };
+}
+
+/** Edita um movimento existente (data, quantidade, preço, comissão) e recalcula a posição. */
+export const updateTransaction = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        quantity: z.number().positive("A quantidade tem de ser positiva."),
+        price_native: z.number().min(0),
+        fee_native: z.number().min(0).default(0),
+        traded_at: z.string().min(1),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: tx, error: findError } = await context.supabase
+      .from("transactions")
+      .select("*")
+      .eq("id", data.id)
+      .single();
+    if (findError || !tx) throw new Error(findError?.message ?? "Movimento não encontrado.");
+    if (!tx.asset_id) throw new Error("Movimento sem ativo associado.");
+
+    const { asset } = await loadPosition(context.supabase, tx.asset_id);
+    const rate = fxRateOf(asset);
+    const price = data.price_native * rate;
+    const fee = data.fee_native * rate;
+
+    const { error } = await context.supabase
+      .from("transactions")
+      .update({
+        quantity: data.quantity,
+        price,
+        price_native: data.price_native,
+        fee,
+        fee_native: data.fee_native,
+        fx_rate: rate,
+        traded_at: data.traded_at,
+        total:
+          tx.type === "buy" ? data.quantity * price + fee : data.quantity * price - fee,
+      })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+
+    return await recomputeAsset(context.supabase, tx.asset_id);
+  });
+
+/** Apaga um movimento e recalcula a posição a partir do livro restante. */
+export const deleteTransaction = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: tx, error: findError } = await context.supabase
+      .from("transactions")
+      .select("id, asset_id")
+      .eq("id", data.id)
+      .single();
+    if (findError || !tx) throw new Error(findError?.message ?? "Movimento não encontrado.");
+    if (!tx.asset_id) throw new Error("Movimento sem ativo associado.");
+
+    const { error } = await context.supabase.from("transactions").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+
+    return await recomputeAsset(context.supabase, tx.asset_id);
+  });
+
 /** Simula uma venda (sem gravar) para pré-visualização antes da confirmação. */
 export const previewSale = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
