@@ -139,9 +139,7 @@ export function Modal({
 }) {
   if (!open) return null;
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm"
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
       <div
         className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-popover p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
