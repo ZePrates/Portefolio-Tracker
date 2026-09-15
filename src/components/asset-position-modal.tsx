@@ -9,6 +9,8 @@ import {
   previewSale,
   sellAsset,
   listDividends,
+  updateTransaction,
+  deleteTransaction,
 } from "@/lib/portfolio.functions";
 import { createExpense, listExpenses } from "@/lib/expenses.functions";
 import {
