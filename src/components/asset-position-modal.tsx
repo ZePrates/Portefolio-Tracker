@@ -628,6 +628,7 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                         <th className="px-3 py-2 text-right font-medium">Preço</th>
                         <th className="px-3 py-2 text-right font-medium">Comissão</th>
                         <th className="px-3 py-2 text-right font-medium">Realizado</th>
+                        <th className="px-3 py-2 text-right font-medium">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
