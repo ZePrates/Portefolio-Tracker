@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Asset, Dividend } from "@/lib/portfolio-types";
 import {
@@ -339,7 +340,7 @@ export function AssetPositionModal({ asset, onClose }: Props) {
     v > 0 ? "text-success" : v < 0 ? "text-destructive" : "text-muted-foreground";
 
   return (
-    <Modal open={!!asset} onClose={onClose} title={asset.name}>
+    <Modal open={!!asset} onClose={onClose} title={asset.name} className="max-w-3xl">
       <div className="space-y-5">
         {isLoading || !pos ? (
           <p className="text-sm text-muted-foreground">A carregar posição…</p>
@@ -618,9 +619,9 @@ export function AssetPositionModal({ asset, onClose }: Props) {
               {pos.transactions.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Sem movimentos registados.</p>
               ) : (
-                <div className="overflow-x-auto rounded-lg border border-border">
+                <div className="max-h-64 overflow-auto rounded-lg border border-border">
                   <table className="w-full text-sm">
-                    <thead className="text-xs uppercase text-muted-foreground">
+                    <thead className="sticky top-0 z-10 bg-popover text-xs uppercase text-muted-foreground">
                       <tr className="border-b border-border text-left">
                         <th className="px-3 py-2 font-medium">Data</th>
                         <th className="px-3 py-2 font-medium">Tipo</th>
@@ -699,20 +700,24 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                                 : "—"}
                             </td>
                             <td className="px-3 py-2">
-                              <div className="flex justify-end gap-2">
+                              <div className="flex justify-end gap-1">
                                 <button
                                   type="button"
-                                  className="text-xs text-primary hover:underline"
+                                  aria-label="Editar movimento"
+                                  title="Editar"
+                                  className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-sidebar-active hover:text-primary"
                                   onClick={() => startEdit(t)}
                                 >
-                                  Editar
+                                  <Pencil className="h-4 w-4" />
                                 </button>
                                 <button
                                   type="button"
-                                  className="text-xs text-destructive hover:underline"
+                                  aria-label="Apagar movimento"
+                                  title="Apagar"
+                                  className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
                                   onClick={() => removeTx(t)}
                                 >
-                                  Apagar
+                                  <Trash2 className="h-4 w-4" />
                                 </button>
                               </div>
                             </td>
