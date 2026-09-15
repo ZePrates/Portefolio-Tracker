@@ -83,6 +83,8 @@ export function AssetPositionModal({ asset, onClose }: Props) {
   const sellFn = useServerFn(sellAsset);
   const expensesFn = useServerFn(listExpenses);
   const createExpenseFn = useServerFn(createExpense);
+  const updateTxFn = useServerFn(updateTransaction);
+  const deleteTxFn = useServerFn(deleteTransaction);
 
   const [mode, setMode] = useState<"view" | "buy" | "sell" | "expense">("view");
   const [expenseAmount, setExpenseAmount] = useState("");
