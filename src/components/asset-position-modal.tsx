@@ -90,6 +90,11 @@ export function AssetPositionModal({ asset, onClose }: Props) {
   const [price, setPrice] = useState("");
   const [fee, setFee] = useState("");
   const [date, setDate] = useState(today);
+  const [editingTx, setEditingTx] = useState<string | null>(null);
+  const [editDate, setEditDate] = useState("");
+  const [editQuantity, setEditQuantity] = useState("");
+  const [editPrice, setEditPrice] = useState("");
+  const [editFee, setEditFee] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
