@@ -138,39 +138,63 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
   };
   if (!asset.ticker) return { ...base, message: "Ativo sem ticker." };
 
+  // Estado já guardado (perfil/ISIN/gestora/referência de produto), para
+  // encadear com a fonte oficial e nunca apagar dados válidos numa falha parcial.
+  const { data: existing } = await supabase
+    .from("asset_profiles")
+    .select("id, isin, official_name, fund_family, manager_slug, provider_ref")
+    .eq("asset_id", asset.id)
+    .maybeSingle();
+
   const { toYahooSymbol } = await import("@/lib/yahoo.server");
   const symbol = toYahooSymbol(asset.ticker);
-  if (!symbol) return { ...base, message: "Ticker inválido." };
 
   const { fetchQuoteSummary, parseQuoteSummary } = await import("@/lib/exposure.server");
-  const qs = await fetchQuoteSummary(symbol);
-  // Fonte indisponível: preserva integralmente a última informação válida.
-  if (!qs) return { ...base, message: "Fonte indisponível — dados anteriores preservados." };
-  const d = parseQuoteSummary(qs);
+  const qs = symbol ? await fetchQuoteSummary(symbol) : null;
+  const d = qs ? parseQuoteSummary(qs) : null;
 
-  const asOf = today();
-  const isEtf = asset.class === "etf" || d.quoteType === "ETF" || d.quoteType === "MUTUALFUND";
+  // ---- 1) Fonte oficial da gestora, se reconhecida ----
+  const { detectManager, fetchOfficialComposition } =
+    await import("@/lib/exposure-providers/registry.server");
+  const lookupInput = {
+    isin: existing?.isin ?? null,
+    ticker: asset.ticker,
+    name: d?.name ?? existing?.official_name ?? asset.name,
+    fundFamily: d?.family ?? existing?.fund_family ?? null,
+    cachedRef: existing?.provider_ref ?? undefined,
+  };
+  const managerSlug = detectManager(lookupInput);
+  const official = managerSlug ? await fetchOfficialComposition(lookupInput) : null;
 
-  // ---- Perfil do ativo (idempotente por asset_id) ----
+  // Nenhuma fonte (oficial nem Yahoo) respondeu: preserva integralmente o que já estava guardado.
+  if (!qs && !official)
+    return { ...base, message: "Fontes indisponíveis — dados anteriores preservados." };
+
+  const asOf = official?.asOfDate ?? today();
+  const isEtf =
+    asset.class === "etf" || d?.quoteType === "ETF" || d?.quoteType === "MUTUALFUND" || !!official;
+
+  // ---- Perfil do ativo (idempotente por asset_id) — nunca apaga um valor
+  // bom anterior só porque esta sincronização não o obteve de novo. ----
   const profileRow = {
     user_id: userId,
     asset_id: asset.id,
-    official_name: d.name,
-    asset_type: d.quoteType,
-    currency: d.currency,
-    domicile_country: d.country,
-    dividend_yield: d.dividendYield,
-    category: d.category,
-    fund_family: d.family,
-    holdings_count: d.holdings.length || null,
-    source: "yahoo",
+    official_name: d?.name ?? official?.officialName ?? existing?.official_name ?? null,
+    asset_type: d?.quoteType ?? (isEtf ? "ETF" : null),
+    currency: d?.currency ?? null,
+    domicile_country: d?.country ?? null,
+    dividend_yield: d?.dividendYield ?? null,
+    category: d?.category ?? null,
+    fund_family: d?.family ?? existing?.fund_family ?? null,
+    isin: official?.isin ?? existing?.isin ?? null,
+    manager_slug: managerSlug ?? existing?.manager_slug ?? null,
+    provider_ref: (official?.providerRef ??
+      existing?.provider_ref ??
+      null) as Database["public"]["Tables"]["asset_profiles"]["Row"]["provider_ref"],
+    holdings_count: (official?.holdings.length ?? d?.holdings.length ?? 0) || null,
+    source: official?.source ?? "yahoo",
     as_of_date: asOf,
   };
-  const { data: existing } = await supabase
-    .from("asset_profiles")
-    .select("id")
-    .eq("asset_id", asset.id)
-    .maybeSingle();
   if (existing?.id) await supabase.from("asset_profiles").update(profileRow).eq("id", existing.id);
   else await supabase.from("asset_profiles").insert(profileRow);
 
@@ -179,39 +203,74 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
   let coverage = 0;
 
   if (isEtf) {
-    const profiles = await loadCompanyProfiles(
-      supabase,
-      d.holdings.map((h) => h.symbol ?? "").filter(Boolean),
-    );
-    for (const h of d.holdings) {
-      const p = h.symbol ? profiles.get(h.symbol.toUpperCase()) : undefined;
-      holdingRows.push({
-        user_id: userId,
-        asset_id: asset.id,
-        holding_name: h.name,
-        holding_symbol: h.symbol,
-        weight: h.weight,
-        country: p?.country ?? null,
-        sector: p?.sector ?? null,
-        currency: p?.currency ?? null,
-        as_of_date: asOf,
-        source: "yahoo",
-      });
-      coverage += h.weight;
+    // Fonte oficial tem prioridade (secção 2/8 do requisito); Yahoo é o fallback.
+    const source = official?.source ?? "yahoo";
+    if (official) {
+      for (const h of official.holdings) {
+        holdingRows.push({
+          user_id: userId,
+          asset_id: asset.id,
+          holding_name: h.name,
+          holding_symbol: h.symbol,
+          isin: h.isin,
+          weight: h.weight,
+          country: h.country,
+          sector: h.sector,
+          currency: h.currency,
+          as_of_date: asOf,
+          source,
+        });
+        coverage += h.weight;
+      }
+    } else if (d) {
+      const profiles = await loadCompanyProfiles(
+        supabase,
+        d.holdings.map((h) => h.symbol ?? "").filter(Boolean),
+      );
+      for (const h of d.holdings) {
+        const p = h.symbol ? profiles.get(h.symbol.toUpperCase()) : undefined;
+        holdingRows.push({
+          user_id: userId,
+          asset_id: asset.id,
+          holding_name: h.name,
+          holding_symbol: h.symbol,
+          weight: h.weight,
+          country: p?.country ?? null,
+          sector: p?.sector ?? null,
+          currency: p?.currency ?? null,
+          as_of_date: asOf,
+          source,
+        });
+        coverage += h.weight;
+      }
     }
-    // Exposição setorial publicada pela própria fonte (mais completa que as top holdings).
-    for (const s of d.sectorWeights) {
+    // Distribuição setorial/geográfica com pesos próprios: fonte oficial
+    // tem prioridade sobre a inferência a partir das holdings (secção 7).
+    const sectorWeights = official?.sectorWeights ?? d?.sectorWeights ?? [];
+    for (const s of sectorWeights) {
       exposures.push({
         user_id: userId,
         asset_id: asset.id,
         dimension: "sector",
         value: s.sector,
         weight: s.weight,
-        source: "yahoo:fundProfile",
+        source: `${source}:fund`,
         as_of_date: asOf,
       });
     }
-  } else {
+    const countryWeights = official?.countryWeights ?? [];
+    for (const c of countryWeights) {
+      exposures.push({
+        user_id: userId,
+        asset_id: asset.id,
+        dimension: "country",
+        value: c.country,
+        weight: c.weight,
+        source: `${source}:fund`,
+        as_of_date: asOf,
+      });
+    }
+  } else if (d) {
     if (d.country)
       exposures.push({
         user_id: userId,
@@ -321,6 +380,8 @@ export interface AssetExposureMeta {
   name: string;
   class: string;
   ticker: string | null;
+  /** Valor atual da posição na carteira (EUR). */
+  value: number;
   /** Cobertura da composição conhecida (0–100). */
   coverage: number;
   /** true quando a geografia/setor foram derivados das holdings. */
@@ -409,6 +470,7 @@ export const getExposure = createServerFn({ method: "GET" })
         name: a.name,
         class: a.class,
         ticker: a.ticker,
+        value: assetCurrentValue(a),
         coverage: Math.min(100, (hasCountryDim ? 1 : holdingCoverage) * 100),
         derived: !hasCountryDim && hs.length > 0,
         asOfDate: hs[0]?.as_of_date ?? ex[0]?.as_of_date ?? profile?.as_of_date ?? null,
@@ -435,6 +497,8 @@ export interface AssetExposureDetail {
     family: string | null;
     dividendYield: number | null;
     holdingsCount: number | null;
+    isin: string | null;
+    managerSlug: string | null;
   } | null;
   /** Dimensões declaradas pela fonte para este ativo. */
   dimensions: Array<{ dimension: string; value: string; pct: number }>;
@@ -500,6 +564,8 @@ export const getAssetExposure = createServerFn({ method: "GET" })
       holdings_count: number | null;
       source: string | null;
       as_of_date: string | null;
+      isin: string | null;
+      manager_slug: string | null;
     } | null;
 
     const holdingCoverage = hs.reduce((s, h) => s + (Number(h.weight) || 0), 0);
@@ -521,6 +587,8 @@ export const getAssetExposure = createServerFn({ method: "GET" })
             family: pr.fund_family,
             dividendYield: pr.dividend_yield,
             holdingsCount: pr.holdings_count,
+            isin: pr.isin,
+            managerSlug: pr.manager_slug,
           }
         : null,
       dimensions: ex

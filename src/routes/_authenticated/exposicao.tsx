@@ -94,6 +94,42 @@ function SliceList({
   );
 }
 
+const SOURCE_LABELS: Record<string, string> = {
+  ishares: "iShares",
+  vanguard: "Vanguard",
+  vaneck: "VanEck",
+  wisdomtree: "WisdomTree",
+  xtrackers: "Xtrackers",
+  bnpparibas: "BNP Paribas",
+  yahoo: "Yahoo Finance",
+};
+
+function sourceLabel(source: string | null): string {
+  if (!source) return "Não disponível";
+  const base = source.split(":")[0] ?? source;
+  return SOURCE_LABELS[base] ?? base;
+}
+
+function CoverageBadge({ coverage }: { coverage: number }) {
+  if (coverage >= 99.5)
+    return (
+      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+        Completa
+      </span>
+    );
+  if (coverage > 0)
+    return (
+      <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+        Parcial
+      </span>
+    );
+  return (
+    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+      Indisponível
+    </span>
+  );
+}
+
 function ExposicaoPage() {
   const { hidden } = usePrivateMode();
   const queryClient = useQueryClient();
@@ -155,7 +191,7 @@ function ExposicaoPage() {
 
   const c = report.concentration;
   const derived = meta.filter((m) => m.derived);
-  const lowCoverage = meta.filter((m) => m.coverage < 99);
+  const etfMeta = meta.filter((m) => m.class === "etf");
 
   return (
     <div className="space-y-6">
@@ -184,17 +220,56 @@ function ExposicaoPage() {
         />
       </div>
 
-      {lowCoverage.length > 0 && (
-        <div className="rounded-xl border border-border bg-card/60 p-4 text-xs text-muted-foreground">
-          A fonte publica apenas as principais posições de alguns ETFs, pelo que a composição não
-          representa 100% do fundo. Ativos com cobertura parcial:{" "}
-          {lowCoverage.map((m) => `${m.name} (${m.coverage.toFixed(0)}%)`).join(", ")}.
+      {etfMeta.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h2 className="text-sm font-semibold">Cobertura por ETF</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            A fonte oficial da gestora é usada sempre que disponível; quando publica apenas as
+            principais posições, a cobertura mantém-se parcial em vez de assumir 100%.
+          </p>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+                  <th className="py-2 pr-3 font-medium">ETF</th>
+                  <th className="py-2 pr-3 text-right font-medium">Valor</th>
+                  <th className="py-2 pr-3 font-medium">Cobertura</th>
+                  <th className="py-2 pr-3 font-medium">Fonte</th>
+                  <th className="py-2 font-medium">Data</th>
+                </tr>
+              </thead>
+              <tbody>
+                {etfMeta.map((m) => (
+                  <tr key={m.assetId} className="border-b border-border/50">
+                    <td className="py-2 pr-3 font-medium">
+                      {m.name}
+                      {m.ticker && (
+                        <span className="ml-2 text-xs text-muted-foreground">{m.ticker}</span>
+                      )}
+                    </td>
+                    <td className="py-2 pr-3 text-right">{formatEUR(m.value, hidden)}</td>
+                    <td className="py-2 pr-3">
+                      <div className="flex items-center gap-2">
+                        <span>{pct(m.coverage, hidden)}</span>
+                        <CoverageBadge coverage={m.coverage} />
+                      </div>
+                    </td>
+                    <td className="py-2 pr-3 text-muted-foreground">{sourceLabel(m.source)}</td>
+                    <td className="py-2 text-muted-foreground">
+                      {m.asOfDate
+                        ? new Date(m.asOfDate).toLocaleDateString("pt-PT")
+                        : "Não disponível"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           {derived.length > 0 && (
-            <>
-              {" "}
-              Geografia e setores derivados das holdings em: {derived.map((m) => m.name).join(", ")}
-              .
-            </>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Geografia e setores derivados das holdings (fonte não publica distribuição própria)
+              em: {derived.map((m) => m.name).join(", ")}.
+            </p>
           )}
         </div>
       )}
@@ -287,8 +362,9 @@ function ExposicaoPage() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Fonte dos dados de composição: Yahoo Finance (quoteSummary). Nenhum dado financeiro é gerado
-        por IA.
+        Fontes dos dados de composição: sites oficiais das gestoras (iShares, Vanguard), com Yahoo
+        Finance como último recurso quando a fonte oficial não está disponível. Nenhum dado
+        financeiro é gerado por IA.
       </p>
     </div>
   );
