@@ -121,6 +121,25 @@ describe("exposição da carteira", () => {
     expect(r.country.at(-1)?.value).toBe(UNKNOWN);
   });
 
+  it("10b. cobertura global é ponderada pelo valor dos ativos, não a média simples das coberturas", () => {
+    // Exemplo do requisito: ETF A €9.000 com cobertura 100%, ETF B €1.000 com cobertura 20%.
+    // Ponderado: (9000*1 + 1000*0.2) / 10000 = 92%. Média simples (errada) seria (100+20)/2 = 60%.
+    const etfA = etf({
+      assetId: "a",
+      value: 9000,
+      holdings: [
+        { name: "X", symbol: "X", weight: 1, country: "United States", sector: "Technology" },
+      ],
+    });
+    const etfB = etf({
+      assetId: "b",
+      value: 1000,
+      holdings: [{ name: "Y", symbol: "Y", weight: 0.2, country: "France", sector: "Industrials" }],
+    });
+    const r = computeExposure([etfA, etfB]);
+    expect(r.coverage).toBeCloseTo(92, 6);
+  });
+
   it("11. falha da fonte preserva o último dado válido", () => {
     // Simula o comportamento de syncOne: sem dados novos, nada é apagado.
     const stored = etf();

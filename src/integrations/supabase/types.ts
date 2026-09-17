@@ -130,7 +130,9 @@ export type Database = {
           id: string
           index_tracked: string | null
           isin: string | null
+          manager_slug: string | null
           official_name: string | null
+          provider_ref: Json | null
           source: string | null
           updated_at: string
           user_id: string
@@ -150,7 +152,9 @@ export type Database = {
           id?: string
           index_tracked?: string | null
           isin?: string | null
+          manager_slug?: string | null
           official_name?: string | null
+          provider_ref?: Json | null
           source?: string | null
           updated_at?: string
           user_id: string
@@ -170,7 +174,9 @@ export type Database = {
           id?: string
           index_tracked?: string | null
           isin?: string | null
+          manager_slug?: string | null
           official_name?: string | null
+          provider_ref?: Json | null
           source?: string | null
           updated_at?: string
           user_id?: string
@@ -389,6 +395,7 @@ export type Database = {
           holding_name: string
           holding_symbol: string | null
           id: string
+          isin: string | null
           sector: string | null
           source: string | null
           updated_at: string
@@ -404,6 +411,7 @@ export type Database = {
           holding_name: string
           holding_symbol?: string | null
           id?: string
+          isin?: string | null
           sector?: string | null
           source?: string | null
           updated_at?: string
@@ -419,6 +427,7 @@ export type Database = {
           holding_name?: string
           holding_symbol?: string | null
           id?: string
+          isin?: string | null
           sector?: string | null
           source?: string | null
           updated_at?: string
