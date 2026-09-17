@@ -5,6 +5,7 @@ export interface Asset {
   user_id: string;
   class: AssetClass;
   ticker: string | null;
+  isin: string | null;
   name: string;
   quantity: number;
   average_price: number;

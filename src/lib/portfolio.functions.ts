@@ -22,6 +22,7 @@ const assetInputSchema = z.object({
   class: assetClassSchema,
   name: z.string().min(1, "Nome é obrigatório"),
   ticker: z.string().nullable().default(null),
+  isin: z.string().nullable().default(null),
   quantity: z.number().min(0).default(0),
   average_price: z.number().min(0).default(0),
   current_price: z.number().min(0).default(0),

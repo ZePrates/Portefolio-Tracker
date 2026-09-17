@@ -46,6 +46,7 @@ interface Props {
 interface FormState {
   name: string;
   ticker: string;
+  isin: string;
   quantity: string;
   purchase_price: string;
   purchase_date: string;
@@ -59,6 +60,9 @@ interface FormState {
   frequency: string;
 }
 
+/** Formato básico de ISIN: 2 letras de país + 9 alfanuméricos + 1 dígito de controlo. Não valida o dígito. */
+const ISIN_RE = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/;
+
 const CURRENCIES = ["USD", "EUR", "GBP", "CHF", "CAD"];
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -70,6 +74,7 @@ function emptyForm(c: AssetClass): FormState {
   return {
     name: "",
     ticker: "",
+    isin: "",
     quantity: "",
     purchase_price: "",
     purchase_date: today(),
@@ -168,6 +173,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
     setForm({
       name: a.name,
       ticker: a.ticker ?? "",
+      isin: a.isin ?? "",
       quantity: a.quantity ? String(a.quantity) : "",
       purchase_price: String(a.purchase_price_native ?? a.average_price ?? "") || "",
       purchase_date: today(),
@@ -241,6 +247,11 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
       toast.error("Indica a data da compra.");
       return;
     }
+    const isin = form.isin.trim().toUpperCase();
+    if (isin && !ISIN_RE.test(isin)) {
+      toast.error("ISIN inválido — tem de ter 12 caracteres (ex.: IE00BK5BQT80).");
+      return;
+    }
     setSaving(true);
     try {
       const quantity = num(form.quantity);
@@ -257,6 +268,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         class: assetClass,
         name: form.name.trim(),
         ticker: form.ticker.trim() || null,
+        isin: isin || null,
         quantity,
         average_price: purchaseEur,
         current_price: currentEur,
@@ -678,19 +690,36 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
       >
         <div className="space-y-4">
           {isSecurity(assetClass) && (
-            <Field label="Ticker">
-              <div className="flex gap-2">
-                <TextInput
-                  value={form.ticker}
-                  onChange={set("ticker")}
-                  placeholder="Ex.: O, VICI, VWCE.DE"
-                />
-                <Button variant="outline" onClick={lookup} disabled={looking}>
-                  <Search className={cn("h-4 w-4", looking && "animate-pulse")} />
-                  {looking ? "A procurar…" : "Procurar"}
-                </Button>
-              </div>
-            </Field>
+            <>
+              <Field label="Ticker">
+                <div className="flex gap-2">
+                  <TextInput
+                    value={form.ticker}
+                    onChange={set("ticker")}
+                    placeholder="Ex.: O, VICI, VWCE.DE"
+                  />
+                  <Button variant="outline" onClick={lookup} disabled={looking}>
+                    <Search className={cn("h-4 w-4", looking && "animate-pulse")} />
+                    {looking ? "A procurar…" : "Procurar"}
+                  </Button>
+                </div>
+              </Field>
+
+              {assetClass === "etf" && (
+                <Field label="ISIN (opcional)">
+                  <TextInput
+                    value={form.isin}
+                    onChange={set("isin")}
+                    placeholder="Ex.: IE00BK5BQT80"
+                    maxLength={12}
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Ajuda a obter a composição diretamente da gestora (iShares, Vanguard) em vez de
+                    depender só do ticker.
+                  </p>
+                </Field>
+              )}
+            </>
           )}
 
           <Field label="Nome">
