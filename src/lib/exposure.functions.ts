@@ -156,12 +156,16 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
   // ---- 1) Fonte oficial da gestora, se reconhecida ----
   const { detectManager, fetchOfficialComposition } =
     await import("@/lib/exposure-providers/registry.server");
+  const isin = asset.isin ?? existing?.isin ?? null;
+  // Se o utilizador corrigiu/acrescentou o ISIN, a referência de produto
+  // cacheada (resolvida para o ISIN anterior) deixa de ser de confiança.
+  const isinChanged = !!asset.isin && asset.isin !== existing?.isin;
   const lookupInput = {
-    isin: existing?.isin ?? null,
+    isin,
     ticker: asset.ticker,
     name: d?.name ?? existing?.official_name ?? asset.name,
     fundFamily: d?.family ?? existing?.fund_family ?? null,
-    cachedRef: existing?.provider_ref ?? undefined,
+    cachedRef: isinChanged ? undefined : (existing?.provider_ref ?? undefined),
   };
   const managerSlug = detectManager(lookupInput);
   const official = managerSlug ? await fetchOfficialComposition(lookupInput) : null;
@@ -186,7 +190,7 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
     dividend_yield: d?.dividendYield ?? null,
     category: d?.category ?? null,
     fund_family: d?.family ?? existing?.fund_family ?? null,
-    isin: official?.isin ?? existing?.isin ?? null,
+    isin,
     manager_slug: managerSlug ?? existing?.manager_slug ?? null,
     provider_ref: (official?.providerRef ??
       existing?.provider_ref ??

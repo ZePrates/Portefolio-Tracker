@@ -7,6 +7,7 @@ const a = (id: string, v: number, c: AssetClass) => ({
   class: c,
   name: id,
   ticker: null,
+  isin: null,
   quantity: 1,
   average_price: v,
   current_price: v,

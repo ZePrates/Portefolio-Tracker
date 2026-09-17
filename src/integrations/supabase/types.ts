@@ -207,6 +207,7 @@ export type Database = {
           fx_updated_at: string | null
           id: string
           invested_amount: number
+          isin: string | null
           last_dividend_import: string | null
           last_dividend_sync: string | null
           metal_type: string | null
@@ -240,6 +241,7 @@ export type Database = {
           fx_updated_at?: string | null
           id?: string
           invested_amount?: number
+          isin?: string | null
           last_dividend_import?: string | null
           last_dividend_sync?: string | null
           metal_type?: string | null
@@ -273,6 +275,7 @@ export type Database = {
           fx_updated_at?: string | null
           id?: string
           invested_amount?: number
+          isin?: string | null
           last_dividend_import?: string | null
           last_dividend_sync?: string | null
           metal_type?: string | null
