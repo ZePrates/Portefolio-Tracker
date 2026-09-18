@@ -555,19 +555,40 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
           <table className="w-full min-w-[820px] text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Ativo</th>
-                <th className="px-4 py-3 text-right font-medium">
-                  {assetClass === "metal" ? "Gramas" : assetClass === "p2p" ? "Grupo" : "Qtd."}
+                <th className="px-4 py-3 font-medium">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("name")}
+                    className={cn(
+                      "inline-flex items-center gap-1 uppercase tracking-wider transition-colors hover:text-foreground",
+                      sortKey === "name" && "text-foreground",
+                    )}
+                  >
+                    Ativo
+                    {sortKey === "name" ? (
+                      sortDir === "asc" ? (
+                        <ArrowUp className="h-3 w-3" />
+                      ) : (
+                        <ArrowDown className="h-3 w-3" />
+                      )
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 opacity-40" />
+                    )}
+                  </button>
                 </th>
+                <SortableTh
+                  k="quantity"
+                  label={assetClass === "metal" ? "Gramas" : assetClass === "p2p" ? "Grupo" : "Qtd."}
+                />
                 {isQuantityAsset(assetClass) && (
                   <>
-                    <th className="px-4 py-3 text-right font-medium">Preço compra</th>
-                    <th className="px-4 py-3 text-right font-medium">Preço atual</th>
+                    <SortableTh k="buyPrice" label="Preço compra" />
+                    <SortableTh k="currentPrice" label="Preço atual" />
                   </>
                 )}
-                <th className="px-4 py-3 text-right font-medium">Investido</th>
-                <th className="px-4 py-3 text-right font-medium">Valor atual</th>
-                <th className="px-4 py-3 text-right font-medium">P/L</th>
+                <SortableTh k="invested" label="Investido" />
+                <SortableTh k="value" label="Valor atual" />
+                <SortableTh k="pl" label="P/L" />
                 <th className="px-4 py-3 text-right font-medium">Ações</th>
               </tr>
             </thead>
