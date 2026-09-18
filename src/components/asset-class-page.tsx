@@ -118,7 +118,8 @@ function paysDividends(c: AssetClass) {
   return c === "reit" || c === "acao_dividendo" || c === "etf";
 }
 
-type SortKey = "name" | "quantity" | "buyPrice" | "currentPrice" | "invested" | "value" | "pl" | "yield";
+type SortKey =
+  "name" | "quantity" | "buyPrice" | "currentPrice" | "invested" | "value" | "pl" | "yield";
 type SortDir = "asc" | "desc";
 
 function sortValue(a: Asset, key: SortKey): string | number {
@@ -240,7 +241,8 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   const yields = assets
     .map((asset) => asset.annual_yield)
     .filter((value): value is number => value != null);
-  const averageYield = yields.length > 0 ? yields.reduce((sum, value) => sum + value, 0) / yields.length : null;
+  const averageYield =
+    yields.length > 0 ? yields.reduce((sum, value) => sum + value, 0) / yields.length : null;
   const lastPriceUpdate = assets.reduce<string | null>(
     (acc, a) =>
       a.price_updated_at && (!acc || a.price_updated_at > acc) ? a.price_updated_at : acc,
