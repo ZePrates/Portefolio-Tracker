@@ -615,7 +615,9 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                 <SortableTh k="invested" label="Investido" />
                 <SortableTh k="value" label="Valor atual" />
                 <SortableTh k="pl" label="P/L" />
-                {assetClass === "acao_dividendo" && <SortableTh k="yield" label="Yield" />}
+                {(assetClass === "acao_dividendo" || assetClass === "reit") && (
+                  <SortableTh k="yield" label="Yield" />
+                )}
                 <th className="px-4 py-3 text-right font-medium">Ações</th>
               </tr>
             </thead>
@@ -689,7 +691,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                       {formatEUR(p.abs, hidden)}
                       <span className="block text-xs">{formatPercent(p.pct, hidden)}</span>
                     </td>
-                    {assetClass === "acao_dividendo" && (
+                    {(assetClass === "acao_dividendo" || assetClass === "reit") && (
                       <td className="px-4 py-3 text-right font-medium text-primary">
                         {a.annual_yield == null ? "—" : formatPercent(a.annual_yield, hidden)}
                       </td>
