@@ -395,7 +395,6 @@ function DividendosPage() {
                 <th className="px-4 py-3 text-right font-medium">Por ação</th>
                 <th className="px-4 py-3 text-right font-medium">Bruto</th>
                 <th className="px-4 py-3 text-right font-medium">Líquido</th>
-                <th className="px-4 py-3 text-right font-medium">Yield atual</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
                 <th className="px-4 py-3 text-right font-medium">Ações</th>
               </tr>
@@ -410,7 +409,6 @@ function DividendosPage() {
                 .map((d) => {
                   const received = isReceived(d as never);
                   const cur = (d.currency ?? "EUR").toUpperCase();
-                  const assetYield = assets.find((asset) => asset.id === d.asset_id)?.annual_yield;
                   return (
                     <tr
                       key={d.id}
@@ -439,9 +437,6 @@ function DividendosPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         {formatEUR(d.net_amount ?? d.gross_amount ?? d.amount, hidden)}
-                      </td>
-                      <td className="px-4 py-3 text-right font-medium text-primary">
-                        {assetYield == null ? "—" : formatPercent(assetYield, hidden)}
                       </td>
                       <td className="px-4 py-3">
                         <span
