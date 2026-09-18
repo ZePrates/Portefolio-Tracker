@@ -593,7 +593,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
               </tr>
             </thead>
             <tbody>
-              {assets.map((a) => {
+              {sortedAssets.map((a) => {
                 const p = assetPL(a);
                 const cur = a.native_currency || "EUR";
                 const foreign = cur !== "EUR";
