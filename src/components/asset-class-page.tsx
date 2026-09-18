@@ -118,7 +118,15 @@ function paysDividends(c: AssetClass) {
   return c === "reit" || c === "acao_dividendo" || c === "etf";
 }
 
-type SortKey = "name" | "quantity" | "buyPrice" | "currentPrice" | "invested" | "value" | "pl";
+type SortKey =
+  | "name"
+  | "quantity"
+  | "buyPrice"
+  | "currentPrice"
+  | "invested"
+  | "value"
+  | "pl"
+  | "yield";
 type SortDir = "asc" | "desc";
 
 function sortValue(a: Asset, key: SortKey): string | number {
@@ -137,6 +145,8 @@ function sortValue(a: Asset, key: SortKey): string | number {
       return assetCurrentValue(a);
     case "pl":
       return assetPL(a).abs;
+    case "yield":
+      return a.annual_yield ?? -1;
   }
 }
 
@@ -593,6 +603,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                 <SortableTh k="invested" label="Investido" />
                 <SortableTh k="value" label="Valor atual" />
                 <SortableTh k="pl" label="P/L" />
+                {assetClass === "acao_dividendo" && <SortableTh k="yield" label="Yield" />}
                 <th className="px-4 py-3 text-right font-medium">Ações</th>
               </tr>
             </thead>
@@ -666,6 +677,11 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                       {formatEUR(p.abs, hidden)}
                       <span className="block text-xs">{formatPercent(p.pct, hidden)}</span>
                     </td>
+                    {assetClass === "acao_dividendo" && (
+                      <td className="px-4 py-3 text-right font-medium text-primary">
+                        {a.annual_yield == null ? "—" : formatPercent(a.annual_yield, hidden)}
+                      </td>
+                    )}
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
                         {isQuantityAsset(assetClass) && (
