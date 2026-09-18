@@ -118,15 +118,7 @@ function paysDividends(c: AssetClass) {
   return c === "reit" || c === "acao_dividendo" || c === "etf";
 }
 
-type SortKey =
-  | "name"
-  | "quantity"
-  | "buyPrice"
-  | "currentPrice"
-  | "invested"
-  | "value"
-  | "pl"
-  | "yield";
+type SortKey = "name" | "quantity" | "buyPrice" | "currentPrice" | "invested" | "value" | "pl" | "yield";
 type SortDir = "asc" | "desc";
 
 function sortValue(a: Asset, key: SortKey): string | number {
@@ -245,6 +237,10 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   );
   const pl = totals.current - totals.invested;
   const plPct = totals.invested > 0 ? (pl / totals.invested) * 100 : 0;
+  const yields = assets
+    .map((asset) => asset.annual_yield)
+    .filter((value): value is number => value != null);
+  const averageYield = yields.length > 0 ? yields.reduce((sum, value) => sum + value, 0) / yields.length : null;
   const lastPriceUpdate = assets.reduce<string | null>(
     (acc, a) =>
       a.price_updated_at && (!acc || a.price_updated_at > acc) ? a.price_updated_at : acc,
@@ -545,6 +541,13 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
           tone={realizedTotal > 0 ? "positive" : realizedTotal < 0 ? "negative" : "default"}
         />
         <MetricCard label="Posições abertas" value={String(assets.length)} />
+        {(assetClass === "reit" || assetClass === "acao_dividendo") && (
+          <MetricCard
+            label="Yield médio"
+            value={averageYield == null ? "—" : formatPercent(averageYield, hidden)}
+            sub={yields.length > 0 ? `${yields.length} ativos com dados` : "Dados não disponíveis"}
+          />
+        )}
       </div>
 
       {isLoading ? (
