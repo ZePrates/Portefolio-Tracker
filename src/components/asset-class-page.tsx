@@ -523,7 +523,14 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-5">
+      <div
+        className={cn(
+          "grid grid-cols-2 gap-3 md:gap-4",
+          assetClass === "reit" || assetClass === "acao_dividendo"
+            ? "xl:grid-cols-6"
+            : "xl:grid-cols-5",
+        )}
+      >
         <MetricCard label="Valor atual" value={formatEUR(totals.current, hidden)} />
         <MetricCard label="Total investido" value={formatEUR(totals.invested, hidden)} />
         <MetricCard
