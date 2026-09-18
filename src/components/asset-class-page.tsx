@@ -1,7 +1,18 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, Pencil, Trash2, RefreshCw, Search, Download, ArrowLeftRight } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  RefreshCw,
+  Search,
+  Download,
+  ArrowLeftRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   type Asset,
@@ -107,6 +118,28 @@ function paysDividends(c: AssetClass) {
   return c === "reit" || c === "acao_dividendo" || c === "etf";
 }
 
+type SortKey = "name" | "quantity" | "buyPrice" | "currentPrice" | "invested" | "value" | "pl";
+type SortDir = "asc" | "desc";
+
+function sortValue(a: Asset, key: SortKey): string | number {
+  switch (key) {
+    case "name":
+      return a.name.toLowerCase();
+    case "quantity":
+      return a.quantity || 0;
+    case "buyPrice":
+      return a.average_price || 0;
+    case "currentPrice":
+      return a.current_price || 0;
+    case "invested":
+      return assetInvested(a);
+    case "value":
+      return assetCurrentValue(a);
+    case "pl":
+      return assetPL(a).abs;
+  }
+}
+
 export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Props) {
   const { hidden } = usePrivateMode();
   const queryClient = useQueryClient();
@@ -134,9 +167,62 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
     queryFn: () => fetchAssets(),
   });
 
-  const classAssets = ((allAssets ?? []) as Asset[]).filter((a) => a.class === assetClass);
-  const assets = classAssets.filter(isOpenPosition);
-  const closedAssets = classAssets.filter((a) => !isOpenPosition(a));
+  const classAssets = useMemo(
+    () => ((allAssets ?? []) as Asset[]).filter((a) => a.class === assetClass),
+    [allAssets, assetClass],
+  );
+  const assets = useMemo(() => classAssets.filter(isOpenPosition), [classAssets]);
+  const closedAssets = useMemo(() => classAssets.filter((a) => !isOpenPosition(a)), [classAssets]);
+
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const sortedAssets = useMemo(() => {
+    const list = [...assets];
+    list.sort((a, b) => {
+      const va = sortValue(a, sortKey);
+      const vb = sortValue(b, sortKey);
+      const cmp =
+        typeof va === "string" && typeof vb === "string"
+          ? va.localeCompare(vb, "pt")
+          : (va as number) - (vb as number);
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return list;
+  }, [assets, sortKey, sortDir]);
+
+  const toggleSort = (key: SortKey) => {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir(key === "name" ? "asc" : "desc");
+    }
+  };
+
+  const SortableTh = ({ label, k }: { label: React.ReactNode; k: SortKey }) => (
+    <th className="px-4 py-3 text-right font-medium">
+      <button
+        type="button"
+        onClick={() => toggleSort(k)}
+        className={cn(
+          "inline-flex items-center justify-end gap-1 uppercase tracking-wider transition-colors hover:text-foreground",
+          sortKey === k && "text-foreground",
+        )}
+      >
+        {label}
+        {sortKey === k ? (
+          sortDir === "asc" ? (
+            <ArrowUp className="h-3 w-3" />
+          ) : (
+            <ArrowDown className="h-3 w-3" />
+          )
+        ) : (
+          <ArrowUpDown className="h-3 w-3 opacity-40" />
+        )}
+      </button>
+    </th>
+  );
   const realizedTotal = classAssets.reduce((s, a) => s + assetRealizedPL(a), 0);
 
   const totals = assets.reduce(
@@ -471,24 +557,47 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
           <table className="w-full min-w-[820px] text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Ativo</th>
-                <th className="px-4 py-3 text-right font-medium">
-                  {assetClass === "metal" ? "Gramas" : assetClass === "p2p" ? "Grupo" : "Qtd."}
+                <th className="px-4 py-3 font-medium">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("name")}
+                    className={cn(
+                      "inline-flex items-center gap-1 uppercase tracking-wider transition-colors hover:text-foreground",
+                      sortKey === "name" && "text-foreground",
+                    )}
+                  >
+                    Ativo
+                    {sortKey === "name" ? (
+                      sortDir === "asc" ? (
+                        <ArrowUp className="h-3 w-3" />
+                      ) : (
+                        <ArrowDown className="h-3 w-3" />
+                      )
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 opacity-40" />
+                    )}
+                  </button>
                 </th>
+                <SortableTh
+                  k="quantity"
+                  label={
+                    assetClass === "metal" ? "Gramas" : assetClass === "p2p" ? "Grupo" : "Qtd."
+                  }
+                />
                 {isQuantityAsset(assetClass) && (
                   <>
-                    <th className="px-4 py-3 text-right font-medium">Preço compra</th>
-                    <th className="px-4 py-3 text-right font-medium">Preço atual</th>
+                    <SortableTh k="buyPrice" label="Preço compra" />
+                    <SortableTh k="currentPrice" label="Preço atual" />
                   </>
                 )}
-                <th className="px-4 py-3 text-right font-medium">Investido</th>
-                <th className="px-4 py-3 text-right font-medium">Valor atual</th>
-                <th className="px-4 py-3 text-right font-medium">P/L</th>
+                <SortableTh k="invested" label="Investido" />
+                <SortableTh k="value" label="Valor atual" />
+                <SortableTh k="pl" label="P/L" />
                 <th className="px-4 py-3 text-right font-medium">Ações</th>
               </tr>
             </thead>
             <tbody>
-              {assets.map((a) => {
+              {sortedAssets.map((a) => {
                 const p = assetPL(a);
                 const cur = a.native_currency || "EUR";
                 const foreign = cur !== "EUR";
