@@ -409,7 +409,6 @@ function DividendosPage() {
                 .map((d) => {
                   const received = isReceived(d as never);
                   const cur = (d.currency ?? "EUR").toUpperCase();
-                  const assetYield = assets.find((asset) => asset.id === d.asset_id)?.annual_yield;
                   return (
                     <tr
                       key={d.id}
