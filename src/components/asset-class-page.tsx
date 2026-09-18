@@ -578,7 +578,9 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                 </th>
                 <SortableTh
                   k="quantity"
-                  label={assetClass === "metal" ? "Gramas" : assetClass === "p2p" ? "Grupo" : "Qtd."}
+                  label={
+                    assetClass === "metal" ? "Gramas" : assetClass === "p2p" ? "Grupo" : "Qtd."
+                  }
                 />
                 {isQuantityAsset(assetClass) && (
                   <>
