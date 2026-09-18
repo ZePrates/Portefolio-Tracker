@@ -1,7 +1,18 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, Pencil, Trash2, RefreshCw, Search, Download, ArrowLeftRight } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  RefreshCw,
+  Search,
+  Download,
+  ArrowLeftRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   type Asset,
@@ -105,6 +116,28 @@ function isQuantityAsset(c: AssetClass) {
 
 function paysDividends(c: AssetClass) {
   return c === "reit" || c === "acao_dividendo" || c === "etf";
+}
+
+type SortKey = "name" | "quantity" | "buyPrice" | "currentPrice" | "invested" | "value" | "pl";
+type SortDir = "asc" | "desc";
+
+function sortValue(a: Asset, key: SortKey): string | number {
+  switch (key) {
+    case "name":
+      return a.name.toLowerCase();
+    case "quantity":
+      return a.quantity || 0;
+    case "buyPrice":
+      return a.average_price || 0;
+    case "currentPrice":
+      return a.current_price || 0;
+    case "invested":
+      return assetInvested(a);
+    case "value":
+      return assetCurrentValue(a);
+    case "pl":
+      return assetPL(a).abs;
+  }
 }
 
 export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Props) {
