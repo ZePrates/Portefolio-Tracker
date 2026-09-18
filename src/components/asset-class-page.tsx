@@ -167,9 +167,12 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
     queryFn: () => fetchAssets(),
   });
 
-  const classAssets = ((allAssets ?? []) as Asset[]).filter((a) => a.class === assetClass);
-  const assets = classAssets.filter(isOpenPosition);
-  const closedAssets = classAssets.filter((a) => !isOpenPosition(a));
+  const classAssets = useMemo(
+    () => ((allAssets ?? []) as Asset[]).filter((a) => a.class === assetClass),
+    [allAssets, assetClass],
+  );
+  const assets = useMemo(() => classAssets.filter(isOpenPosition), [classAssets]);
+  const closedAssets = useMemo(() => classAssets.filter((a) => !isOpenPosition(a)), [classAssets]);
 
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -186,8 +189,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
       return sortDir === "asc" ? cmp : -cmp;
     });
     return list;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allAssets, assetClass, sortKey, sortDir]);
+  }, [assets, sortKey, sortDir]);
 
   const toggleSort = (key: SortKey) => {
     if (key === sortKey) {
