@@ -170,6 +170,57 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   const classAssets = ((allAssets ?? []) as Asset[]).filter((a) => a.class === assetClass);
   const assets = classAssets.filter(isOpenPosition);
   const closedAssets = classAssets.filter((a) => !isOpenPosition(a));
+
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const sortedAssets = useMemo(() => {
+    const list = [...assets];
+    list.sort((a, b) => {
+      const va = sortValue(a, sortKey);
+      const vb = sortValue(b, sortKey);
+      const cmp =
+        typeof va === "string" && typeof vb === "string"
+          ? va.localeCompare(vb, "pt")
+          : (va as number) - (vb as number);
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return list;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allAssets, assetClass, sortKey, sortDir]);
+
+  const toggleSort = (key: SortKey) => {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir(key === "name" ? "asc" : "desc");
+    }
+  };
+
+  const SortableTh = ({ label, k }: { label: React.ReactNode; k: SortKey }) => (
+    <th className="px-4 py-3 text-right font-medium">
+      <button
+        type="button"
+        onClick={() => toggleSort(k)}
+        className={cn(
+          "inline-flex items-center justify-end gap-1 uppercase tracking-wider transition-colors hover:text-foreground",
+          sortKey === k && "text-foreground",
+        )}
+      >
+        {label}
+        {sortKey === k ? (
+          sortDir === "asc" ? (
+            <ArrowUp className="h-3 w-3" />
+          ) : (
+            <ArrowDown className="h-3 w-3" />
+          )
+        ) : (
+          <ArrowUpDown className="h-3 w-3 opacity-40" />
+        )}
+      </button>
+    </th>
+  );
   const realizedTotal = classAssets.reduce((s, a) => s + assetRealizedPL(a), 0);
 
   const totals = assets.reduce(
