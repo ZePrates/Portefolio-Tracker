@@ -7,10 +7,11 @@
  * O identificador "1467271812596" é uma constante da plataforma (o mesmo
  * em todos os fundos), não específico de cada ETF.
  *
- * A resolução ISIN → productId usa o ecrã de pesquisa de produtos da
- * iShares (product-screener). É a parte menos garantida deste fornecedor:
- * se o formato mudar, falha de forma limpa (devolve null) e a cadeia segue
- * para o próximo fornecedor — nunca corrompe dados.
+ * A resolução ISIN/ticker → productId usa a página pública de lista de
+ * produtos da iShares (estática, sem JavaScript — confirmado por inspeção
+ * direta em .../ch/individual/en/products/etf-product-list, que expõe o
+ * ticker e o link do produto para cada um dos ~550 fundos). Casa por
+ * ticker exato (a lista não mostra ISIN nesta vista); nunca por nome.
  */
 import type {
   ManagerLookupInput,
@@ -24,6 +25,7 @@ const UA =
 const ASSET_ID = "1467271812596";
 /** Locale europeu (inglês) usado como catálogo de pesquisa para ETFs UCITS. */
 const LOCALE = "ch/individual/en";
+const PRODUCT_LIST_URL = `https://www.ishares.com/${LOCALE}/products/etf-product-list`;
 
 export interface IsharesProductRef {
   productId: string;
@@ -38,56 +40,35 @@ function isIsharesProductRef(v: unknown): v is IsharesProductRef {
 }
 
 /** Tenta várias formas plausíveis de o screener devolver a lista de fundos. */
-function extractScreenerRows(json: unknown): Array<Record<string, unknown>> {
-  const root = json as Record<string, unknown> | null;
-  const data = (root?.["data"] ?? root) as Record<string, unknown> | undefined;
-  const tableData = data?.["tableData"] as Record<string, unknown> | undefined;
-  const rows = tableData?.["data"] ?? tableData?.["rows"] ?? data?.["funds"] ?? data?.["results"];
-  return Array.isArray(rows) ? (rows as Array<Record<string, unknown>>) : [];
-}
-
-/** Extrai um campo de uma linha do screener, tolerando várias formas (string direta, {value: ...}, {raw: ...}). */
-function field(row: Record<string, unknown>, ...keys: string[]): string | null {
-  for (const k of keys) {
-    const v = row[k];
-    if (typeof v === "string" && v.trim()) return v.trim();
-    if (v && typeof v === "object") {
-      const inner =
-        (v as Record<string, unknown>)["value"] ?? (v as Record<string, unknown>)["raw"];
-      if (typeof inner === "string" && inner.trim()) return inner.trim();
-    }
-  }
-  return null;
-}
-
-/** Resolve para {productId, slug} pesquisando o screener de produtos iShares, por ISIN ou, na sua falta, por ticker exato (nunca por nome — evita associar ao ETF errado). */
+/**
+ * Resolve para {productId, slug} varrendo a lista pública de produtos da
+ * iShares (estática, confirmada por inspeção real), casando pelo texto do
+ * link do ticker. Casa por ticker exato (a lista não expõe ISIN nesta
+ * vista) — nunca por nome, para não associar ao ETF errado.
+ */
 async function resolveProduct(input: ManagerLookupInput): Promise<IsharesProductRef | null> {
-  if (!input.isin && !input.ticker) return null;
-  const url =
-    `https://www.ishares.com/${LOCALE}/product-screener/product-screener-v3.jsn` +
-    `?dcrPath=/templatedata/config/product-screener-v3/data/en/${LOCALE.replace("/", "-")}/product-screener/product-screener` +
-    `&siteEntryPassthrough=true`;
+  if (!input.ticker) return null;
+  // Ex.: "IESE.NL" -> "IESE" (o sufixo de bolsa é convenção do Yahoo, não da iShares).
+  const bareTicker = input.ticker.split(".")[0]?.toUpperCase();
+  if (!bareTicker) return null;
   try {
-    const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/json" } });
+    const res = await fetch(PRODUCT_LIST_URL, {
+      headers: { "User-Agent": UA, Accept: "text/html" },
+    });
     if (!res.ok) return null;
-    const json = (await res.json()) as unknown;
-    const rows = extractScreenerRows(json);
-    for (const row of rows) {
-      const rowIsin = field(row, "isin", "Isin", "ISIN");
-      const rowTicker = field(row, "localExchangeTicker", "ticker", "fundTicker");
-      const isinMatch = input.isin && rowIsin && rowIsin.toUpperCase() === input.isin.toUpperCase();
-      const tickerMatch =
-        !input.isin &&
-        input.ticker &&
-        rowTicker &&
-        rowTicker.toUpperCase() === input.ticker.toUpperCase();
-      if (!isinMatch && !tickerMatch) continue;
-      const pageUrl = field(row, "productPageUrl", "fundUrl", "url");
-      if (!pageUrl) continue;
-      // Ex.: /ch/individual/en/products/251882/ishares-msci-world-ucits-etf-acc-fund
-      const m = /\/products\/(\d+)\/([a-z0-9-]+)/i.exec(pageUrl);
-      if (!m || !m[1] || !m[2]) continue;
-      return { productId: m[1], slug: m[2], locale: LOCALE };
+    const html = await res.text();
+    // Ex.: <a href="/ch/individual/en/products/251767/ishares-msci-europe-sri-ucits-etf">IESE</a>
+    const linkRe =
+      /<a[^>]+href="(\/ch\/individual\/en\/products\/(\d+)\/([a-z0-9-]+))"[^>]*>\s*([A-Za-z0-9]+)\s*<\/a>/gi;
+    let m: RegExpExecArray | null;
+    while ((m = linkRe.exec(html))) {
+      const productId = m[2];
+      const slug = m[3];
+      const linkText = m[4];
+      if (!productId || !slug || !linkText) continue;
+      if (linkText.toUpperCase() === bareTicker) {
+        return { productId, slug, locale: LOCALE };
+      }
     }
     return null;
   } catch {
