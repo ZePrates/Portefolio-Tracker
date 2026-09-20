@@ -69,10 +69,6 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
       throw new Error("Unauthorized: No token provided");
     }
 
-    if (token.split(".").length !== 3) {
-      throw new Error("Unauthorized: Invalid token");
-    }
-
     const supabase = createClient<Database>(SUPABASE_URL!, SUPABASE_PUBLISHABLE_KEY!, {
       global: {
         fetch: createSupabaseFetch(SUPABASE_PUBLISHABLE_KEY!),
@@ -87,20 +83,19 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
       },
     });
 
-    const { data, error } = await supabase.auth.getClaims(token);
-    if (error || !data?.claims) {
+    // Validate against the auth server: works for both JWT and opaque/new-format
+    // access tokens, and for projects using legacy symmetric signing keys.
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error || !data?.user?.id) {
+      console.error("[Supabase] token validation failed", error?.message);
       throw new Error("Unauthorized: Invalid token");
-    }
-
-    if (!data.claims.sub) {
-      throw new Error("Unauthorized: No user ID found in token");
     }
 
     return next({
       context: {
         supabase,
-        userId: data.claims.sub,
-        claims: data.claims,
+        userId: data.user.id,
+        claims: { sub: data.user.id, email: data.user.email },
       },
     });
   },
