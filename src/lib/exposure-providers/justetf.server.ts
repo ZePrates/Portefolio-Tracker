@@ -29,52 +29,46 @@ function stripTags(s: string): string {
     .trim();
 }
 
-/** Extrai pares (nome, peso%) de uma secção "Countries"/"Sectors": linhas de tabela com um nome e uma percentagem. */
+/**
+ * Extrai pares (nome, peso%) das tabelas "Countries"/"Sectors", identificadas
+ * pelos atributos data-testid estáveis da página real.
+ */
 function parseNamedWeightsSection(
   html: string,
-  headingText: string,
+  key: "countries" | "sectors",
 ): Array<{ name: string; weight: number }> {
-  const headingIdx = html.indexOf(`>${headingText}<`);
-  if (headingIdx < 0) return [];
-  // Corta no próximo cabeçalho de secção (h3/h4), para não misturar com a
-  // tabela seguinte (ex.: "Sectors" logo a seguir a "Countries").
-  const sectionStart = headingIdx + headingText.length + 2;
-  const nextHeadingMatch = /<h[34][^>]*>/i.exec(html.slice(sectionStart));
-  const sectionEnd = nextHeadingMatch
-    ? sectionStart + nextHeadingMatch.index
-    : Math.min(html.length, sectionStart + 4000);
-  const rest = html.slice(sectionStart, sectionEnd);
-  const rowRe = /<tr[^>]*>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>\s*([\d.,]+)\s*%\s*<\/td>/gi;
+  const rowRe = new RegExp(
+    `tl_etf-holdings_${key}_value_name"[^>]*>([^<]+)<[\\s\\S]{0,400}?tl_etf-holdings_${key}_value_percentage"[^>]*>\\s*([\\d.,]+)\\s*%`,
+    "gi",
+  );
   const out: Array<{ name: string; weight: number }> = [];
   let m: RegExpExecArray | null;
-  while ((m = rowRe.exec(rest))) {
+  while ((m = rowRe.exec(html))) {
     const name = stripTags(m[1] ?? "");
     const weight = Number((m[2] ?? "0").replace(",", "."));
     if (!name || !Number.isFinite(weight) || weight <= 0) continue;
     out.push({ name, weight: weight / 100 });
-    if (out.length >= 8) break; // margem de segurança
+    if (out.length >= 30) break;
   }
   return out;
 }
 
 interface TopHoldingRow {
   name: string;
+  isin: string | null;
   weight: number;
 }
 
 function parseTopHoldings(html: string): TopHoldingRow[] {
-  const headingIdx = html.indexOf(">Top 10 Holdings<");
-  if (headingIdx < 0) return [];
-  const rest = html.slice(headingIdx, headingIdx + 6000);
   const rowRe =
-    /<a[^>]+href="https:\/\/www\.justetf\.com\/[a-z-]+\/stock-profiles\/[^"]+"[^>]*>([^<]+)<\/a>[\s\S]{0,200}?([\d.,]+)\s*%/gi;
+    /tl_etf-holdings_top-holdings_link_name"\s+href="[^"]*\/stock-profiles\/([A-Z0-9]+)"[^>]*>(?:<span>)?([^<]+)<[\s\S]{0,400}?tl_etf-holdings_top-holdings_value_percentage"[^>]*>\s*([\d.,]+)\s*%/gi;
   const out: TopHoldingRow[] = [];
   let m: RegExpExecArray | null;
-  while ((m = rowRe.exec(rest))) {
-    const name = stripTags(m[1] ?? "");
-    const weight = Number((m[2] ?? "0").replace(",", "."));
+  while ((m = rowRe.exec(html))) {
+    const name = stripTags(m[2] ?? "");
+    const weight = Number((m[3] ?? "0").replace(",", "."));
     if (!name || !Number.isFinite(weight) || weight <= 0) continue;
-    out.push({ name, weight: weight / 100 });
+    out.push({ name, isin: m[1] ?? null, weight: weight / 100 });
     if (out.length >= 10) break;
   }
   return out;
