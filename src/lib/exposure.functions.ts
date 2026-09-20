@@ -88,20 +88,31 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
 
   const asOf = justEtf?.asOfDate ?? today();
 
+  // Por dimensão, vale o JustETF quando tem dados; senão o Financial Times.
+  const holdingsSrc = justEtf && justEtf.holdings.length > 0 ? justEtf : (ft ?? null);
+  const sectorSrc = justEtf?.sectorWeights?.length
+    ? justEtf
+    : ft?.sectorWeights?.length
+      ? ft
+      : null;
+  const countrySrc = justEtf?.countryWeights?.length
+    ? justEtf
+    : ft?.countryWeights?.length
+      ? ft
+      : null;
+  const usedFt = ft !== null && [holdingsSrc, sectorSrc, countrySrc].includes(ft);
+  const nameOf = (r: typeof justEtf) => (r && r === justEtf ? "justetf" : "ft");
+
   // ---- Perfil do ativo (idempotente por asset_id) — nunca apaga um valor
   // bom anterior só porque esta sincronização não o obteve de novo. ----
   const profileRow = {
     user_id: userId,
     asset_id: asset.id,
     official_name:
-      justEtf?.officialName ??
-      tradingView?.officialName ??
-      d?.name ??
-      existing?.official_name ??
-      null,
+      justEtf?.officialName ?? ft?.officialName ?? d?.name ?? existing?.official_name ?? null,
     asset_type: d?.quoteType ?? (isEtf ? "ETF" : null),
-    currency: d?.currency ?? tradingView?.currency ?? null,
-    domicile_country: d?.country ?? tradingView?.domicile ?? null,
+    currency: d?.currency ?? null,
+    domicile_country: d?.country ?? null,
     dividend_yield: d?.dividendYield ?? null,
     category: d?.category ?? null,
     fund_family: isEtf ? null : (d?.family ?? existing?.fund_family ?? null),
@@ -111,14 +122,8 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
       ? null
       : (existing?.provider_ref ??
         null)) as Database["public"]["Tables"]["asset_profiles"]["Row"]["provider_ref"],
-    holdings_count: (justEtf?.holdings.length ?? d?.holdings.length ?? 0) || null,
-    source: isEtf
-      ? justEtf
-        ? etfPartial
-          ? "justetf+tradingview"
-          : "justetf"
-        : "tradingview"
-      : "yahoo",
+    holdings_count: (holdingsSrc?.holdings.length ?? d?.holdings.length ?? 0) || null,
+    source: isEtf ? (justEtf ? (usedFt ? "justetf+ft" : "justetf") : "ft") : "yahoo",
     as_of_date: asOf,
   };
   if (existing?.id) await supabase.from("asset_profiles").update(profileRow).eq("id", existing.id);
@@ -128,9 +133,8 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
   const holdingRows: Array<Database["public"]["Tables"]["etf_holdings"]["Insert"]> = [];
   let coverage = 0;
 
-  if (isEtf && justEtf) {
-    const source = "justetf";
-    for (const h of justEtf.holdings) {
+  if (isEtf && (justEtf || ft)) {
+    for (const h of holdingsSrc?.holdings ?? []) {
       holdingRows.push({
         user_id: userId,
         asset_id: asset.id,
@@ -142,31 +146,29 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
         sector: h.sector,
         currency: h.currency,
         as_of_date: asOf,
-        source,
+        source: nameOf(holdingsSrc),
       });
       coverage += h.weight;
     }
-    const sectorWeights = justEtf.sectorWeights ?? [];
-    for (const s of sectorWeights) {
+    for (const s of sectorSrc?.sectorWeights ?? []) {
       exposures.push({
         user_id: userId,
         asset_id: asset.id,
         dimension: "sector",
         value: s.sector,
         weight: s.weight,
-        source: `${source}:fund`,
+        source: `${nameOf(sectorSrc)}:fund`,
         as_of_date: asOf,
       });
     }
-    const countryWeights = justEtf.countryWeights ?? [];
-    for (const c of countryWeights) {
+    for (const c of countrySrc?.countryWeights ?? []) {
       exposures.push({
         user_id: userId,
         asset_id: asset.id,
         dimension: "country",
         value: c.country,
         weight: c.weight,
-        source: `${source}:fund`,
+        source: `${nameOf(countrySrc)}:fund`,
         as_of_date: asOf,
       });
     }
