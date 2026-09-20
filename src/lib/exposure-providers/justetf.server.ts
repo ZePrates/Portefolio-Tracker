@@ -96,11 +96,11 @@ export async function fetchJustEtf(isin: string | null): Promise<ProviderResult 
     if (!res.ok) return null;
     const html = await res.text();
 
-    const countryWeights = parseNamedWeightsSection(html, "Countries").map((c) => ({
+    const countryWeights = parseNamedWeightsSection(html, "countries").map((c) => ({
       country: c.name,
       weight: c.weight,
     }));
-    const sectorWeights = parseNamedWeightsSection(html, "Sectors").map((s) => ({
+    const sectorWeights = parseNamedWeightsSection(html, "sectors").map((s) => ({
       sector: s.name,
       weight: s.weight,
     }));
@@ -116,7 +116,7 @@ export async function fetchJustEtf(isin: string | null): Promise<ProviderResult 
     const holdings: ProviderHolding[] = topHoldings.map((h) => ({
       name: h.name,
       symbol: null,
-      isin: null,
+      isin: h.isin,
       weight: h.weight,
       country: null,
       sector: null,
