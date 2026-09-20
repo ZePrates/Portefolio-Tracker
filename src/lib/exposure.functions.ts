@@ -216,19 +216,23 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
     await supabase.from("etf_holdings").insert(holdingRows);
   }
 
-  // Para ETFs só valem dados do JustETF: qualquer resto antigo de Yahoo ou de
-  // sites de gestoras é removido, para nunca aparecer uma cobertura falsa.
+  // Para ETFs só valem dados do JustETF ou do Financial Times: qualquer resto
+  // antigo (Yahoo, TradingView, sites de gestoras) é removido, para nunca
+  // aparecer uma cobertura falsa.
+  const legacyEtfSources = [
+    "source.like.yahoo%",
+    "source.like.tradingview%",
+    "source.like.ishares%",
+    "source.like.vanguard%",
+    "source.like.registry%",
+  ].join(",");
   if (isEtf) {
     await supabase
       .from("asset_exposures")
       .delete()
       .eq("asset_id", asset.id)
-      .not("source", "like", "justetf%");
-    await supabase
-      .from("etf_holdings")
-      .delete()
-      .eq("asset_id", asset.id)
-      .not("source", "like", "justetf%");
+      .or(legacyEtfSources);
+    await supabase.from("etf_holdings").delete().eq("asset_id", asset.id).or(legacyEtfSources);
   }
 
   return {
@@ -238,15 +242,12 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
     holdings: holdingRows.length,
     coverage: Math.min(1, coverage),
     ...(exposures.length === 0 && holdingRows.length === 0
-      ? {
-          message:
-            isEtf && tradingView
-              ? "JustETF indisponível — ficha preenchida via TradingView; exposição não disponível."
-              : "A fonte não publica composição para este ativo.",
-        }
-      : etfPartial && tradingView
+      ? { message: "A fonte não publica composição para este ativo." }
+      : etfPartial && usedFt
         ? {
-            message: "Exposição parcial do JustETF — ficha complementada via TradingView.",
+            message: justEtf
+              ? "Exposição parcial do JustETF — completada com o Financial Times."
+              : "JustETF indisponível — exposição obtida no Financial Times.",
           }
         : {}),
   };
