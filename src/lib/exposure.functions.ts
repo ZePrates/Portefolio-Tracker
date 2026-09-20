@@ -215,6 +215,21 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
     await supabase.from("etf_holdings").insert(holdingRows);
   }
 
+  // Para ETFs só valem dados do JustETF: qualquer resto antigo de Yahoo ou de
+  // sites de gestoras é removido, para nunca aparecer uma cobertura falsa.
+  if (isEtf) {
+    await supabase
+      .from("asset_exposures")
+      .delete()
+      .eq("asset_id", asset.id)
+      .not("source", "like", "justetf%");
+    await supabase
+      .from("etf_holdings")
+      .delete()
+      .eq("asset_id", asset.id)
+      .not("source", "like", "justetf%");
+  }
+
   return {
     assetId: asset.id,
     ok: exposures.length > 0 || holdingRows.length > 0,
