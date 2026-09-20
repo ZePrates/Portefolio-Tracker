@@ -91,33 +91,48 @@ export interface FtHoldingsData {
   holdings: Array<{ name: string; weight: number }>;
 }
 
+const PCT = /^(\d+(?:[.,]\d+)?)%$/;
+
+/**
+ * As tabelas do FT não trazem cabeçalho próprio nesta página, por isso são
+ * reconhecidas pela forma das linhas:
+ * - peso por nome: [nome, "x%", "y%"] (setores ou regiões);
+ * - holdings: primeira célula com link para a ficha da empresa.
+ */
 export function parseFtHoldings(html: string): FtHoldingsData | null {
-  const tables = parseTables(html);
   const named: Array<Array<{ name: string; weight: number }>> = [];
   let holdings: Array<{ name: string; weight: number }> = [];
 
-  for (const t of tables) {
-    const head = t.header.join(" | ").toLowerCase();
-    if (head.includes("sector") && head.includes("% net assets")) {
-      const list: Array<{ name: string; weight: number }> = [];
-      for (const r of t.rows) {
-        const name = r.cells[0] ?? "";
-        const w = firstWeight(r.cells);
-        if (!name || w === null || w <= 0) continue;
-        list.push({ name, weight: w });
-      }
-      if (list.length > 0) named.push(list);
-    } else if (head.includes("company") && head.includes("portfolio weight")) {
-      const list: Array<{ name: string; weight: number }> = [];
-      for (const r of t.rows) {
-        const name = (r.cells[0] ?? "").replace(/\s+[A-Z0-9.]+:[A-Z]+$/, "").trim();
-        const w = firstWeight(r.cells);
-        if (!name || w === null || w <= 0) continue;
+  for (const tm of html.matchAll(/<table[^>]*>([\s\S]*?)<\/table>/gi)) {
+    const body = tm[1] ?? "";
+    const isHoldings = body.includes("/data/equities/tearsheet/summary?s=");
+    const list: Array<{ name: string; weight: number }> = [];
+    for (const rm of body.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)) {
+      const tr = rm[1] ?? "";
+      if (/<th[\s>]/i.test(tr)) continue;
+      const cells = [...tr.matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)].map((c) =>
+        decode(c[1] ?? ""),
+      );
+      if (cells.length < 3) continue;
+      const rawName = cells[0] ?? "";
+      const name = rawName.replace(/\s+[A-Z0-9.]+:[A-Z]+$/, "").trim();
+      if (!name || PCT.test(name)) continue;
+      if (isHoldings) {
+        const w = firstWeight(cells);
+        if (w === null || w <= 0) continue;
         list.push({ name, weight: w });
         if (list.length >= 10) break;
+      } else {
+        // Só linhas no formato [nome, peso, média] contam como distribuição.
+        if (cells.length !== 3 || !PCT.test(cells[1] ?? "") || !PCT.test(cells[2] ?? "")) continue;
+        const w = Number((cells[1] ?? "0").replace("%", "").replace(",", ".")) / 100;
+        if (!Number.isFinite(w) || w <= 0) continue;
+        list.push({ name, weight: w });
       }
-      if (list.length > 0) holdings = list;
     }
+    if (list.length === 0) continue;
+    if (isHoldings) holdings = list;
+    else named.push(list);
   }
 
   const REGIONS = /americas|greater asia|greater europe|united kingdom|emerging/i;
