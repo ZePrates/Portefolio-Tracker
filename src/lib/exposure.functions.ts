@@ -54,12 +54,11 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
   > = null;
   let d: ReturnType<typeof import("@/lib/exposure.server").parseQuoteSummary> | null = null;
 
-  // Segunda opção para ETFs: TradingView (apenas identidade — o scanner não
-  // publica pesos de país/setor nem holdings). Preenche a ficha quando o
-  // JustETF falha ou vem parcial; a exposição nunca é inventada.
-  let tradingView: Awaited<
-    ReturnType<typeof import("@/lib/exposure-providers/tradingview.server").fetchTradingViewEtf>
-  > = null;
+  // Segunda opção para ETFs: Financial Times (markets.ft.com), que publica
+  // setores, regiões e top 10 de holdings em HTML puro. Usado quando o
+  // JustETF falha ou devolve exposição parcial; nada é inventado.
+  let ft: Awaited<ReturnType<typeof import("@/lib/exposure-providers/ft.server").fetchFtEtf>> =
+    null;
   let etfPartial = false;
 
   if (isEtf) {
@@ -72,10 +71,10 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
       !justEtf.countryWeights ||
       !justEtf.sectorWeights;
     if (etfPartial) {
-      const { fetchTradingViewEtf } = await import("@/lib/exposure-providers/tradingview.server");
-      tradingView = await fetchTradingViewEtf(isin);
+      const { fetchFtEtf } = await import("@/lib/exposure-providers/ft.server");
+      ft = await fetchFtEtf(isin);
     }
-    if (!justEtf && !tradingView)
+    if (!justEtf && !ft)
       return { ...base, message: "JustETF indisponível — dados anteriores preservados." };
   } else {
     if (!asset.ticker) return { ...base, message: "Ativo sem ticker." };
