@@ -853,8 +853,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                     maxLength={12}
                   />
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Ajuda a obter a composição diretamente da gestora (iShares, Vanguard) em vez de
-                    depender só do ticker.
+                    Usado para obter a composição e exposição exclusivamente no JustETF.
                   </p>
                 </Field>
               )}

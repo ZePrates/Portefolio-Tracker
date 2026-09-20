@@ -10,17 +10,14 @@ import type { Database } from "@/integrations/supabase/types";
 /**
  * Sincronização de perfis, composição e exposição dos ativos.
  *
- * Fonte de dados: Yahoo Finance quoteSummary (assetProfile, summaryProfile,
- * fundProfile, topHoldings, summaryDetail, price, defaultKeyStatistics).
+ * ETFs usam exclusivamente o JustETF, identificado pelo ISIN. Os restantes
+ * títulos usam Yahoo Finance quoteSummary para o respetivo perfil.
  * Nunca é utilizado LLM para obter país, setor, indústria, moeda, holdings
  * ou qualquer outro dado financeiro: quando a fonte não devolve o campo,
  * fica `null` e a interface apresenta "Não disponível".
  */
 
 const today = () => new Date().toISOString().slice(0, 10);
-
-/** Cache partilhada de perfis de empresas (país/setor/indústria/moeda). */
-const PROFILE_TTL_DAYS = 30;
 
 type SB = { from: SupabaseClient<Database>["from"] };
 
@@ -35,99 +32,6 @@ interface SyncResult {
   message?: string;
 }
 
-async function loadCompanyProfiles(
-  supabase: SB,
-  symbols: string[],
-): Promise<
-  Map<
-    string,
-    {
-      country: string | null;
-      sector: string | null;
-      industry: string | null;
-      currency: string | null;
-    }
-  >
-> {
-  const out = new Map<
-    string,
-    {
-      country: string | null;
-      sector: string | null;
-      industry: string | null;
-      currency: string | null;
-    }
-  >();
-  const wanted = [...new Set(symbols.map((s) => s.trim().toUpperCase()).filter(Boolean))];
-  if (wanted.length === 0) return out;
-
-  const { data: cached } = await supabase
-    .from("security_profiles")
-    .select("symbol, country, sector, industry, currency, updated_at")
-    .in("symbol", wanted);
-
-  const stale = new Date(Date.now() - PROFILE_TTL_DAYS * 24 * 3600 * 1000).toISOString();
-  const fresh = new Set<string>();
-  for (const row of (cached ?? []) as Array<{
-    symbol: string;
-    country: string | null;
-    sector: string | null;
-    industry: string | null;
-    currency: string | null;
-    updated_at: string;
-  }>) {
-    out.set(row.symbol, {
-      country: row.country,
-      sector: row.sector,
-      industry: row.industry,
-      currency: row.currency,
-    });
-    if (row.updated_at > stale) fresh.add(row.symbol);
-  }
-
-  const missing = wanted.filter((s) => !fresh.has(s));
-  if (missing.length === 0) return out;
-
-  const { fetchQuoteSummary, parseQuoteSummary } = await import("@/lib/exposure.server");
-  const upserts: Array<Database["public"]["Tables"]["security_profiles"]["Insert"]> = [];
-  // Limite defensivo: evita chamadas externas desnecessárias por sincronização.
-  for (const symbol of missing.slice(0, 40)) {
-    const qs = await fetchQuoteSummary(symbol);
-    if (!qs) continue; // fonte falhou → mantém o que já estava em cache
-    const d = parseQuoteSummary(qs);
-    const profile = {
-      country: d.country,
-      sector: d.sector,
-      industry: d.industry,
-      currency: d.currency,
-    };
-    out.set(symbol, profile);
-    upserts.push({
-      symbol,
-      name: d.name,
-      ...profile,
-      source: "yahoo",
-      updated_at: new Date().toISOString(),
-    });
-  }
-  if (upserts.length > 0) {
-    // security_profiles is a shared reference/cache table. Writes use the
-    // trusted server-side client so authenticated users retain read-only access.
-    const { getExternalAdminClient } =
-      await import("@/integrations/supabase/admin-external.server");
-    const admin = getExternalAdminClient();
-    if (!admin) {
-      console.error("[Exposure] security profile cache update skipped: no external admin client.");
-      return out;
-    }
-    const { error } = await admin
-      .from("security_profiles")
-      .upsert(upserts, { onConflict: "symbol" });
-    if (error) console.error("[Exposure] security profile cache update failed:", error.message);
-  }
-  return out;
-}
-
 async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<SyncResult> {
   const base: SyncResult = {
     assetId: asset.id,
@@ -136,67 +40,54 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
     holdings: 0,
     coverage: 0,
   };
-  if (!asset.ticker) return { ...base, message: "Ativo sem ticker." };
-
-  // Estado já guardado (perfil/ISIN/gestora/referência de produto), para
-  // encadear com a fonte oficial e nunca apagar dados válidos numa falha parcial.
+  // Estado já guardado para nunca apagar dados válidos numa falha da fonte.
   const { data: existing } = await supabase
     .from("asset_profiles")
     .select("id, isin, official_name, fund_family, manager_slug, provider_ref")
     .eq("asset_id", asset.id)
     .maybeSingle();
 
-  const { toYahooSymbol } = await import("@/lib/yahoo.server");
-  const symbol = toYahooSymbol(asset.ticker);
-
-  const { fetchQuoteSummary, parseQuoteSummary } = await import("@/lib/exposure.server");
-  const qs = symbol ? await fetchQuoteSummary(symbol) : null;
-  const d = qs ? parseQuoteSummary(qs) : null;
-
-  // ---- 1) Fonte oficial da gestora, se reconhecida ----
-  const { detectManager, fetchOfficialComposition } =
-    await import("@/lib/exposure-providers/registry.server");
   const isin = asset.isin ?? existing?.isin ?? null;
-  // Se o utilizador corrigiu/acrescentou o ISIN, a referência de produto
-  // cacheada (resolvida para o ISIN anterior) deixa de ser de confiança.
-  const isinChanged = !!asset.isin && asset.isin !== existing?.isin;
-  const lookupInput = {
-    isin,
-    ticker: asset.ticker,
-    name: d?.name ?? existing?.official_name ?? asset.name,
-    fundFamily: d?.family ?? existing?.fund_family ?? null,
-    cachedRef: isinChanged ? undefined : (existing?.provider_ref ?? undefined),
-  };
-  const managerSlug = detectManager(lookupInput);
-  const official = managerSlug ? await fetchOfficialComposition(lookupInput) : null;
+  const isEtf = asset.class === "etf";
+  let justEtf: Awaited<ReturnType<typeof import("@/lib/exposure-providers/justetf.server").fetchJustEtf>> =
+    null;
+  let d: ReturnType<typeof import("@/lib/exposure.server").parseQuoteSummary> | null = null;
 
-  // Nenhuma fonte (oficial nem Yahoo) respondeu: preserva integralmente o que já estava guardado.
-  if (!qs && !official)
-    return { ...base, message: "Fontes indisponíveis — dados anteriores preservados." };
+  if (isEtf) {
+    if (!isin) return { ...base, message: "ETF sem ISIN para consulta no JustETF." };
+    const { fetchJustEtf } = await import("@/lib/exposure-providers/justetf.server");
+    justEtf = await fetchJustEtf(isin);
+    if (!justEtf)
+      return { ...base, message: "JustETF indisponível — dados anteriores preservados." };
+  } else {
+    if (!asset.ticker) return { ...base, message: "Ativo sem ticker." };
+    const { toYahooSymbol } = await import("@/lib/yahoo.server");
+    const symbol = toYahooSymbol(asset.ticker);
+    const { fetchQuoteSummary, parseQuoteSummary } = await import("@/lib/exposure.server");
+    const qs = symbol ? await fetchQuoteSummary(symbol) : null;
+    d = qs ? parseQuoteSummary(qs) : null;
+    if (!d) return { ...base, message: "Fonte indisponível — dados anteriores preservados." };
+  }
 
-  const asOf = official?.asOfDate ?? today();
-  const isEtf =
-    asset.class === "etf" || d?.quoteType === "ETF" || d?.quoteType === "MUTUALFUND" || !!official;
+  const asOf = justEtf?.asOfDate ?? today();
 
   // ---- Perfil do ativo (idempotente por asset_id) — nunca apaga um valor
   // bom anterior só porque esta sincronização não o obteve de novo. ----
   const profileRow = {
     user_id: userId,
     asset_id: asset.id,
-    official_name: d?.name ?? official?.officialName ?? existing?.official_name ?? null,
+    official_name: justEtf?.officialName ?? d?.name ?? existing?.official_name ?? null,
     asset_type: d?.quoteType ?? (isEtf ? "ETF" : null),
     currency: d?.currency ?? null,
     domicile_country: d?.country ?? null,
     dividend_yield: d?.dividendYield ?? null,
     category: d?.category ?? null,
-    fund_family: d?.family ?? existing?.fund_family ?? null,
+    fund_family: isEtf ? null : (d?.family ?? existing?.fund_family ?? null),
     isin,
-    manager_slug: managerSlug ?? existing?.manager_slug ?? null,
-    provider_ref: (official?.providerRef ??
-      existing?.provider_ref ??
-      null) as Database["public"]["Tables"]["asset_profiles"]["Row"]["provider_ref"],
-    holdings_count: (official?.holdings.length ?? d?.holdings.length ?? 0) || null,
-    source: official?.source ?? "yahoo",
+    manager_slug: isEtf ? null : (existing?.manager_slug ?? null),
+    provider_ref: (isEtf ? null : (existing?.provider_ref ?? null)) as Database["public"]["Tables"]["asset_profiles"]["Row"]["provider_ref"],
+    holdings_count: (justEtf?.holdings.length ?? d?.holdings.length ?? 0) || null,
+    source: isEtf ? "justetf" : "yahoo",
     as_of_date: asOf,
   };
   if (existing?.id) await supabase.from("asset_profiles").update(profileRow).eq("id", existing.id);
@@ -206,11 +97,9 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
   const holdingRows: Array<Database["public"]["Tables"]["etf_holdings"]["Insert"]> = [];
   let coverage = 0;
 
-  if (isEtf) {
-    // Fonte oficial tem prioridade (secção 2/8 do requisito); Yahoo é o fallback.
-    const source = official?.source ?? "yahoo";
-    if (official) {
-      for (const h of official.holdings) {
+  if (isEtf && justEtf) {
+    const source = "justetf";
+    for (const h of justEtf.holdings) {
         holdingRows.push({
           user_id: userId,
           asset_id: asset.id,
@@ -225,32 +114,8 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
           source,
         });
         coverage += h.weight;
-      }
-    } else if (d) {
-      const profiles = await loadCompanyProfiles(
-        supabase,
-        d.holdings.map((h) => h.symbol ?? "").filter(Boolean),
-      );
-      for (const h of d.holdings) {
-        const p = h.symbol ? profiles.get(h.symbol.toUpperCase()) : undefined;
-        holdingRows.push({
-          user_id: userId,
-          asset_id: asset.id,
-          holding_name: h.name,
-          holding_symbol: h.symbol,
-          weight: h.weight,
-          country: p?.country ?? null,
-          sector: p?.sector ?? null,
-          currency: p?.currency ?? null,
-          as_of_date: asOf,
-          source,
-        });
-        coverage += h.weight;
-      }
     }
-    // Distribuição setorial/geográfica com pesos próprios: fonte oficial
-    // tem prioridade sobre a inferência a partir das holdings (secção 7).
-    const sectorWeights = official?.sectorWeights ?? d?.sectorWeights ?? [];
+    const sectorWeights = justEtf.sectorWeights ?? [];
     for (const s of sectorWeights) {
       exposures.push({
         user_id: userId,
@@ -262,7 +127,7 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
         as_of_date: asOf,
       });
     }
-    const countryWeights = official?.countryWeights ?? [];
+    const countryWeights = justEtf.countryWeights ?? [];
     for (const c of countryWeights) {
       exposures.push({
         user_id: userId,

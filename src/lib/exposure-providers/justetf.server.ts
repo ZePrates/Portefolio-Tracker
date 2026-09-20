@@ -1,19 +1,15 @@
 /**
  * Fornecedor especializado: justETF.
  *
- * Ao contrário dos fornecedores por gestora (iShares/Vanguard), este NÃO
- * precisa de resolução ISIN → produto: a ficha de cada ETF está diretamente
+ * A ficha de cada ETF está diretamente
  * acessível por ISIN em .../en/etf-profile.html?isin={ISIN} — confirmado
  * por inspeção direta real, servida sem JavaScript. Cobre qualquer gestora
- * (2800+ ETFs UCITS europeus), por isso corre como segundo nível da cadeia
- * (depois da fonte oficial da gestora, antes do Yahoo), independentemente
- * de haver ou não um ManagerProvider implementado para essa gestora — é
- * chamado diretamente pelo registo, não pelo mecanismo matches()/gestora.
+ * (2800+ ETFs UCITS europeus). É a única fonte usada pela aplicação para
+ * composição e exposição de ETFs.
  *
  * Duas limitações confirmadas por inspeção real, documentadas em vez de
  * escondidas:
- * - As holdings individuais mostradas na página estão limitadas ao top 10
- *   (tal como o Yahoo) — não resolve cobertura ao nível de holding.
+ * - As holdings individuais mostradas na página estão limitadas ao top 10.
  * - A distribuição de país/setor mostrada por omissão está limitada às 4
  *   maiores fatias + uma fatia "Other" que fecha em 100% (o "mostrar mais"
  *   da página carrega o resto via JavaScript, não acessível por fetch
@@ -92,9 +88,7 @@ function parseAsOfDate(html: string): string | null {
 }
 
 /**
- * Obtém a ficha justETF de um ETF pelo ISIN. Independente de gestora —
- * chamado diretamente pelo registo como segundo nível da cadeia (não
- * implementa a interface ManagerProvider, porque não é seletivo por gestora).
+ * Obtém a ficha JustETF de um ETF pelo ISIN.
  */
 export async function fetchJustEtf(isin: string | null): Promise<ProviderResult | null> {
   if (!isin) return null;
