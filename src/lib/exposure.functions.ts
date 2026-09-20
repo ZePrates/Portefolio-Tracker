@@ -96,10 +96,15 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
   const profileRow = {
     user_id: userId,
     asset_id: asset.id,
-    official_name: justEtf?.officialName ?? d?.name ?? existing?.official_name ?? null,
+    official_name:
+      justEtf?.officialName ??
+      tradingView?.officialName ??
+      d?.name ??
+      existing?.official_name ??
+      null,
     asset_type: d?.quoteType ?? (isEtf ? "ETF" : null),
-    currency: d?.currency ?? null,
-    domicile_country: d?.country ?? null,
+    currency: d?.currency ?? tradingView?.currency ?? null,
+    domicile_country: d?.country ?? tradingView?.domicile ?? null,
     dividend_yield: d?.dividendYield ?? null,
     category: d?.category ?? null,
     fund_family: isEtf ? null : (d?.family ?? existing?.fund_family ?? null),
