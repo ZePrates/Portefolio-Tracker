@@ -72,9 +72,7 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
       !justEtf.countryWeights ||
       !justEtf.sectorWeights;
     if (etfPartial) {
-      const { fetchTradingViewEtf } = await import(
-        "@/lib/exposure-providers/tradingview.server"
-      );
+      const { fetchTradingViewEtf } = await import("@/lib/exposure-providers/tradingview.server");
       tradingView = await fetchTradingViewEtf(isin);
     }
     if (!justEtf && !tradingView)
@@ -115,7 +113,13 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
       : (existing?.provider_ref ??
         null)) as Database["public"]["Tables"]["asset_profiles"]["Row"]["provider_ref"],
     holdings_count: (justEtf?.holdings.length ?? d?.holdings.length ?? 0) || null,
-    source: isEtf ? (justEtf ? (etfPartial ? "justetf+tradingview" : "justetf") : "tradingview") : "yahoo",
+    source: isEtf
+      ? justEtf
+        ? etfPartial
+          ? "justetf+tradingview"
+          : "justetf"
+        : "tradingview"
+      : "yahoo",
     as_of_date: asOf,
   };
   if (existing?.id) await supabase.from("asset_profiles").update(profileRow).eq("id", existing.id);
@@ -226,8 +230,7 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
         }
       : etfPartial && tradingView
         ? {
-            message:
-              "Exposição parcial do JustETF — ficha complementada via TradingView.",
+            message: "Exposição parcial do JustETF — ficha complementada via TradingView.",
           }
         : {}),
   };

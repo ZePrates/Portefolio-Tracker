@@ -22,10 +22,7 @@ export interface TradingViewEtf {
 }
 
 /** Resposta JSON do scanner, isolada para ser testável sem rede. */
-export function parseTradingViewScan(
-  payload: unknown,
-  isin: string,
-): TradingViewEtf | null {
+export function parseTradingViewScan(payload: unknown, isin: string): TradingViewEtf | null {
   if (!payload || typeof payload !== "object") return null;
   const data = (payload as { data?: unknown }).data;
   if (!Array.isArray(data)) return null;
