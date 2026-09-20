@@ -115,7 +115,7 @@ function isQuantityAsset(c: AssetClass) {
 }
 
 function paysDividends(c: AssetClass) {
-  return c === "reit" || c === "acao_dividendo" || c === "etf";
+  return c === "reit" || c === "acao_dividendo";
 }
 
 type SortKey =
@@ -504,10 +504,12 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         subtitle={subtitle}
         actions={
           <>
-            <Button variant="outline" onClick={refreshPrices} disabled={refreshing}>
-              <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
-              Atualizar preços
-            </Button>
+            {assetClass !== "etf" && (
+              <Button variant="outline" onClick={refreshPrices} disabled={refreshing}>
+                <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+                Atualizar preços
+              </Button>
+            )}
             <Button onClick={openCreate}>
               <Plus className="h-4 w-4" />
               Adicionar
@@ -516,7 +518,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         }
       />
 
-      {lastPriceUpdate && (
+      {assetClass !== "etf" && lastPriceUpdate && (
         <p className="-mt-2 text-xs text-muted-foreground">
           Cotações atualizadas em {new Date(lastPriceUpdate).toLocaleString("pt-PT")} · fonte de
           mercado (Yahoo Finance), sem estimativas.
@@ -837,10 +839,12 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                     onChange={set("ticker")}
                     placeholder="Ex.: O, VICI, VWCE.DE"
                   />
-                  <Button variant="outline" onClick={lookup} disabled={looking}>
-                    <Search className={cn("h-4 w-4", looking && "animate-pulse")} />
-                    {looking ? "A procurar…" : "Procurar"}
-                  </Button>
+                  {assetClass !== "etf" && (
+                    <Button variant="outline" onClick={lookup} disabled={looking}>
+                      <Search className={cn("h-4 w-4", looking && "animate-pulse")} />
+                      {looking ? "A procurar…" : "Procurar"}
+                    </Button>
+                  )}
                 </div>
               </Field>
 
@@ -853,8 +857,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                     maxLength={12}
                   />
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Ajuda a obter a composição diretamente da gestora (iShares, Vanguard) em vez de
-                    depender só do ticker.
+                    Usado para obter a composição e exposição exclusivamente no JustETF.
                   </p>
                 </Field>
               )}

@@ -1,19 +1,15 @@
 /**
  * Fornecedor especializado: justETF.
  *
- * Ao contrário dos fornecedores por gestora (iShares/Vanguard), este NÃO
- * precisa de resolução ISIN → produto: a ficha de cada ETF está diretamente
+ * A ficha de cada ETF está diretamente
  * acessível por ISIN em .../en/etf-profile.html?isin={ISIN} — confirmado
  * por inspeção direta real, servida sem JavaScript. Cobre qualquer gestora
- * (2800+ ETFs UCITS europeus), por isso corre como segundo nível da cadeia
- * (depois da fonte oficial da gestora, antes do Yahoo), independentemente
- * de haver ou não um ManagerProvider implementado para essa gestora — é
- * chamado diretamente pelo registo, não pelo mecanismo matches()/gestora.
+ * (2800+ ETFs UCITS europeus). É a única fonte usada pela aplicação para
+ * composição e exposição de ETFs.
  *
  * Duas limitações confirmadas por inspeção real, documentadas em vez de
  * escondidas:
- * - As holdings individuais mostradas na página estão limitadas ao top 10
- *   (tal como o Yahoo) — não resolve cobertura ao nível de holding.
+ * - As holdings individuais mostradas na página estão limitadas ao top 10.
  * - A distribuição de país/setor mostrada por omissão está limitada às 4
  *   maiores fatias + uma fatia "Other" que fecha em 100% (o "mostrar mais"
  *   da página carrega o resto via JavaScript, não acessível por fetch
@@ -33,52 +29,46 @@ function stripTags(s: string): string {
     .trim();
 }
 
-/** Extrai pares (nome, peso%) de uma secção "Countries"/"Sectors": linhas de tabela com um nome e uma percentagem. */
+/**
+ * Extrai pares (nome, peso%) das tabelas "Countries"/"Sectors", identificadas
+ * pelos atributos data-testid estáveis da página real.
+ */
 function parseNamedWeightsSection(
   html: string,
-  headingText: string,
+  key: "countries" | "sectors",
 ): Array<{ name: string; weight: number }> {
-  const headingIdx = html.indexOf(`>${headingText}<`);
-  if (headingIdx < 0) return [];
-  // Corta no próximo cabeçalho de secção (h3/h4), para não misturar com a
-  // tabela seguinte (ex.: "Sectors" logo a seguir a "Countries").
-  const sectionStart = headingIdx + headingText.length + 2;
-  const nextHeadingMatch = /<h[34][^>]*>/i.exec(html.slice(sectionStart));
-  const sectionEnd = nextHeadingMatch
-    ? sectionStart + nextHeadingMatch.index
-    : Math.min(html.length, sectionStart + 4000);
-  const rest = html.slice(sectionStart, sectionEnd);
-  const rowRe = /<tr[^>]*>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>\s*([\d.,]+)\s*%\s*<\/td>/gi;
+  const rowRe = new RegExp(
+    `tl_etf-holdings_${key}_value_name"[^>]*>([^<]+)<[\\s\\S]{0,400}?tl_etf-holdings_${key}_value_percentage"[^>]*>\\s*([\\d.,]+)\\s*%`,
+    "gi",
+  );
   const out: Array<{ name: string; weight: number }> = [];
   let m: RegExpExecArray | null;
-  while ((m = rowRe.exec(rest))) {
+  while ((m = rowRe.exec(html))) {
     const name = stripTags(m[1] ?? "");
     const weight = Number((m[2] ?? "0").replace(",", "."));
     if (!name || !Number.isFinite(weight) || weight <= 0) continue;
     out.push({ name, weight: weight / 100 });
-    if (out.length >= 8) break; // margem de segurança
+    if (out.length >= 30) break;
   }
   return out;
 }
 
 interface TopHoldingRow {
   name: string;
+  isin: string | null;
   weight: number;
 }
 
 function parseTopHoldings(html: string): TopHoldingRow[] {
-  const headingIdx = html.indexOf(">Top 10 Holdings<");
-  if (headingIdx < 0) return [];
-  const rest = html.slice(headingIdx, headingIdx + 6000);
   const rowRe =
-    /<a[^>]+href="https:\/\/www\.justetf\.com\/[a-z-]+\/stock-profiles\/[^"]+"[^>]*>([^<]+)<\/a>[\s\S]{0,200}?([\d.,]+)\s*%/gi;
+    /tl_etf-holdings_top-holdings_link_name"\s+href="[^"]*\/stock-profiles\/([A-Z0-9]+)"[^>]*>(?:<span>)?([^<]+)<[\s\S]{0,400}?tl_etf-holdings_top-holdings_value_percentage"[^>]*>\s*([\d.,]+)\s*%/gi;
   const out: TopHoldingRow[] = [];
   let m: RegExpExecArray | null;
-  while ((m = rowRe.exec(rest))) {
-    const name = stripTags(m[1] ?? "");
-    const weight = Number((m[2] ?? "0").replace(",", "."));
+  while ((m = rowRe.exec(html))) {
+    const name = stripTags(m[2] ?? "");
+    const weight = Number((m[3] ?? "0").replace(",", "."));
     if (!name || !Number.isFinite(weight) || weight <= 0) continue;
-    out.push({ name, weight: weight / 100 });
+    out.push({ name, isin: m[1] ?? null, weight: weight / 100 });
     if (out.length >= 10) break;
   }
   return out;
@@ -92,9 +82,7 @@ function parseAsOfDate(html: string): string | null {
 }
 
 /**
- * Obtém a ficha justETF de um ETF pelo ISIN. Independente de gestora —
- * chamado diretamente pelo registo como segundo nível da cadeia (não
- * implementa a interface ManagerProvider, porque não é seletivo por gestora).
+ * Obtém a ficha JustETF de um ETF pelo ISIN.
  */
 export async function fetchJustEtf(isin: string | null): Promise<ProviderResult | null> {
   if (!isin) return null;
@@ -108,11 +96,11 @@ export async function fetchJustEtf(isin: string | null): Promise<ProviderResult 
     if (!res.ok) return null;
     const html = await res.text();
 
-    const countryWeights = parseNamedWeightsSection(html, "Countries").map((c) => ({
+    const countryWeights = parseNamedWeightsSection(html, "countries").map((c) => ({
       country: c.name,
       weight: c.weight,
     }));
-    const sectorWeights = parseNamedWeightsSection(html, "Sectors").map((s) => ({
+    const sectorWeights = parseNamedWeightsSection(html, "sectors").map((s) => ({
       sector: s.name,
       weight: s.weight,
     }));
@@ -128,7 +116,7 @@ export async function fetchJustEtf(isin: string | null): Promise<ProviderResult 
     const holdings: ProviderHolding[] = topHoldings.map((h) => ({
       name: h.name,
       symbol: null,
-      isin: null,
+      isin: h.isin,
       weight: h.weight,
       country: null,
       sector: null,
