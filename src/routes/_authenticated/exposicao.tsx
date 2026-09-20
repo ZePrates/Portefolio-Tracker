@@ -102,8 +102,8 @@ const SOURCE_LABELS: Record<string, string> = {
   xtrackers: "Xtrackers",
   bnpparibas: "BNP Paribas",
   justetf: "justETF",
-  "justetf+tradingview": "justETF + TradingView",
-  tradingview: "TradingView",
+  "justetf+ft": "justETF + Financial Times",
+  ft: "Financial Times",
   yahoo: "Yahoo Finance",
 };
 
@@ -365,7 +365,7 @@ function ExposicaoPage() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        ETFs: justETF como fonte principal e TradingView como segunda opção. Ações, REITs e
+        ETFs: justETF como fonte principal e Financial Times como segunda opção. Ações, REITs e
         restantes títulos: Yahoo Finance. Nenhum dado financeiro é gerado por IA.
       </p>
     </div>
