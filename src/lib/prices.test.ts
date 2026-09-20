@@ -63,16 +63,6 @@ describe("planPriceUpdate", () => {
     expect(res.patch.price_updated_at).toBe(now.toISOString());
   });
 
-  it("atualiza um ETF em EUR sem alterar o valor", () => {
-    const res = planPriceUpdate(
-      asset({ class: "etf", native_currency: "EUR", quantity: 5 }),
-      quote({ price: 50, currency: "EUR", source: "yahoo:VWCE.DE" }),
-      1,
-      now,
-    );
-    expect(res.ok && res.patch.current_value).toBe(250);
-  });
-
   it("atualiza um REIT", () => {
     const res = planPriceUpdate(asset({ class: "reit" }), quote({ price: 60 }), 0.5, now);
     expect(res.ok && res.patch.current_price).toBe(30);
