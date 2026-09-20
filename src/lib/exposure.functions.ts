@@ -227,11 +227,7 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
     "source.like.registry%",
   ].join(",");
   if (isEtf) {
-    await supabase
-      .from("asset_exposures")
-      .delete()
-      .eq("asset_id", asset.id)
-      .or(legacyEtfSources);
+    await supabase.from("asset_exposures").delete().eq("asset_id", asset.id).or(legacyEtfSources);
     await supabase.from("etf_holdings").delete().eq("asset_id", asset.id).or(legacyEtfSources);
   }
 
