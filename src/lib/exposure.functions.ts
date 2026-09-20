@@ -218,8 +218,18 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
     holdings: holdingRows.length,
     coverage: Math.min(1, coverage),
     ...(exposures.length === 0 && holdingRows.length === 0
-      ? { message: "A fonte não publica composição para este ativo." }
-      : {}),
+      ? {
+          message:
+            isEtf && tradingView
+              ? "JustETF indisponível — ficha preenchida via TradingView; exposição não disponível."
+              : "A fonte não publica composição para este ativo.",
+        }
+      : etfPartial && tradingView
+        ? {
+            message:
+              "Exposição parcial do JustETF — ficha complementada via TradingView.",
+          }
+        : {}),
   };
 }
 
