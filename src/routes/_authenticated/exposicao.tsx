@@ -102,6 +102,8 @@ const SOURCE_LABELS: Record<string, string> = {
   xtrackers: "Xtrackers",
   bnpparibas: "BNP Paribas",
   justetf: "justETF",
+  "justetf+ft": "justETF + Financial Times",
+  ft: "Financial Times",
   yahoo: "Yahoo Finance",
 };
 
@@ -363,9 +365,8 @@ function ExposicaoPage() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Fontes dos dados de composição, por ordem: sites oficiais das gestoras (iShares, Vanguard),
-        depois justETF (país/setor completos, qualquer gestora), com Yahoo Finance como último
-        recurso. Nenhum dado financeiro é gerado por IA.
+        ETFs: justETF como fonte principal e Financial Times como segunda opção. Ações, REITs e
+        restantes títulos: Yahoo Finance. Nenhum dado financeiro é gerado por IA.
       </p>
     </div>
   );
