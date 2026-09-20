@@ -1,35 +1,40 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fetchJustEtf } from "@/lib/exposure-providers/justetf.server";
 
-// Estrutura simplificada mas fiel à página real (confirmada por inspeção direta
-// de justetf.com/en/etf-profile.html?isin=IE00BK5BQT80): tabelas de duas
-// colunas (nome, peso%) sob os cabeçalhos "Countries" e "Sectors", e uma
-// lista de holdings com link para a ficha da empresa sob "Top 10 Holdings".
+// Estrutura fiel à página real (confirmada por inspeção direta de
+// justetf.com/en/etf-profile.html?isin=...): as tabelas de holdings, países e
+// setores são identificadas pelos atributos data-testid.
+const holdingRow = (isin: string, name: string, pct: string) =>
+  `<tr><td><a data-testid="tl_etf-holdings_top-holdings_link_name" href="/en/stock-profiles/${isin}" title="${name}"><span>${name}</span></a></td>` +
+  `<td><span data-testid="tl_etf-holdings_top-holdings_value_percentage">${pct}%</span></td></tr>`;
+
+const weightRow = (key: string, name: string, pct: string) =>
+  `<tr><td data-testid="tl_etf-holdings_${key}_value_name">${name}</td>` +
+  `<td><span data-testid="tl_etf-holdings_${key}_value_percentage">${pct}%</span></td></tr>`;
+
 const PROFILE_HTML = `
 <html><body>
-<h3>Holdings</h3>
-<h4>Top 10 Holdings</h4>
-<p>Weight of top 10 holdings out of 3,758 23.51%</p>
-<table>
-<tr><td><a href="https://www.justetf.com/en/stock-profiles/US67066G1040">NVIDIA Corp.</a></td><td>4.44%</td></tr>
-<tr><td><a href="https://www.justetf.com/en/stock-profiles/US0378331005">Apple</a></td><td>4.23%</td></tr>
-</table>
-<h4>Countries</h4>
-<table>
-<tr><td>United States</td><td>58.85%</td></tr>
-<tr><td>Japan</td><td>5.92%</td></tr>
-<tr><td>United Kingdom</td><td>3.33%</td></tr>
-<tr><td>Taiwan</td><td>3.15%</td></tr>
-<tr><td>Other</td><td>28.75%</td></tr>
-</table>
-<h4>Sectors</h4>
-<table>
-<tr><td>Technology</td><td>35.46%</td></tr>
-<tr><td>Finance</td><td>18.82%</td></tr>
-<tr><td>Industrials</td><td>9.27%</td></tr>
-<tr><td>Consumer Non-Cyclicals</td><td>8.54%</td></tr>
-<tr><td>Other</td><td>27.91%</td></tr>
-</table>
+<h3 data-testid="hl_etf-holdings_top-holdings_header">Top 10 Holdings</h3>
+<table data-testid="etf-holdings_top-holdings_table"><tbody>
+${holdingRow("US67066G1040", "NVIDIA Corp.", "4.44")}
+${holdingRow("US0378331005", "Apple", "4.23")}
+</tbody></table>
+<h3 data-testid="hl_etf-holdings_countries_header"> Countries </h3>
+<table data-testid="etf-holdings_countries_table"><tbody>
+${weightRow("countries", "United States", "58.85")}
+${weightRow("countries", "Japan", "5.92")}
+${weightRow("countries", "United Kingdom", "3.33")}
+${weightRow("countries", "Taiwan", "3.15")}
+${weightRow("countries", "Other", "28.75")}
+</tbody></table>
+<h3 data-testid="hl_etf-holdings_sectors_header"> Sectors </h3>
+<table data-testid="etf-holdings_sectors_table"><tbody>
+${weightRow("sectors", "Technology", "35.46")}
+${weightRow("sectors", "Finance", "18.82")}
+${weightRow("sectors", "Industrials", "9.27")}
+${weightRow("sectors", "Consumer Non-Cyclicals", "8.54")}
+${weightRow("sectors", "Other", "27.91")}
+</tbody></table>
 As of 31/07/2026
 </body></html>`;
 
