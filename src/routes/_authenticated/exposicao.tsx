@@ -102,6 +102,8 @@ const SOURCE_LABELS: Record<string, string> = {
   xtrackers: "Xtrackers",
   bnpparibas: "BNP Paribas",
   justetf: "justETF",
+  "justetf+tradingview": "justETF + TradingView",
+  tradingview: "TradingView",
   yahoo: "Yahoo Finance",
 };
 
