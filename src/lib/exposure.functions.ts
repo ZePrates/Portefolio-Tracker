@@ -49,8 +49,9 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
 
   const isin = asset.isin ?? existing?.isin ?? null;
   const isEtf = asset.class === "etf";
-  let justEtf: Awaited<ReturnType<typeof import("@/lib/exposure-providers/justetf.server").fetchJustEtf>> =
-    null;
+  let justEtf: Awaited<
+    ReturnType<typeof import("@/lib/exposure-providers/justetf.server").fetchJustEtf>
+  > = null;
   let d: ReturnType<typeof import("@/lib/exposure.server").parseQuoteSummary> | null = null;
 
   if (isEtf) {
@@ -85,7 +86,10 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
     fund_family: isEtf ? null : (d?.family ?? existing?.fund_family ?? null),
     isin,
     manager_slug: isEtf ? null : (existing?.manager_slug ?? null),
-    provider_ref: (isEtf ? null : (existing?.provider_ref ?? null)) as Database["public"]["Tables"]["asset_profiles"]["Row"]["provider_ref"],
+    provider_ref: (isEtf
+      ? null
+      : (existing?.provider_ref ??
+        null)) as Database["public"]["Tables"]["asset_profiles"]["Row"]["provider_ref"],
     holdings_count: (justEtf?.holdings.length ?? d?.holdings.length ?? 0) || null,
     source: isEtf ? "justetf" : "yahoo",
     as_of_date: asOf,
@@ -100,20 +104,20 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
   if (isEtf && justEtf) {
     const source = "justetf";
     for (const h of justEtf.holdings) {
-        holdingRows.push({
-          user_id: userId,
-          asset_id: asset.id,
-          holding_name: h.name,
-          holding_symbol: h.symbol,
-          isin: h.isin,
-          weight: h.weight,
-          country: h.country,
-          sector: h.sector,
-          currency: h.currency,
-          as_of_date: asOf,
-          source,
-        });
-        coverage += h.weight;
+      holdingRows.push({
+        user_id: userId,
+        asset_id: asset.id,
+        holding_name: h.name,
+        holding_symbol: h.symbol,
+        isin: h.isin,
+        weight: h.weight,
+        country: h.country,
+        sector: h.sector,
+        currency: h.currency,
+        as_of_date: asOf,
+        source,
+      });
+      coverage += h.weight;
     }
     const sectorWeights = justEtf.sectorWeights ?? [];
     for (const s of sectorWeights) {
