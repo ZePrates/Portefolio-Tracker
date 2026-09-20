@@ -54,11 +54,28 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
   > = null;
   let d: ReturnType<typeof import("@/lib/exposure.server").parseQuoteSummary> | null = null;
 
+  // Segunda opção para ETFs: TradingView (apenas identidade — o scanner não
+  // publica pesos de país/setor nem holdings). Preenche a ficha quando o
+  // JustETF falha ou vem parcial; a exposição nunca é inventada.
+  let tradingView: Awaited<
+    ReturnType<typeof import("@/lib/exposure-providers/tradingview.server").fetchTradingViewEtf>
+  > = null;
+  let etfPartial = false;
+
   if (isEtf) {
     if (!isin) return { ...base, message: "ETF sem ISIN para consulta no JustETF." };
     const { fetchJustEtf } = await import("@/lib/exposure-providers/justetf.server");
     justEtf = await fetchJustEtf(isin);
-    if (!justEtf)
+    etfPartial =
+      !justEtf ||
+      justEtf.holdings.length === 0 ||
+      !justEtf.countryWeights ||
+      !justEtf.sectorWeights;
+    if (etfPartial) {
+      const { fetchTradingViewEtf } = await import("@/lib/exposure-providers/tradingview.server");
+      tradingView = await fetchTradingViewEtf(isin);
+    }
+    if (!justEtf && !tradingView)
       return { ...base, message: "JustETF indisponível — dados anteriores preservados." };
   } else {
     if (!asset.ticker) return { ...base, message: "Ativo sem ticker." };
@@ -77,10 +94,15 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
   const profileRow = {
     user_id: userId,
     asset_id: asset.id,
-    official_name: justEtf?.officialName ?? d?.name ?? existing?.official_name ?? null,
+    official_name:
+      justEtf?.officialName ??
+      tradingView?.officialName ??
+      d?.name ??
+      existing?.official_name ??
+      null,
     asset_type: d?.quoteType ?? (isEtf ? "ETF" : null),
-    currency: d?.currency ?? null,
-    domicile_country: d?.country ?? null,
+    currency: d?.currency ?? tradingView?.currency ?? null,
+    domicile_country: d?.country ?? tradingView?.domicile ?? null,
     dividend_yield: d?.dividendYield ?? null,
     category: d?.category ?? null,
     fund_family: isEtf ? null : (d?.family ?? existing?.fund_family ?? null),
@@ -91,7 +113,13 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
       : (existing?.provider_ref ??
         null)) as Database["public"]["Tables"]["asset_profiles"]["Row"]["provider_ref"],
     holdings_count: (justEtf?.holdings.length ?? d?.holdings.length ?? 0) || null,
-    source: isEtf ? "justetf" : "yahoo",
+    source: isEtf
+      ? justEtf
+        ? etfPartial
+          ? "justetf+tradingview"
+          : "justetf"
+        : "tradingview"
+      : "yahoo",
     as_of_date: asOf,
   };
   if (existing?.id) await supabase.from("asset_profiles").update(profileRow).eq("id", existing.id);
@@ -194,8 +222,17 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
     holdings: holdingRows.length,
     coverage: Math.min(1, coverage),
     ...(exposures.length === 0 && holdingRows.length === 0
-      ? { message: "A fonte não publica composição para este ativo." }
-      : {}),
+      ? {
+          message:
+            isEtf && tradingView
+              ? "JustETF indisponível — ficha preenchida via TradingView; exposição não disponível."
+              : "A fonte não publica composição para este ativo.",
+        }
+      : etfPartial && tradingView
+        ? {
+            message: "Exposição parcial do JustETF — ficha complementada via TradingView.",
+          }
+        : {}),
   };
 }
 
