@@ -52,7 +52,7 @@ export const lookupTicker = createServerFn({ method: "POST" })
   });
 
 /**
- * Atualização central de preços: títulos (Yahoo Finance) e metais (futuros spot Yahoo),
+ * Atualização central de preços: títulos não-ETF (Yahoo Finance) e metais (futuros spot Yahoo),
  * com câmbio real para EUR. Um ativo que falhe não interrompe os restantes e o
  * último preço válido nunca é substituído por 0/null.
  */
@@ -85,7 +85,7 @@ export const updateAllPrices = createServerFn({ method: "POST" })
 
     type Row = NonNullable<typeof rows>[number];
     const targets = (rows ?? []).filter(
-      (a) => a.class === "metal" || (a.class !== "p2p" && !!a.ticker),
+      (a) => a.class === "metal" || (a.class !== "p2p" && a.class !== "etf" && !!a.ticker),
     );
     const byId = new Map<string, Row>(targets.map((a) => [a.id, a]));
 
