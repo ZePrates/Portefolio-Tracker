@@ -1,23 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { isharesProvider } from "@/lib/exposure-providers/ishares.server";
 
-const SCREENER_JSON = {
-  data: {
-    tableData: {
-      data: [
-        {
-          isin: "IE00B4L5Y983",
-          productPageUrl: "/uk/individual/en/products/251882/ishares-msci-world-ucits-etf-acc-fund",
-        },
-        {
-          isin: "IE00BJ0KDQ92",
-          productPageUrl:
-            "/uk/individual/en/products/280510/ishares-sp-500-information-technology-sector-ucits-etf",
-        },
-      ],
-    },
-  },
-};
+const PRODUCT_LIST_HTML = `
+<html><body>
+<table>
+<tr><td><a href="/ch/individual/en/products/251882/ishares-msci-world-ucits-etf-acc-fund">SWDA</a></td><td><a href="/ch/individual/en/products/251882/ishares-msci-world-ucits-etf-acc-fund">iShares Core MSCI World UCITS ETF</a></td></tr>
+<tr><td><a href="/ch/individual/en/products/251767/ishares-msci-europe-sri-ucits-etf">IESE</a></td><td><a href="/ch/individual/en/products/251767/ishares-msci-europe-sri-ucits-etf">iShares MSCI Europe SRI UCITS ETF</a></td></tr>
+</table>
+</body></html>`;
 
 const HOLDINGS_CSV = [
   " iShares Core MSCI World UCITS ETF",
@@ -34,13 +24,8 @@ function mockFetch(responses: Record<string, { ok: boolean; body: string }>) {
   return vi.fn(async (url: string) => {
     const match = Object.keys(responses).find((k) => url.includes(k));
     const r = match ? responses[match] : undefined;
-    if (!r) return { ok: false, status: 404, text: async () => "", json: async () => ({}) };
-    return {
-      ok: r.ok,
-      status: r.ok ? 200 : 500,
-      text: async () => r.body,
-      json: async () => JSON.parse(r.body),
-    };
+    if (!r) return { ok: false, status: 404, text: async () => "" };
+    return { ok: r.ok, status: r.ok ? 200 : 500, text: async () => r.body };
   });
 }
 
@@ -59,17 +44,17 @@ describe("isharesProvider", () => {
     ).toBe(false);
   });
 
-  it("resolve o ISIN e obtém as holdings reais (sem CASH, pesos corretos)", async () => {
+  it("resolve pelo ticker na lista de produtos e obtém as holdings reais (sem CASH, pesos corretos)", async () => {
     vi.stubGlobal(
       "fetch",
       mockFetch({
-        "product-screener-v3.jsn": { ok: true, body: JSON.stringify(SCREENER_JSON) },
+        "etf-product-list": { ok: true, body: PRODUCT_LIST_HTML },
         "1467271812596.ajax": { ok: true, body: HOLDINGS_CSV },
       }),
     );
     const result = await isharesProvider.fetch({
       isin: "IE00B4L5Y983",
-      ticker: "SWDA",
+      ticker: "SWDA.DE",
       name: "iShares Core MSCI World UCITS ETF",
       fundFamily: "iShares",
     });
@@ -82,12 +67,29 @@ describe("isharesProvider", () => {
     expect(result?.providerRef).toMatchObject({ productId: "251882" });
   });
 
-  it("reutiliza cachedRef sem repetir a resolução por ISIN", async () => {
+  it("casa o ticker ignorando o sufixo de bolsa (.DE/.NL/.UK)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch({
+        "etf-product-list": { ok: true, body: PRODUCT_LIST_HTML },
+        "1467271812596.ajax": { ok: true, body: HOLDINGS_CSV },
+      }),
+    );
+    const result = await isharesProvider.fetch({
+      isin: "IE00B52VJ196",
+      ticker: "IESE.NL",
+      name: "iShares MSCI Europe SRI UCITS ETF",
+      fundFamily: "iShares",
+    });
+    expect(result?.providerRef).toMatchObject({ productId: "251767" });
+  });
+
+  it("reutiliza cachedRef sem repetir a resolução por ticker", async () => {
     const fetchMock = mockFetch({ "1467271812596.ajax": { ok: true, body: HOLDINGS_CSV } });
     vi.stubGlobal("fetch", fetchMock);
     const result = await isharesProvider.fetch({
       isin: "IE00B4L5Y983",
-      ticker: "SWDA",
+      ticker: "SWDA.DE",
       name: "iShares Core MSCI World UCITS ETF",
       fundFamily: "iShares",
       cachedRef: {
@@ -97,18 +99,18 @@ describe("isharesProvider", () => {
       },
     });
     expect(result?.holdings.length).toBeGreaterThan(0);
-    // só a chamada às holdings — nenhuma ao screener de resolução
+    // só a chamada às holdings — nenhuma à lista de produtos
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("devolve null quando o ISIN não é encontrado no screener", async () => {
+  it("devolve null quando o ticker não é encontrado na lista", async () => {
     vi.stubGlobal(
       "fetch",
-      mockFetch({ "product-screener-v3.jsn": { ok: true, body: JSON.stringify(SCREENER_JSON) } }),
+      mockFetch({ "etf-product-list": { ok: true, body: PRODUCT_LIST_HTML } }),
     );
     const result = await isharesProvider.fetch({
       isin: "XX0000000000",
-      ticker: "X",
+      ticker: "TICKER-INEXISTENTE",
       name: "ETF desconhecido",
       fundFamily: "iShares",
     });
@@ -124,30 +126,16 @@ describe("isharesProvider", () => {
     );
     const result = await isharesProvider.fetch({
       isin: "IE00B4L5Y983",
-      ticker: "SWDA",
+      ticker: "SWDA.DE",
       name: "iShares Core MSCI World UCITS ETF",
       fundFamily: "iShares",
     });
     expect(result).toBeNull();
   });
 
-  it("tenta por ticker exato quando não há ISIN, mas nunca por nome", async () => {
-    vi.stubGlobal(
-      "fetch",
-      mockFetch({ "product-screener-v3.jsn": { ok: true, body: JSON.stringify(SCREENER_JSON) } }),
-    );
+  it("devolve null sem ticker e sem cache (não adivinha)", async () => {
     const result = await isharesProvider.fetch({
-      isin: null,
-      ticker: "TICKER-INEXISTENTE",
-      name: "iShares Core MSCI World UCITS ETF",
-      fundFamily: "iShares",
-    });
-    expect(result).toBeNull();
-  });
-
-  it("devolve null sem ISIN, sem ticker e sem cache", async () => {
-    const result = await isharesProvider.fetch({
-      isin: null,
+      isin: "IE00B4L5Y983",
       ticker: null,
       name: "iShares Core MSCI World UCITS ETF",
       fundFamily: "iShares",

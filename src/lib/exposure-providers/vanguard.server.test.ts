@@ -1,13 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { vanguardProvider } from "@/lib/exposure-providers/vanguard.server";
 
-const LIST_HTML = `
-<html><body>
-<table>
-<tr><td><a href="/professional/product/etf/equity/9681/ftse-all-world-ucits-etf">FTSE All-World UCITS ETF</a></td><td>IE00BK5BQT80</td></tr>
-</table>
-</body></html>`;
-
 const PRODUCT_HTML = `
 <html><body>
 <h2>Holdings details</h2>
@@ -42,31 +35,19 @@ describe("vanguardProvider", () => {
     ).toBe(false);
   });
 
-  it("resolve o ISIN na lista de produtos e extrai as holdings (sem CASH)", async () => {
-    vi.stubGlobal(
-      "fetch",
-      mockFetch({
-        "/professional/product/list": { ok: true, body: LIST_HTML },
-        "/professional/product/etf/equity/9681": { ok: true, body: PRODUCT_HTML },
-      }),
-    );
+  it("sem cachedRef devolve null (não há resolução automática de ISIN para a Vanguard)", async () => {
     const result = await vanguardProvider.fetch({
       isin: "IE00BK5BQT80",
       ticker: "VWCE",
       name: "Vanguard FTSE All-World UCITS ETF",
       fundFamily: "Vanguard",
     });
-    expect(result).not.toBeNull();
-    expect(result?.source).toBe("vanguard");
-    expect(result?.asOfDate).toBe("2026-07-31");
-    expect(result?.holdings).toHaveLength(2); // Cash excluído
-    expect(result?.holdings[0]).toMatchObject({ name: "Apple Inc", sector: "Technology" });
-    expect(result?.holdings[0]?.weight).toBeCloseTo(0.0426, 6);
+    expect(result).toBeNull();
   });
 
-  it("reutiliza cachedRef sem repetir a resolução", async () => {
+  it("com cachedRef obtém as holdings reais (sem CASH, pesos corretos)", async () => {
     const fetchMock = mockFetch({
-      "/professional/product/etf/equity/9681": { ok: true, body: PRODUCT_HTML },
+      "/professional/product/etf/equity/9679": { ok: true, body: PRODUCT_HTML },
     });
     vi.stubGlobal("fetch", fetchMock);
     const result = await vanguardProvider.fetch({
@@ -76,22 +57,16 @@ describe("vanguardProvider", () => {
       fundFamily: "Vanguard",
       cachedRef: {
         domain: "www.vanguard.co.uk",
-        path: "/professional/product/etf/equity/9681/ftse-all-world-ucits-etf",
+        path: "/professional/product/etf/equity/9679/ftse-all-world-ucits-etf-usd-accumulating",
       },
     });
-    expect(result?.holdings.length).toBeGreaterThan(0);
+    expect(result).not.toBeNull();
+    expect(result?.source).toBe("vanguard");
+    expect(result?.asOfDate).toBe("2026-07-31");
+    expect(result?.holdings).toHaveLength(2); // Cash excluído
+    expect(result?.holdings[0]).toMatchObject({ name: "Apple Inc", sector: "Technology" });
+    expect(result?.holdings[0]?.weight).toBeCloseTo(0.0426, 6);
     expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("devolve null quando o ISIN não aparece em nenhum domínio tentado", async () => {
-    vi.stubGlobal("fetch", mockFetch({}));
-    const result = await vanguardProvider.fetch({
-      isin: "XX0000000000",
-      ticker: "X",
-      name: "ETF desconhecido",
-      fundFamily: "Vanguard",
-    });
-    expect(result).toBeNull();
   });
 
   it("devolve null quando a fonte falha (rede), nunca lança", async () => {
@@ -106,6 +81,7 @@ describe("vanguardProvider", () => {
       ticker: "VWCE",
       name: "Vanguard FTSE All-World UCITS ETF",
       fundFamily: "Vanguard",
+      cachedRef: { domain: "www.vanguard.co.uk", path: "/professional/product/etf/equity/9679/x" },
     });
     expect(result).toBeNull();
   });

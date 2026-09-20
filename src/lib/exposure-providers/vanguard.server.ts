@@ -3,12 +3,21 @@
  *
  * As páginas de produto da Vanguard (ex.: vanguard.co.uk/professional/
  * product/etf/equity/{id}/{slug}) publicam uma tabela "Holdings details"
- * com nome, peso, setor e região por posição — confirmado por inspeção
- * direta de páginas reais. Ao contrário da iShares, a Vanguard não tem um
- * mecanismo de pesquisa por ISIN publicamente documentado e estável, pelo
- * que a resolução ISIN → produto aqui é o elo mais frágil deste fornecedor:
- * falha de forma limpa (null) sempre que não encontrar uma correspondência
- * inequívoca, nunca adivinha por semelhança de nome.
+ * com nome, peso, setor e região por posição, e um bloco JSON-LD com o
+ * ISIN — confirmado por inspeção direta de páginas reais.
+ *
+ * LIMITAÇÃO CONHECIDA: ao contrário da iShares, a lista pública de
+ * produtos da Vanguard (.../uk-fund-directory/product) carrega os dados
+ * via JavaScript no browser — confirmado por inspeção direta ("You need
+ * to enable JavaScript to run view this website" no HTML devolvido a um
+ * pedido simples). Não há, por isso, forma fiável de resolver
+ * automaticamente ISIN → produto Vanguard com um fetch simples do lado do
+ * servidor. Este fornecedor só funciona quando já existe uma referência
+ * de produto em cache (`cachedRef`, resolvida uma vez e guardada em
+ * asset_profiles.provider_ref) — sem ela, devolve null de forma limpa e a
+ * cadeia segue para o Yahoo. Isto cobre bem os ETFs já identificados hoje,
+ * mas não resolve automaticamente uma aquisição futura de um ETF Vanguard
+ * novo sem essa referência ser semeada primeiro.
  */
 import type {
   ManagerLookupInput,
@@ -19,9 +28,6 @@ import type {
 
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
-/** Domínios institucionais Vanguard cobrindo UCITS europeus, por ordem de tentativa. */
-const DOMAINS = ["www.vanguard.co.uk", "www.ie.vanguard", "www.nl.vanguard"];
-const LIST_PATH = "/professional/product/list";
 
 export interface VanguardProductRef {
   domain: string;
@@ -32,32 +38,6 @@ function isVanguardProductRef(v: unknown): v is VanguardProductRef {
   if (!v || typeof v !== "object") return false;
   const r = v as Record<string, unknown>;
   return typeof r["domain"] === "string" && typeof r["path"] === "string";
-}
-
-/** Procura o ISIN (ou, na sua falta, o ticker exato) literalmente na lista de produtos e associa ao link de produto mais próximo. Nunca por nome. */
-async function resolveProduct(input: ManagerLookupInput): Promise<VanguardProductRef | null> {
-  const needle = input.isin ?? input.ticker;
-  if (!needle) return null;
-  for (const domain of DOMAINS) {
-    try {
-      const res = await fetch(`https://${domain}${LIST_PATH}`, {
-        headers: { "User-Agent": UA, Accept: "text/html" },
-      });
-      if (!res.ok) continue;
-      const html = await res.text();
-      const idx = html.toUpperCase().indexOf(needle.toUpperCase());
-      if (idx < 0) continue;
-      // Procura o link de produto mais próximo do termo encontrado, num raio
-      // pequeno, para evitar associar ao produto errado.
-      const window = html.slice(Math.max(0, idx - 800), idx + 800);
-      const m = /href="(\/professional\/product\/etf\/[a-z-]+\/\d+\/[a-z0-9-]+)"/i.exec(window);
-      if (!m || !m[1]) continue;
-      return { domain, path: m[1] };
-    } catch {
-      continue;
-    }
-  }
-  return null;
 }
 
 function pct(raw: string): number {
@@ -119,11 +99,8 @@ export const vanguardProvider: ManagerProvider = {
     /\bvanguard\b/.test(`${input.fundFamily ?? ""} ${input.name ?? ""}`.toLowerCase()),
   fetch: async (input: ManagerLookupInput): Promise<ProviderResult | null> => {
     try {
-      let ref = isVanguardProductRef(input.cachedRef) ? input.cachedRef : null;
-      if (!ref) {
-        ref = await resolveProduct(input);
-        if (!ref) return null;
-      }
+      const ref = isVanguardProductRef(input.cachedRef) ? input.cachedRef : null;
+      if (!ref) return null;
       const res = await fetch(`https://${ref.domain}${ref.path}`, {
         headers: { "User-Agent": UA, Accept: "text/html" },
       });

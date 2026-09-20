@@ -101,6 +101,7 @@ const SOURCE_LABELS: Record<string, string> = {
   wisdomtree: "WisdomTree",
   xtrackers: "Xtrackers",
   bnpparibas: "BNP Paribas",
+  justetf: "justETF",
   yahoo: "Yahoo Finance",
 };
 
@@ -362,9 +363,9 @@ function ExposicaoPage() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Fontes dos dados de composição: sites oficiais das gestoras (iShares, Vanguard), com Yahoo
-        Finance como último recurso quando a fonte oficial não está disponível. Nenhum dado
-        financeiro é gerado por IA.
+        Fontes dos dados de composição, por ordem: sites oficiais das gestoras (iShares, Vanguard),
+        depois justETF (país/setor completos, qualquer gestora), com Yahoo Finance como último
+        recurso. Nenhum dado financeiro é gerado por IA.
       </p>
     </div>
   );
