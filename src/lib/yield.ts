@@ -40,7 +40,10 @@ export function inferPaymentsPerYear(dividends: DividendEvent[]): number | null 
   if (dates.length < 3) return null;
   const intervals: number[] = [];
   for (let i = 1; i < dates.length; i++) {
-    const days = (Date.parse(dates[i]) - Date.parse(dates[i - 1])) / DAY_MS;
+    const prev = dates[i - 1];
+    const curr = dates[i];
+    if (!prev || !curr) continue;
+    const days = (Date.parse(curr) - Date.parse(prev)) / DAY_MS;
     // Ignora intervalos curtos (ex.: pagamentos especiais colados ao regular).
     if (days >= 20) intervals.push(days);
   }
@@ -80,7 +83,7 @@ export function estimateAnnualDividend(
   const perYear = inferPaymentsPerYear(dividends);
   if (perYear == null || last12.length >= perYear) return ttm;
   const latest = last12[last12.length - 1];
-  if (!(latest.amount > 0)) return ttm;
+  if (!latest || !(latest.amount > 0)) return ttm;
   return latest.amount * perYear;
 }
 
