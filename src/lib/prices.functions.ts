@@ -20,22 +20,12 @@ export const lookupTicker = createServerFn({ method: "POST" })
     const rate = await getRateToEUR(currency, new Map());
     const dividends = quote.dividends.map((d) => ({ ...d, amount: d.amount * factor }));
 
-    const cutoff = new Date();
-    cutoff.setFullYear(cutoff.getFullYear() - 1);
-    const iso = cutoff.toISOString().slice(0, 10);
-    const last12 = dividends.filter((d) => d.date >= iso);
-    const ttm = last12.reduce((s, d) => s + d.amount, 0);
-    const annualYield = price > 0 && ttm > 0 ? (ttm / price) * 100 : null;
-    const frequency =
-      last12.length >= 11
-        ? "Mensal"
-        : last12.length >= 4
-          ? "Trimestral"
-          : last12.length >= 2
-            ? "Semestral"
-            : last12.length === 1
-              ? "Anual"
-              : null;
+    const { annualYieldPercent, frequencyLabel, inferPaymentsPerYear, ttmDividends } =
+      await import("@/lib/yield");
+    const ttm = ttmDividends(dividends);
+    // Quando faltam pagamentos no último ano, anualiza o dividendo mais recente.
+    const annualYield = annualYieldPercent(dividends, price);
+    const frequency = frequencyLabel(inferPaymentsPerYear(dividends));
 
     return {
       symbol,

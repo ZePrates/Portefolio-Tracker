@@ -14,6 +14,8 @@ export interface Quote {
   source: string;
   /** Unidade original devolvida pela fonte (apenas metais). */
   unit?: MetalUnit;
+  /** Yield anual estimado em % (apenas títulos com dividendos). */
+  annualYield?: number | null;
 }
 
 export interface PriceablePosition {
@@ -35,6 +37,8 @@ export interface PricePatch {
   price_updated_at: string;
   fx_rate: number;
   fx_updated_at: string;
+  /** Presente apenas quando a fonte devolveu dividendos. */
+  annual_yield?: number;
 }
 
 export type PlanResult = { ok: true; patch: PricePatch } | { ok: false; error: string };
