@@ -92,19 +92,20 @@ export function planPriceUpdate(
 
   const iso = now.toISOString();
   const priceEur = quote.price * fxRate;
-  return {
-    ok: true,
-    patch: {
-      current_price: priceEur,
-      current_price_native: quote.price,
-      native_currency: quote.currency,
-      current_value: positionValueEUR(quantity, quote.price, fxRate),
-      price_source: quote.source,
-      price_updated_at: iso,
-      fx_rate: fxRate,
-      fx_updated_at: iso,
-    },
+  const patch: PricePatch = {
+    current_price: priceEur,
+    current_price_native: quote.price,
+    native_currency: quote.currency,
+    current_value: positionValueEUR(quantity, quote.price, fxRate),
+    price_source: quote.source,
+    price_updated_at: iso,
+    fx_rate: fxRate,
+    fx_updated_at: iso,
   };
+  if (quote.annualYield != null && Number.isFinite(quote.annualYield) && quote.annualYield > 0) {
+    patch.annual_yield = quote.annualYield;
+  }
+  return { ok: true, patch };
 }
 
 export interface UpdateOutcome {

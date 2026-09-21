@@ -99,10 +99,18 @@ export const updateAllPrices = createServerFn({ method: "POST" })
         if (row.class === "metal") return fetchMetalSpot(row.metal_type, row.ticker);
         const symbol = toYahooSymbol(row.ticker ?? "");
         if (!symbol) return null;
-        const q = await fetchYahoo(symbol);
+        // 5 anos para ter histórico de dividendos suficiente para o yield estimado.
+        const q = await fetchYahoo(symbol, "5y");
         if (!q) return null;
-        const { price, currency } = normalize(q);
-        return { price, currency, source: `yahoo:${symbol}` };
+        const { price, currency, factor } = normalize(q);
+        const { annualYieldPercent } = await import("@/lib/yield");
+        const dividends = q.dividends.map((d) => ({ ...d, amount: d.amount * factor }));
+        return {
+          price,
+          currency,
+          source: `yahoo:${symbol}`,
+          annualYield: annualYieldPercent(dividends, price),
+        };
       },
       (currency) => getRateToEUR(currency, rateCache),
       async (asset, patch) => {
