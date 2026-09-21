@@ -641,48 +641,48 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                       <p className="font-medium">{a.name}</p>
                       {a.ticker && <p className="text-xs text-muted-foreground">{a.ticker}</p>}
                     </td>
-                    <td className="px-4 py-3 text-right text-muted-foreground">
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-muted-foreground">
                       {assetClass === "p2p" ? (a.p2p_group ?? "—") : a.quantity || "—"}
                     </td>
                     {isQuantityAsset(assetClass) && (
                       <>
-                        <td className="px-4 py-3 text-right">
+                        <td className="whitespace-nowrap px-4 py-3 text-right">
                           {formatEUR(a.average_price ?? 0, hidden)}
                           {foreign && a.purchase_price_native != null && (
-                            <span className="block text-xs text-muted-foreground">
+                            <span className="block whitespace-nowrap text-xs text-muted-foreground">
                               {formatMoney(a.purchase_price_native, cur, hidden)}
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="whitespace-nowrap px-4 py-3 text-right">
                           {formatEUR(a.current_price ?? 0, hidden)}
                           {foreign && a.current_price_native != null && (
-                            <span className="block text-xs text-muted-foreground">
+                            <span className="block whitespace-nowrap text-xs text-muted-foreground">
                               {formatMoney(a.current_price_native, cur, hidden)}
                             </span>
                           )}
                         </td>
                       </>
                     )}
-                    <td className="px-4 py-3 text-right">
+                    <td className="whitespace-nowrap px-4 py-3 text-right">
                       {formatEUR(assetInvested(a), hidden)}
                       {foreign && (
-                        <span className="block text-xs text-muted-foreground">
+                        <span className="block whitespace-nowrap text-xs text-muted-foreground">
                           {formatMoney(assetInvested(a) / rate, cur, hidden)}
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="whitespace-nowrap px-4 py-3 text-right">
                       {formatEUR(assetCurrentValue(a), hidden)}
                       {foreign && (
-                        <span className="block text-xs text-muted-foreground">
+                        <span className="block whitespace-nowrap text-xs text-muted-foreground">
                           {formatMoney(assetCurrentValue(a) / rate, cur, hidden)}
                         </span>
                       )}
                     </td>
                     <td
                       className={cn(
-                        "px-4 py-3 text-right font-medium",
+                        "whitespace-nowrap px-4 py-3 text-right font-medium",
                         p.abs > 0
                           ? "text-success"
                           : p.abs < 0
@@ -691,10 +691,12 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                       )}
                     >
                       {formatEUR(p.abs, hidden)}
-                      <span className="block text-xs">{formatPercent(p.pct, hidden)}</span>
+                      <span className="block whitespace-nowrap text-xs">
+                        {formatPercent(p.pct, hidden)}
+                      </span>
                     </td>
                     {(assetClass === "acao_dividendo" || assetClass === "reit") && (
-                      <td className="px-4 py-3 text-right font-medium text-primary">
+                      <td className="whitespace-nowrap px-4 py-3 text-right font-medium text-primary">
                         {a.annual_yield == null ? "—" : formatPercent(a.annual_yield, hidden)}
                       </td>
                     )}
@@ -778,7 +780,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                       </td>
                       <td
                         className={cn(
-                          "px-4 py-3 text-right font-medium",
+                          "whitespace-nowrap px-4 py-3 text-right font-medium",
                           r > 0
                             ? "text-success"
                             : r < 0
@@ -788,7 +790,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                       >
                         {formatEUR(r, hidden)}
                       </td>
-                      <td className="px-4 py-3 text-right text-muted-foreground">
+                      <td className="whitespace-nowrap px-4 py-3 text-right text-muted-foreground">
                         {formatEUR(a.total_fees ?? 0, hidden)}
                       </td>
                       <td className="px-4 py-3 text-right text-muted-foreground">
