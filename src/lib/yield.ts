@@ -50,9 +50,11 @@ export function inferPaymentsPerYear(dividends: DividendEvent[]): number | null 
   if (intervals.length === 0) return null;
   // Mediana: robusta a gaps deixados por pagamentos em falta na fonte.
   const sorted = [...intervals].sort((a, b) => a - b);
-  const mid = sorted[Math.floor(sorted.length / 2)];
+  const midIdx = Math.floor(sorted.length / 2);
   const median =
-    sorted.length % 2 === 1 ? mid : ((sorted[sorted.length / 2 - 1] ?? 0) + (mid ?? 0)) / 2;
+    sorted.length % 2 === 1
+      ? (sorted[midIdx] ?? 0)
+      : ((sorted[midIdx - 1] ?? 0) + (sorted[midIdx] ?? 0)) / 2;
   if (!(median > 0)) return null;
   const perYear = 365.25 / median;
   let best: number | null = null;
