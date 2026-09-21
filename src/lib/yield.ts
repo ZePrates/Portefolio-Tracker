@@ -48,8 +48,13 @@ export function inferPaymentsPerYear(dividends: DividendEvent[]): number | null 
     if (days >= 20) intervals.push(days);
   }
   if (intervals.length === 0) return null;
-  const avg = intervals.reduce((s, d) => s + d, 0) / intervals.length;
-  const perYear = 365.25 / avg;
+  // Mediana: robusta a gaps deixados por pagamentos em falta na fonte.
+  const sorted = [...intervals].sort((a, b) => a - b);
+  const mid = sorted[Math.floor(sorted.length / 2)];
+  const median =
+    sorted.length % 2 === 1 ? mid : ((sorted[sorted.length / 2 - 1] ?? 0) + (mid ?? 0)) / 2;
+  if (!(median > 0)) return null;
+  const perYear = 365.25 / median;
   let best: number | null = null;
   let bestErr = Infinity;
   for (const c of CADENCES) {
