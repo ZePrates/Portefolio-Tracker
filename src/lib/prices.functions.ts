@@ -75,7 +75,7 @@ export const updateAllPrices = createServerFn({ method: "POST" })
 
     type Row = NonNullable<typeof rows>[number];
     const targets = (rows ?? []).filter(
-      (a) => a.class === "metal" || (a.class !== "p2p" && a.class !== "etf" && !!a.ticker),
+      (a) => a.class === "metal" || (a.class !== "p2p" && !!a.ticker),
     );
     const byId = new Map<string, Row>(targets.map((a) => [a.id, a]));
 
