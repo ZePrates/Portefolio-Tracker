@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware-external";
 import { runPriceUpdate, type PriceablePosition, type Quote } from "@/lib/prices";
+import { takeSnapshot, type SB } from "@/lib/snapshots.functions";
 
 export { toYahooSymbol } from "@/lib/yahoo";
 
@@ -121,6 +122,8 @@ export const updateAllPrices = createServerFn({ method: "POST" })
         if (upErr) throw new Error(upErr.message);
       },
     );
+
+    await takeSnapshot(context.supabase as unknown as SB, context.userId);
 
     return {
       total: targets.length,

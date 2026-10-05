@@ -6,12 +6,16 @@ import {
   ResponsiveContainer,
   AreaChart,
   Area,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
 } from "recharts";
 import { listAssets, listDividends, listTransactions } from "@/lib/portfolio.functions";
+import { listPortfolioSnapshots } from "@/lib/snapshots.functions";
 import { type PeriodKey, PERIOD_LABELS, periodRange } from "@/lib/dashboard";
 import {
   METHODOLOGY_LABELS,
@@ -20,6 +24,7 @@ import {
   drawdown,
   performanceByClass,
   periodPerformance,
+  buildSnapshotSeries,
   type PerfTransaction,
 } from "@/lib/performance";
 import type { Asset } from "@/lib/portfolio-types";
@@ -63,15 +68,20 @@ const TOOLTIP_STYLE = {
 function Card({
   title,
   note,
+  actions,
   children,
 }: {
   title: string;
   note?: string;
+  actions?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div className="rounded-xl border border-border bg-card p-4 md:p-5">
-      <h2 className="text-sm font-semibold">{title}</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold">{title}</h2>
+        {actions}
+      </div>
       {note && <p className="mt-1 text-xs text-muted-foreground">{note}</p>}
       <div className="mt-4">{children}</div>
     </div>
@@ -88,6 +98,10 @@ function PerformancePage() {
   const assetsQ = useQuery({ queryKey: ["assets"], queryFn: () => listAssets() });
   const txQ = useQuery({ queryKey: ["transactions"], queryFn: () => listTransactions({}) });
   const divQ = useQuery({ queryKey: ["dividends"], queryFn: () => listDividends() });
+  const snapQ = useQuery({
+    queryKey: ["portfolio-snapshots"],
+    queryFn: () => listPortfolioSnapshots(),
+  });
 
   const assets = (assetsQ.data ?? []) as Asset[];
   const transactions = (txQ.data ?? []) as PerfTransaction[];
@@ -114,6 +128,12 @@ function PerformancePage() {
   );
   // Drawdown só é calculável sobre séries reais de valor de mercado.
   const dd = useMemo(() => drawdown([]), []);
+  const snapshots = snapQ.data ?? [];
+  const [snapScope, setSnapScope] = useState<"class:etf" | "total">("class:etf");
+  const snapSeries = useMemo(
+    () => buildSnapshotSeries(snapshots, snapScope),
+    [snapshots, snapScope],
+  );
 
   const chart = useMemo(
     () =>
@@ -265,6 +285,73 @@ function PerformancePage() {
                   fillOpacity={0.15}
                 />
               </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </Card>
+
+      <Card
+        title="Valor de mercado vs. capital investido"
+        note="Lucro não realizado = valor de mercado − investido, em cada fotografia guardada."
+        actions={
+          <div className="flex gap-1">
+            <Button
+              variant={snapScope === "class:etf" ? "primary" : "outline"}
+              onClick={() => setSnapScope("class:etf")}
+            >
+              ETFs
+            </Button>
+            <Button
+              variant={snapScope === "total" ? "primary" : "outline"}
+              onClick={() => setSnapScope("total")}
+            >
+              Carteira toda
+            </Button>
+          </div>
+        }
+      >
+        {snapSeries.length === 0 ? (
+          <EmptyState
+            title="Ainda sem fotografias"
+            description={
+              snapScope === "total"
+                ? "A carteira toda começa a ter histórico a partir de hoje, sempre que carregares em 'Atualizar preços'."
+                : "Sem histórico importado para ETFs."
+            }
+          />
+        ) : (
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={snapSeries}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatEUR(v, hidden)} />
+                <Tooltip formatter={(v: number) => formatEUR(v, hidden)} />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="invested"
+                  name="Capital investido"
+                  stroke="#64748b"
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="marketValue"
+                  name="Valor de mercado"
+                  stroke="#2563eb"
+                  dot={false}
+                  connectNulls
+                />
+                <Line
+                  type="monotone"
+                  dataKey="unrealized"
+                  name="Lucro não realizado"
+                  stroke="#16a34a"
+                  dot={false}
+                  connectNulls
+                />
+              </LineChart>
             </ResponsiveContainer>
           </div>
         )}

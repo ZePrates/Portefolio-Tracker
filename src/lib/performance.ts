@@ -663,3 +663,37 @@ export function periodPerformance(
     mwr: xirr(xirrFlows(transactions, dividends, currentValue, today)),
   };
 }
+
+export interface SnapshotPoint {
+  date: string;
+  invested: number;
+  marketValue: number | null;
+  unrealized: number | null;
+}
+
+/**
+ * Converte o histórico de fotografias de um âmbito (ex.: "total" ou
+ * "class:etf") numa série pronta para gráfico, com o lucro não realizado
+ * já calculado ponto a ponto. Pontos sem valor de mercado registado
+ * (market_value null) ficam com unrealized null — nunca 0, para não
+ * sugerir "sem lucro" quando na verdade é "sem dado".
+ */
+export function buildSnapshotSeries(
+  snapshots: Array<{
+    snapshotDate: string;
+    scope: string;
+    investedAmount: number;
+    marketValue: number | null;
+  }>,
+  scope: string,
+): SnapshotPoint[] {
+  return snapshots
+    .filter((s) => s.scope === scope)
+    .sort((a, b) => a.snapshotDate.localeCompare(b.snapshotDate))
+    .map((s) => ({
+      date: s.snapshotDate,
+      invested: s.investedAmount,
+      marketValue: s.marketValue,
+      unrealized: s.marketValue == null ? null : s.marketValue - s.investedAmount,
+    }));
+}

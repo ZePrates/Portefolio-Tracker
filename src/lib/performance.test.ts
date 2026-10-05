@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildLedgerSeries,
+  buildSnapshotSeries,
   cashFlowsFromLedger,
   contributionByAsset,
   drawdown,
@@ -277,5 +278,32 @@ describe("ausência de LLM", () => {
       fs.readFileSync("src/lib/performance.ts", "utf8"),
     );
     expect(src).not.toMatch(/fetch\(|openai|gateway|anthropic|gemini|ai\.lovable/i);
+  });
+});
+
+describe("buildSnapshotSeries", () => {
+  const snaps = [
+    { snapshotDate: "2024-03-01", scope: "total", investedAmount: 100, marketValue: null },
+    { snapshotDate: "2024-01-01", scope: "total", investedAmount: 100, marketValue: 110 },
+    { snapshotDate: "2024-02-01", scope: "class:etf", investedAmount: 50, marketValue: 55 },
+  ];
+
+  it("filtra por âmbito e ordena por data", () => {
+    const r = buildSnapshotSeries(snaps, "total");
+    expect(r.map((p) => p.date)).toEqual(["2024-01-01", "2024-03-01"]);
+  });
+
+  it("calcula o lucro não realizado quando há valor de mercado", () => {
+    const r = buildSnapshotSeries(snaps, "total");
+    expect(r[0]?.unrealized).toBe(10);
+  });
+
+  it("deixa unrealized null (nunca 0) quando não há valor de mercado registado", () => {
+    const r = buildSnapshotSeries(snaps, "total");
+    expect(r[1]?.unrealized).toBeNull();
+  });
+
+  it("devolve lista vazia para um âmbito sem fotografias", () => {
+    expect(buildSnapshotSeries(snaps, "class:reit")).toEqual([]);
   });
 });
