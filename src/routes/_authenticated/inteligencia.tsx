@@ -5,10 +5,14 @@ import { listAssets } from "@/lib/portfolio.functions";
 import { getExposure } from "@/lib/exposure.functions";
 import { portfolioIntelligence } from "@/lib/intelligence";
 import type { ExposureReport } from "@/lib/exposure";
-import type { Asset } from "@/lib/portfolio-types";
+import type { PositionInput } from "@/lib/exposure-types";
+import type { Asset, AssetClass } from "@/lib/portfolio-types";
+import { CLASS_LABELS } from "@/lib/portfolio-types";
 import { PageHeader, MetricCard } from "@/components/ui-bits";
 import { usePrivateMode } from "@/components/private-mode";
+
 export const Route = createFileRoute("/_authenticated/inteligencia")({ component: Inteligencia });
+
 function Inteligencia() {
   const fetch = useServerFn(listAssets),
     fetchExposure = useServerFn(getExposure);
@@ -16,30 +20,82 @@ function Inteligencia() {
   const { data: ex } = useQuery({ queryKey: ["exposure"], queryFn: () => fetchExposure() });
   const { hidden } = usePrivateMode();
   const assets = (data ?? []) as Asset[];
-  const report = (ex as { report?: ExposureReport } | undefined)?.report;
-  const intel = portfolioIntelligence(assets, report);
+  const exResult = ex as { report?: ExposureReport; positions?: PositionInput[] } | undefined;
+  const report = exResult?.report;
+  const positions = exResult?.positions;
+  const intel = portfolioIntelligence(assets, report, positions);
+  const pct = (v: number) => (hidden ? "•••" : `${v.toFixed(1)}%`);
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Inteligência da Carteira"
-        subtitle="Risco, concentração e recomendações calculados a partir dos dados existentes."
+        subtitle="Concentração calculada com look-through: o peso de cada empresa dentro dos ETFs conta para a exposição real, não só o rótulo do instrumento."
       />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <MetricCard label="Score" value={hidden ? "•••" : `${intel.score.toFixed(0)}/100`} />
         <MetricCard
-          label="Maior posição"
-          value={hidden ? "•••" : `${intel.metrics.largestAsset.toFixed(1)}%`}
+          label="Maior empresa (look-through)"
+          value={pct(intel.metrics.largestCompany)}
         />
-        <MetricCard label="Top 5" value={hidden ? "•••" : `${intel.metrics.top5.toFixed(1)}%`} />
+        <MetricCard label="Top 5 empresas" value={pct(intel.metrics.top5Companies)} />
         <MetricCard
-          label="Maior classe"
-          value={hidden ? "•••" : `${intel.metrics.largestClass.toFixed(1)}%`}
+          label="Composição de ETF desconhecida"
+          value={positions ? pct(intel.metrics.unknownLookThrough) : "N/D"}
         />
         <MetricCard
           label="Cobertura exposição"
-          value={hidden ? "•••" : report ? `${intel.metrics.coverage.toFixed(1)}%` : "N/D"}
+          value={hidden ? "•••" : report ? pct(intel.metrics.coverage) : "N/D"}
         />
       </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h2 className="mb-3 text-sm font-semibold">Maiores exposições por empresa</h2>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Soma a posição direta com o peso da mesma empresa dentro de cada ETF que a contenha.
+          </p>
+          {intel.topCompanies.length ? (
+            <ul className="space-y-2 text-sm">
+              {intel.topCompanies.map((c) => (
+                <li
+                  key={c.label}
+                  className="flex items-center justify-between rounded-lg border border-border/60 p-3"
+                >
+                  <span>{c.label}</span>
+                  <span className="font-medium">{pct(c.weight * 100)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {positions
+                ? "Sem exposições calculáveis."
+                : "Sincroniza a composição dos ETFs (página Exposição) para ver esta análise ao nível da empresa."}
+            </p>
+          )}
+        </div>
+
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h2 className="mb-3 text-sm font-semibold">Perfil de alocação por instrumento</h2>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Informativo — não é tratado como risco de concentração. Um ETF é, por natureza, já
+            diversificado por dentro.
+          </p>
+          <ul className="space-y-2 text-sm">
+            {intel.instrumentMix.map((m) => (
+              <li
+                key={m.class}
+                className="flex items-center justify-between rounded-lg border border-border/60 p-3"
+              >
+                <span>{CLASS_LABELS[m.class as AssetClass] ?? m.class}</span>
+                <span className="font-medium">{pct(m.weight * 100)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-border bg-card p-5">
           <h2 className="mb-3 text-sm font-semibold">Riscos identificados</h2>
@@ -68,6 +124,7 @@ function Inteligencia() {
           </ul>
         </div>
       </div>
+
       <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
         {report && intel.metrics.coverage < 99 ? (
           <>
@@ -81,7 +138,9 @@ function Inteligencia() {
         )}
       </div>
       <p className="text-xs text-muted-foreground">
-        As recomendações são indicadores quantitativos, não aconselhamento financeiro personalizado.
+        A correspondência entre uma posição direta e a mesma empresa dentro de um ETF é feita por
+        nome (aproximada) — pode não apanhar todas as coincidências. As recomendações são
+        indicadores quantitativos, não aconselhamento financeiro personalizado.
       </p>
     </div>
   );

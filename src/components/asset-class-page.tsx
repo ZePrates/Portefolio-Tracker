@@ -504,12 +504,10 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         subtitle={subtitle}
         actions={
           <>
-            {assetClass !== "etf" && (
-              <Button variant="outline" onClick={refreshPrices} disabled={refreshing}>
-                <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
-                Atualizar preços
-              </Button>
-            )}
+            <Button variant="outline" onClick={refreshPrices} disabled={refreshing}>
+              <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+              Atualizar preços
+            </Button>
             <Button onClick={openCreate}>
               <Plus className="h-4 w-4" />
               Adicionar

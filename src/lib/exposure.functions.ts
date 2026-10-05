@@ -402,7 +402,7 @@ export const getExposure = createServerFn({ method: "GET" })
       });
     }
 
-    return { report: computeExposure(positions), meta };
+    return { report: computeExposure(positions), meta, positions };
   });
 
 export interface AssetExposureDetail {

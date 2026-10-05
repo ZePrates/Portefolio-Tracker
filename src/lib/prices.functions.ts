@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware-external";
 import { runPriceUpdate, type PriceablePosition, type Quote } from "@/lib/prices";
+import { takeSnapshot, type SB } from "@/lib/snapshots.functions";
 
 export { toYahooSymbol } from "@/lib/yahoo";
 
@@ -75,7 +76,7 @@ export const updateAllPrices = createServerFn({ method: "POST" })
 
     type Row = NonNullable<typeof rows>[number];
     const targets = (rows ?? []).filter(
-      (a) => a.class === "metal" || (a.class !== "p2p" && a.class !== "etf" && !!a.ticker),
+      (a) => a.class === "metal" || (a.class !== "p2p" && !!a.ticker),
     );
     const byId = new Map<string, Row>(targets.map((a) => [a.id, a]));
 
@@ -121,6 +122,8 @@ export const updateAllPrices = createServerFn({ method: "POST" })
         if (upErr) throw new Error(upErr.message);
       },
     );
+
+    await takeSnapshot(context.supabase as unknown as SB, context.userId);
 
     return {
       total: targets.length,
