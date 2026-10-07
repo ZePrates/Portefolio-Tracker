@@ -351,6 +351,7 @@ async function insertTrade(
       native_currency: asset.native_currency || "EUR",
       price_native: data.price_native,
       fx_rate: fx.rate,
+      fx_source: fx.source,
       source: "manual",
       notes: data.notes,
     })
@@ -457,7 +458,10 @@ export const updateTransaction = createServerFn({ method: "POST" })
     // Mesma data e sem taxa indicada: mantém o câmbio já gravado no movimento.
     const keepRate = data.traded_at === tx.traded_at && data.fx_rate == null && tx.fx_rate > 0;
     const fx: TradeFx = keepRate
-      ? { rate: Number(tx.fx_rate), source: "historical" }
+      ? {
+          rate: Number(tx.fx_rate),
+          source: (tx.fx_source as TradeFx["source"] | null) ?? "historical",
+        }
       : await tradeFx(asset, data.traded_at, data.fx_rate);
     const price = data.price_native * fx.rate;
     const fee = data.fee_native * fx.rate;
@@ -478,6 +482,7 @@ export const updateTransaction = createServerFn({ method: "POST" })
       fee: tx.fee,
       fee_native: tx.fee_native,
       fx_rate: tx.fx_rate,
+      fx_source: tx.fx_source,
       traded_at: tx.traded_at,
       total: tx.total,
     };
@@ -490,6 +495,7 @@ export const updateTransaction = createServerFn({ method: "POST" })
         fee,
         fee_native: data.fee_native,
         fx_rate: fx.rate,
+        fx_source: fx.source,
         traded_at: data.traded_at,
         total: tx.type === "buy" ? data.quantity * price + fee : data.quantity * price - fee,
       })
