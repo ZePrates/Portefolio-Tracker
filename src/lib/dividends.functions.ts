@@ -56,9 +56,10 @@ interface SyncAsset extends TaxableAsset {
   id: string;
   name: string;
   ticker: string | null;
+  price_source?: string | null;
 }
 
-const ASSET_COLUMNS = "id, name, ticker, class, isin, withholding_rate";
+const ASSET_COLUMNS = "id, name, ticker, price_source, class, isin, withholding_rate";
 
 function toTrade(t: TransactionRow): DividendTrade {
   return {
@@ -120,9 +121,9 @@ async function syncAsset(
   const base = { assetId: asset.id, assetName: asset.name, inserted: 0, updated: 0 };
   if (!asset.ticker) return { ...base, status: "skipped", reason: "Ativo sem ticker." };
 
-  const { toYahooSymbol, fetchYahoo, normalize, getRateOnDate, getRateToEUR } =
+  const { yahooSymbolFor, fetchYahoo, normalize, getRateOnDate, getRateToEUR } =
     await import("@/lib/yahoo.server");
-  const symbol = toYahooSymbol(asset.ticker);
+  const symbol = yahooSymbolFor(asset);
   if (!symbol) return { ...base, status: "skipped", reason: "Ticker inválido." };
 
   if (trades.length === 0) {
