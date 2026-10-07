@@ -179,16 +179,23 @@ function DashboardPage() {
     queryFn: () => fetchExposure(),
   });
 
-  const assets = (assetsRaw ?? []) as Asset[];
-  const dividends = (dividendsRaw ?? []) as unknown as DividendRecord[];
-  const transactions = (txRaw ?? []) as Array<{
-    type: string;
-    traded_at: string;
-    quantity: number;
-    price: number;
-    fee: number | null;
-    realized_pl: number | null;
-  }>;
+  const assets = useMemo(() => (assetsRaw ?? []) as Asset[], [assetsRaw]);
+  const dividends = useMemo(
+    () => (dividendsRaw ?? []) as unknown as DividendRecord[],
+    [dividendsRaw],
+  );
+  const transactions = useMemo(
+    () =>
+      (txRaw ?? []) as Array<{
+        type: string;
+        traded_at: string;
+        quantity: number;
+        price: number;
+        fee: number | null;
+        realized_pl: number | null;
+      }>,
+    [txRaw],
+  );
 
   const summary = useMemo(
     () => portfolioSummary(assets, dividends, undefined, transactions),

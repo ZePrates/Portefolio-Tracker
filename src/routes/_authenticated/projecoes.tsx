@@ -48,7 +48,7 @@ function ProjecoesPage() {
     queryKey: ["assets"],
     queryFn: () => fetchAssets(),
   });
-  const assets = (assetsRaw ?? []) as Asset[];
+  const assets = useMemo(() => (assetsRaw ?? []) as Asset[], [assetsRaw]);
   const currentValue = useMemo(
     () => assets.reduce((sum, asset) => sum + assetCurrentValue(asset), 0),
     [assets],

@@ -96,8 +96,8 @@ function DividendosPage() {
     queryFn: () => fetchDividends(),
   });
 
-  const assets = (assetsRaw ?? []) as Asset[];
-  const dividends = (dividendsRaw ?? []) as Dividend[];
+  const assets = useMemo(() => (assetsRaw ?? []) as Asset[], [assetsRaw]);
+  const dividends = useMemo(() => (dividendsRaw ?? []) as Dividend[], [dividendsRaw]);
 
   const year = new Date().getFullYear();
   const stats = useMemo(() => {
