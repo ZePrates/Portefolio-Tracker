@@ -7,6 +7,7 @@
  * Quando um campo não vem da fonte, fica null.
  */
 
+import { fetchWithTimeout } from "@/lib/http";
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 
@@ -15,7 +16,7 @@ let session: { cookie: string; crumb: string; at: number } | null = null;
 async function getSession(): Promise<{ cookie: string; crumb: string } | null> {
   if (session && Date.now() - session.at < 30 * 60 * 1000) return session;
   try {
-    const res = await fetch("https://fc.yahoo.com", { headers: { "User-Agent": UA } });
+    const res = await fetchWithTimeout("https://fc.yahoo.com", { headers: { "User-Agent": UA } });
     const raw =
       // Cloudflare/undici expõem getSetCookie() quando há vários cabeçalhos
       (typeof (res.headers as unknown as { getSetCookie?: () => string[] }).getSetCookie ===
@@ -28,7 +29,7 @@ async function getSession(): Promise<{ cookie: string; crumb: string } | null> {
       .filter((c): c is string => !!c && c.includes("="))
       .join("; ");
     if (!cookie) return null;
-    const crumbRes = await fetch("https://query2.finance.yahoo.com/v1/test/getcrumb", {
+    const crumbRes = await fetchWithTimeout("https://query2.finance.yahoo.com/v1/test/getcrumb", {
       headers: { "User-Agent": UA, Cookie: cookie },
     });
     if (!crumbRes.ok) return null;
@@ -82,7 +83,7 @@ export async function fetchQuoteSummary(symbol: string): Promise<QuoteSummary | 
     symbol,
   )}?modules=${modules}&crumb=${encodeURIComponent(s.crumb)}`;
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       headers: { "User-Agent": UA, Cookie: s.cookie, Accept: "application/json" },
     });
     if (res.status === 401 || res.status === 403) {

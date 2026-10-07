@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeExposure } from "@/lib/exposure";
+import { computeExposure, mergeByKey } from "@/lib/exposure";
 import { UNKNOWN, type PositionInput } from "@/lib/exposure-types";
 
 const stock = (over: Partial<PositionInput> = {}): PositionInput => ({
@@ -184,5 +184,21 @@ describe("exposição direta + indireta (cenário de referência)", () => {
     expect(apple?.amount).toBeCloseTo(1700, 6);
     expect(r.total).toBe(11000);
     expect(apple?.pct).toBeCloseTo((1700 / 11000) * 100, 6);
+  });
+});
+
+describe("mergeByKey", () => {
+  it("soma pesos de linhas com a mesma chave e mantém a ordem", () => {
+    const out = mergeByKey(
+      [
+        { name: "Alphabet Inc", weight: 0.02 },
+        { name: "Apple", weight: 0.05 },
+        { name: "Alphabet Inc", weight: 0.018 },
+      ],
+      (r) => r.name,
+    );
+    expect(out).toHaveLength(2);
+    expect(out[0]!.weight).toBeCloseTo(0.038);
+    expect(out[1]!.name).toBe("Apple");
   });
 });

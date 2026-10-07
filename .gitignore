@@ -36,3 +36,6 @@ dist-ssr
 .env.*
 !.env.example
 package-lock.json
+
+# Supabase CLI (cache local)
+supabase/.temp/

@@ -29,3 +29,9 @@ jobs:
 
       - name: Testes
         run: bun run test
+
+      - name: Auditoria de dependências (informativa)
+        # Não bloqueia: as vulnerabilidades restantes são de ferramentas de
+        # build/dev (esbuild, devtools, postcss). Ver AUDITORIA-CODIGO.md.
+        continue-on-error: true
+        run: bun audit

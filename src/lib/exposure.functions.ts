@@ -1,11 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware-external";
-import { computeExposure } from "@/lib/exposure";
+import { computeExposure, mergeByKey } from "@/lib/exposure";
 import type { ExposureRecord, HoldingRecord, PositionInput } from "@/lib/exposure-types";
 import { assetCurrentValue, isOpenPosition, type Asset } from "@/lib/portfolio-types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { todayLisbon } from "@/lib/dates";
+import { dbError } from "@/lib/errors";
 
 /**
  * Sincronização de perfis, composição e exposição dos ativos.
@@ -17,7 +19,7 @@ import type { Database } from "@/integrations/supabase/types";
  * fica `null` e a interface apresenta "Não disponível".
  */
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todayLisbon();
 
 type SB = { from: SupabaseClient<Database>["from"] };
 
@@ -126,8 +128,10 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
     source: isEtf ? (justEtf ? (usedFt ? "justetf+ft" : "justetf") : "ft") : "yahoo",
     as_of_date: asOf,
   };
-  if (existing?.id) await supabase.from("asset_profiles").update(profileRow).eq("id", existing.id);
-  else await supabase.from("asset_profiles").insert(profileRow);
+  const profileRes = existing?.id
+    ? await supabase.from("asset_profiles").update(profileRow).eq("id", existing.id)
+    : await supabase.from("asset_profiles").insert(profileRow);
+  if (profileRes.error) throw dbError(profileRes.error);
 
   const exposures: Array<Database["public"]["Tables"]["asset_exposures"]["Insert"]> = [];
   const holdingRows: Array<Database["public"]["Tables"]["etf_holdings"]["Insert"]> = [];
@@ -206,14 +210,42 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
     coverage = d.country ? 1 : 0;
   }
 
-  // Substituição atómica por ativo: apaga e reinsere apenas quando há dados novos válidos.
+  // Substituição segura por ativo: grava primeiro os dados novos (upsert) e só
+  // depois remove os antigos. Antes apagava-se primeiro e, se o insert falhasse,
+  // a composição perdia-se.
   if (exposures.length > 0) {
-    await supabase.from("asset_exposures").delete().eq("asset_id", asset.id);
-    await supabase.from("asset_exposures").insert(exposures);
+    const { data: kept, error } = await supabase
+      .from("asset_exposures")
+      .upsert(
+        mergeByKey(exposures, (e) => `${e.dimension}|${e.value}`),
+        { onConflict: "asset_id,dimension,value,as_of_date" },
+      )
+      .select("id");
+    if (error) throw dbError(error);
+    const ids = (kept ?? []).map((r) => r.id);
+    const del = await supabase
+      .from("asset_exposures")
+      .delete()
+      .eq("asset_id", asset.id)
+      .not("id", "in", `(${ids.join(",")})`);
+    if (del.error) throw dbError(del.error);
   }
   if (holdingRows.length > 0) {
-    await supabase.from("etf_holdings").delete().eq("asset_id", asset.id);
-    await supabase.from("etf_holdings").insert(holdingRows);
+    const { data: kept, error } = await supabase
+      .from("etf_holdings")
+      .upsert(
+        mergeByKey(holdingRows, (h) => h.holding_name),
+        { onConflict: "asset_id,holding_name,as_of_date" },
+      )
+      .select("id");
+    if (error) throw dbError(error);
+    const ids = (kept ?? []).map((r) => r.id);
+    const del = await supabase
+      .from("etf_holdings")
+      .delete()
+      .eq("asset_id", asset.id)
+      .not("id", "in", `(${ids.join(",")})`);
+    if (del.error) throw dbError(del.error);
   }
 
   // Para ETFs só valem dados do JustETF ou do Financial Times: qualquer resto

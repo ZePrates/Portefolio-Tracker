@@ -83,10 +83,12 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
       },
     });
 
-    // Validate against the auth server: works for both JWT and opaque/new-format
-    // access tokens, and for projects using legacy symmetric signing keys.
-    const { data, error } = await supabase.auth.getUser(token);
-    if (error || !data?.user?.id) {
+    // getClaims(): com chaves de assinatura assimétricas verifica o JWT
+    // localmente (JWKS em cache, sem ida ao servidor Auth em cada pedido); com
+    // chaves simétricas legadas recorre automaticamente a getUser() no servidor.
+    const { data, error } = await supabase.auth.getClaims(token);
+    const sub = data?.claims?.sub;
+    if (error || !sub) {
       console.error("[Supabase] token validation failed", error?.message);
       throw new Error("Unauthorized: Invalid token");
     }
@@ -94,8 +96,8 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
     return next({
       context: {
         supabase,
-        userId: data.user.id,
-        claims: { sub: data.user.id, email: data.user.email },
+        userId: sub,
+        claims: { sub, email: data.claims.email },
       },
     });
   },

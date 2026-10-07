@@ -3,6 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware-ext
 import { assetCurrentValue, isOpenPosition, type Asset } from "@/lib/portfolio-types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { todayLisbon } from "@/lib/dates";
 
 export type SB = { from: SupabaseClient<Database>["from"] };
 
@@ -34,7 +35,7 @@ export async function takeSnapshot(supabase: SB, userId: string): Promise<void> 
     const open = assets.filter((a) => isOpenPosition(a as Asset));
     if (open.length === 0) return;
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayLisbon();
     const byClass = new Map<string, { invested: number; value: number }>();
     let totalInvested = 0;
     let totalValue = 0;
@@ -92,4 +93,25 @@ export const listPortfolioSnapshots = createServerFn({ method: "GET" })
       source: r.source,
     }));
     return rows;
+  });
+
+/**
+ * Garante uma fotografia por dia sem depender do botão "Atualizar preços":
+ * chamado ao abrir a app; se já existir a fotografia de hoje não faz nada.
+ * Usa os últimos preços guardados (o alerta de preços desatualizados avisa
+ * quando estão velhos).
+ */
+export const ensureDailySnapshot = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const today = todayLisbon();
+    const { data } = await context.supabase
+      .from("portfolio_snapshots")
+      .select("id")
+      .eq("snapshot_date", today)
+      .eq("scope", "total")
+      .limit(1);
+    if (data && data.length > 0) return { created: false, date: today };
+    await takeSnapshot(context.supabase as unknown as SB, context.userId);
+    return { created: true, date: today };
   });

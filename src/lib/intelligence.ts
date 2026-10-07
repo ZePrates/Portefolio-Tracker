@@ -40,7 +40,7 @@ export interface Intelligence {
  * consistente em todas as fontes (nem todas as holdings de ETF trazem
  * ticker ou ISIN).
  */
-function normalizeCompanyKey(name: string): string {
+export function normalizeCompanyKey(name: string): string {
   return name
     .toUpperCase()
     .replace(/\bCLASS\s+[A-Z]\b|\bCL\s+[A-Z]\b/g, "")

@@ -148,6 +148,8 @@ function DashboardPage() {
         total: number;
       };
       await queryClient.invalidateQueries({ queryKey: ["assets"] });
+      await queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      await queryClient.invalidateQueries({ queryKey: ["portfolio-snapshots"] });
       if (res.failed.length > 0) {
         toast.warning(`${res.updated} preços atualizados. Sem cotação: ${res.failed.join(", ")}`, {
           id: toastId,
@@ -179,19 +181,30 @@ function DashboardPage() {
     queryFn: () => fetchExposure(),
   });
 
-  const assets = (assetsRaw ?? []) as Asset[];
-  const dividends = (dividendsRaw ?? []) as unknown as DividendRecord[];
-  const transactions = (txRaw ?? []) as Array<{
-    type: string;
-    traded_at: string;
-    quantity: number;
-    price: number;
-    fee: number | null;
-    realized_pl: number | null;
-  }>;
+  const assets = useMemo(() => (assetsRaw ?? []) as Asset[], [assetsRaw]);
+  const dividends = useMemo(
+    () => (dividendsRaw ?? []) as unknown as DividendRecord[],
+    [dividendsRaw],
+  );
+  const transactions = useMemo(
+    () =>
+      (txRaw ?? []) as Array<{
+        type: string;
+        traded_at: string;
+        quantity: number;
+        price: number;
+        fee: number | null;
+        realized_pl: number | null;
+      }>,
+    [txRaw],
+  );
 
+  const summary = useMemo(
+    () => portfolioSummary(assets, dividends, undefined, transactions),
+    [assets, dividends, transactions],
+  );
   const range = useMemo(() => periodRange(period), [period]);
-  const summary = useMemo(() => portfolioSummary(assets, dividends), [assets, dividends]);
+
   const allocation = useMemo(() => allocationByClass(assets), [assets]);
   const perf = useMemo(() => assetPerformance(assets), [assets]);
   const best = useMemo(() => bestPerformers(perf, 5), [perf]);

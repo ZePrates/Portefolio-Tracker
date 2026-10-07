@@ -24,6 +24,7 @@ import { formatEUR } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
 import { MetricCard, PageHeader } from "@/components/ui-bits";
 import { cn } from "@/lib/utils";
+import { parseNumberOr } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/projecoes")({
   head: () => ({
@@ -38,10 +39,7 @@ export const Route = createFileRoute("/_authenticated/projecoes")({
   component: ProjecoesPage,
 });
 
-const numberValue = (value: string) => {
-  const parsed = Number(value.replace(",", "."));
-  return Number.isFinite(parsed) ? parsed : 0;
-};
+const numberValue = (value: string) => parseNumberOr(value, 0);
 
 function ProjecoesPage() {
   const { hidden } = usePrivateMode();
@@ -50,7 +48,7 @@ function ProjecoesPage() {
     queryKey: ["assets"],
     queryFn: () => fetchAssets(),
   });
-  const assets = (assetsRaw ?? []) as Asset[];
+  const assets = useMemo(() => (assetsRaw ?? []) as Asset[], [assetsRaw]);
   const currentValue = useMemo(
     () => assets.reduce((sum, asset) => sum + assetCurrentValue(asset), 0),
     [assets],

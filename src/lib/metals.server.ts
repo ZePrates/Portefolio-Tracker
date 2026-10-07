@@ -3,7 +3,7 @@ import { fetchYahoo } from "@/lib/yahoo.server";
 import { toPricePerGram, type Quote } from "@/lib/prices";
 
 /** Símbolos de futuros contínuos, cotados em USD por onça troy. */
-export const METAL_SYMBOLS: Record<string, string> = {
+const METAL_SYMBOLS: Record<string, string> = {
   ouro: "GC=F",
   gold: "GC=F",
   xau: "GC=F",

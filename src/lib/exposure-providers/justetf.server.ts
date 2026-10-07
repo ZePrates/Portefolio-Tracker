@@ -18,6 +18,7 @@
  *   sabemos" — é isso que resolve o problema de cobertura parcial.
  */
 import type { ProviderHolding, ProviderResult } from "@/lib/exposure-providers/types";
+import { fetchWithTimeout } from "@/lib/http";
 
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
@@ -87,7 +88,7 @@ function parseAsOfDate(html: string): string | null {
 export async function fetchJustEtf(isin: string | null): Promise<ProviderResult | null> {
   if (!isin) return null;
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `https://www.justetf.com/en/etf-profile.html?isin=${encodeURIComponent(isin)}`,
       {
         headers: { "User-Agent": UA, Accept: "text/html" },

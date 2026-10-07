@@ -27,10 +27,11 @@ import {
   totalReceived,
   totalScheduled,
 } from "@/lib/dividends";
-import { formatEUR, formatMoney } from "@/lib/format";
+import { formatEUR, formatMoney, parseNumberOr } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
 import { Button, Field, Modal, TextInput } from "@/components/ui-bits";
 import { cn } from "@/lib/utils";
+import { todayLisbon } from "@/lib/dates";
 
 interface Props {
   asset: Asset | null;
@@ -68,12 +69,11 @@ interface Preview {
   breakdown: { lotId?: string; traded_at: string; quantity: number; unitCost: number }[];
 }
 
-function num(s: string) {
-  const n = parseFloat(s.replace(",", "."));
-  return Number.isFinite(n) ? n : 0;
+function num(s: string): number {
+  return parseNumberOr(s, 0);
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todayLisbon();
 
 export function AssetPositionModal({ asset, onClose }: Props) {
   const { hidden } = usePrivateMode();
@@ -180,6 +180,7 @@ export function AssetPositionModal({ asset, onClose }: Props) {
             quantity: q,
             price_native: num(price),
             fee_native: num(fee),
+            traded_at: date,
           },
         })) as Preview;
         if (!cancelled) {
@@ -197,7 +198,7 @@ export function AssetPositionModal({ asset, onClose }: Props) {
       cancelled = true;
       clearTimeout(t);
     };
-  }, [mode, quantity, price, fee, asset?.id]);
+  }, [mode, quantity, price, fee, date, asset?.id]);
 
   if (!asset) return null;
 
@@ -216,6 +217,8 @@ export function AssetPositionModal({ asset, onClose }: Props) {
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ["assets"] });
+    await queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    await queryClient.invalidateQueries({ queryKey: ["portfolio-snapshots"] });
     await queryClient.invalidateQueries({ queryKey: ["position", asset.id] });
   };
 

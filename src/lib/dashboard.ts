@@ -14,6 +14,7 @@ import {
   isOpenPosition,
 } from "@/lib/portfolio-types";
 import { isReceived, netOf, type DividendRecord } from "@/lib/dividends";
+import { todayLisbon } from "@/lib/dates";
 
 export type PeriodKey = "today" | "month" | "ytd" | "1y" | "all" | "custom";
 
@@ -31,8 +32,9 @@ export interface DateRange {
   to: string;
 }
 
+/** Hoje (YYYY-MM-DD) no fuso de Lisboa. */
 export function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayLisbon();
 }
 
 function shiftYears(iso: string, years: number): string {
@@ -91,7 +93,7 @@ export interface PortfolioSummary {
   dividendsScheduled: number;
   /** realizado + não realizado + dividendos recebidos. */
   totalResult: number;
-  /** totalResult / (cost basis + custo das posições fechadas), em %. */
+  /** totalResult / (cost basis atual + custo das unidades já vendidas), em %. */
   totalReturnPct: number | null;
   /** Base usada para a rentabilidade total, em EUR. */
   returnBasis: number;
@@ -101,10 +103,29 @@ export interface PortfolioSummary {
   closedPositions: number;
 }
 
+/**
+ * Custo das unidades já vendidas, a partir do ledger: produto − comissão − realizado.
+ * As posições fechadas têm invested_amount = 0, por isso não servem de base.
+ */
+export function soldCostBasis(
+  transactions: Array<
+    Pick<TimelineTransaction, "type" | "quantity" | "price" | "fee" | "realized_pl">
+  >,
+): number {
+  return transactions
+    .filter((t) => t.type === "sell")
+    .reduce((s, t) => {
+      const proceeds = (Number(t.quantity) || 0) * (Number(t.price) || 0);
+      const cost = proceeds - (Number(t.fee ?? 0) || 0) - (Number(t.realized_pl ?? 0) || 0);
+      return s + Math.max(0, cost);
+    }, 0);
+}
+
 export function portfolioSummary(
   assets: Asset[],
   dividends: DividendRecord[],
   today = todayISO(),
+  transactions?: TimelineTransaction[],
 ): PortfolioSummary {
   const open = assets.filter(isOpenPosition);
   const closed = assets.filter((a) => !isOpenPosition(a));
@@ -120,8 +141,13 @@ export function portfolioSummary(
     .filter((d) => !isReceived(d, today))
     .reduce((s, d) => s + netOf(d), 0);
 
-  const closedCost = closed.reduce((s, a) => s + (Number(a.invested_amount) || 0), 0);
-  const returnBasis = costBasis + closedCost;
+  // Custo das unidades já vendidas (produto − comissão − realizado), a partir do
+  // ledger. As posições fechadas têm invested_amount = 0, por isso sem o ledger
+  // a base ficava subestimada e a rentabilidade inflacionada.
+  const soldCost = transactions
+    ? soldCostBasis(transactions)
+    : closed.reduce((s, a) => s + (Number(a.invested_amount) || 0), 0);
+  const returnBasis = costBasis + soldCost;
   const totalResult = realizedPL + unrealizedPL + dividendsReceived;
 
   const last12 = dividends
