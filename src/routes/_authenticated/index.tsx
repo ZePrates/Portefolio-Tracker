@@ -148,6 +148,8 @@ function DashboardPage() {
         total: number;
       };
       await queryClient.invalidateQueries({ queryKey: ["assets"] });
+      await queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      await queryClient.invalidateQueries({ queryKey: ["portfolio-snapshots"] });
       if (res.failed.length > 0) {
         toast.warning(`${res.updated} preços atualizados. Sem cotação: ${res.failed.join(", ")}`, {
           id: toastId,

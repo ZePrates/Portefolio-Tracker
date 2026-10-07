@@ -217,6 +217,8 @@ export function AssetPositionModal({ asset, onClose }: Props) {
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ["assets"] });
+    await queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    await queryClient.invalidateQueries({ queryKey: ["portfolio-snapshots"] });
     await queryClient.invalidateQueries({ queryKey: ["position", asset.id] });
   };
 

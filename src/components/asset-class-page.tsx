@@ -419,6 +419,8 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
       }
       setDialogOpen(false);
       await queryClient.invalidateQueries({ queryKey: ["assets"] });
+      await queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      await queryClient.invalidateQueries({ queryKey: ["portfolio-snapshots"] });
       await queryClient.invalidateQueries({ queryKey: ["dividends"] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao guardar.");
@@ -461,6 +463,8 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
       await deleteFn({ data: { id: a.id } });
       toast.success("Ativo eliminado.");
       await queryClient.invalidateQueries({ queryKey: ["assets"] });
+      await queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      await queryClient.invalidateQueries({ queryKey: ["portfolio-snapshots"] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao eliminar.");
     }
@@ -477,6 +481,8 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         total: number;
       };
       await queryClient.invalidateQueries({ queryKey: ["assets"] });
+      await queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      await queryClient.invalidateQueries({ queryKey: ["portfolio-snapshots"] });
       if (res.updated === 0 && res.total === 0) {
         toast.info("Não há ativos com ticker nesta página.", { id: toastId });
       } else if (res.failed.length > 0) {
