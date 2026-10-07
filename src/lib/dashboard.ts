@@ -14,6 +14,7 @@ import {
   isOpenPosition,
 } from "@/lib/portfolio-types";
 import { isReceived, netOf, type DividendRecord } from "@/lib/dividends";
+import { todayLisbon } from "@/lib/dates";
 
 export type PeriodKey = "today" | "month" | "ytd" | "1y" | "all" | "custom";
 
@@ -31,8 +32,9 @@ export interface DateRange {
   to: string;
 }
 
+/** Hoje (YYYY-MM-DD) no fuso de Lisboa. */
 export function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayLisbon();
 }
 
 function shiftYears(iso: string, years: number): string {

@@ -3,6 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware-ext
 import { assetCurrentValue, isOpenPosition, type Asset } from "@/lib/portfolio-types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { todayLisbon } from "@/lib/dates";
 
 export type SB = { from: SupabaseClient<Database>["from"] };
 
@@ -34,7 +35,7 @@ export async function takeSnapshot(supabase: SB, userId: string): Promise<void> 
     const open = assets.filter((a) => isOpenPosition(a as Asset));
     if (open.length === 0) return;
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayLisbon();
     const byClass = new Map<string, { invested: number; value: number }>();
     let totalInvested = 0;
     let totalValue = 0;

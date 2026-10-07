@@ -34,7 +34,7 @@ import {
 import { updateAllPrices, lookupTicker } from "@/lib/prices.functions";
 import { syncDividendsForAsset } from "@/lib/dividends.functions";
 
-import { formatEUR, formatMoney, formatPercent } from "@/lib/format";
+import { formatEUR, formatMoney, formatPercent, parseNumberOr } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
 import {
   PageHeader,
@@ -46,6 +46,7 @@ import {
   TextInput,
 } from "@/components/ui-bits";
 import { cn } from "@/lib/utils";
+import { todayLisbon } from "@/lib/dates";
 
 interface Props {
   assetClass: AssetClass;
@@ -75,7 +76,7 @@ interface FormState {
 const ISIN_RE = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/;
 
 const CURRENCIES = ["USD", "EUR", "GBP", "CHF", "CAD"];
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todayLisbon();
 
 function defaultCurrency(c: AssetClass) {
   return c === "etf" ? "EUR" : "USD";
@@ -101,8 +102,7 @@ function emptyForm(c: AssetClass): FormState {
 }
 
 function num(s: string): number {
-  const n = parseFloat(s.replace(",", "."));
-  return Number.isFinite(n) ? n : 0;
+  return parseNumberOr(s, 0);
 }
 
 function isSecurity(c: AssetClass) {

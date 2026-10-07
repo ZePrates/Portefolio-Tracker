@@ -6,6 +6,7 @@ import type { ExposureRecord, HoldingRecord, PositionInput } from "@/lib/exposur
 import { assetCurrentValue, isOpenPosition, type Asset } from "@/lib/portfolio-types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { todayLisbon } from "@/lib/dates";
 
 /**
  * Sincronização de perfis, composição e exposição dos ativos.
@@ -17,7 +18,7 @@ import type { Database } from "@/integrations/supabase/types";
  * fica `null` e a interface apresenta "Não disponível".
  */
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todayLisbon();
 
 type SB = { from: SupabaseClient<Database>["from"] };
 

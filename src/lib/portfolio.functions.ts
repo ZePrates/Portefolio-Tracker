@@ -7,6 +7,7 @@ import { applySale, buildOpenLots, totalCost, totalQuantity, type LedgerEntry } 
 type AssetUpdate = Database["public"]["Tables"]["assets"]["Update"];
 type AssetRow = Database["public"]["Tables"]["assets"]["Row"];
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { todayLisbon } from "@/lib/dates";
 type SupabaseLike = SupabaseClient<Database>;
 
 const assetClassSchema = z.enum([
@@ -120,7 +121,7 @@ export const createDividend = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayLisbon();
     const gross = data.amount;
     const { data: row, error } = await context.supabase
       .from("dividends")

@@ -4,6 +4,8 @@
  * reconstruída a partir do histórico de compras e vendas (mesmo ledger do FIFO).
  */
 
+import { todayLisbon } from "@/lib/dates";
+
 export interface DividendTrade {
   type: string; // "buy" | "sell"
   quantity: number;
@@ -88,7 +90,7 @@ export function firstPurchaseDate(trades: DividendTrade[]): string | null {
 }
 
 function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayLisbon();
 }
 
 /** Classifica um evento: só é "recebido" com data de pagamento efetiva já passada. */

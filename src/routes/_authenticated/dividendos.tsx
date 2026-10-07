@@ -25,7 +25,15 @@ import {
   receivedLast12Months,
   yieldOnCost,
 } from "@/lib/dividends";
-import { formatEUR, formatMoney, formatDatePt, formatPercent } from "@/lib/format";
+import {
+  formatEUR,
+  formatMoney,
+  formatDatePt,
+  formatPercent,
+  parseNumberOr,
+  parseNumberPt,
+} from "@/lib/format";
+import { todayLisbon } from "@/lib/dates";
 import { usePrivateMode } from "@/components/private-mode";
 import {
   PageHeader,
@@ -74,7 +82,7 @@ function DividendosPage() {
   const [open, setOpen] = useState(false);
   const [assetId, setAssetId] = useState("");
   const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => todayLisbon());
   const [exDate, setExDate] = useState("");
   const [tax, setTax] = useState("");
   const [saving, setSaving] = useState(false);
@@ -178,7 +186,7 @@ function DividendosPage() {
   };
 
   const save = async () => {
-    const value = parseFloat(amount.replace(",", "."));
+    const value = parseNumberPt(amount);
     if (!Number.isFinite(value) || value <= 0) {
       toast.error("Indica um valor válido.");
       return;
@@ -188,7 +196,7 @@ function DividendosPage() {
       toast.error("Escolhe o ativo que pagou o dividendo.");
       return;
     }
-    const taxValue = parseFloat(tax.replace(",", ".")) || 0;
+    const taxValue = parseNumberOr(tax, 0);
     setSaving(true);
     try {
       await createFn({

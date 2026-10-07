@@ -9,6 +9,7 @@ import {
   type DividendEventInput,
   type AuditableDividend,
 } from "@/lib/dividends";
+import { todayLisbon } from "@/lib/dates";
 
 const YAHOO_SOURCE = "yahoo";
 
@@ -83,7 +84,7 @@ async function syncAsset(
   if (!quote) return { ...base, status: "unavailable", reason: "Sem dados do Yahoo Finance." };
   const { currency, factor } = normalize(quote);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayLisbon();
   const events: DividendEventInput[] = [];
   for (const d of quote.dividends) {
     const perShareNative = d.amount * factor;
@@ -240,7 +241,7 @@ export const recalculateDividends = createServerFn({ method: "POST" })
       .eq("source", YAHOO_SOURCE);
     if (error) throw new Error(error.message);
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayLisbon();
     const tradesByAsset = new Map<string, DividendTrade[]>();
     let corrected = 0;
     let dropped = 0;
@@ -332,7 +333,7 @@ export const auditDividends = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     const rows = (data ?? []) as DividendRow[];
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayLisbon();
     const tradesByAsset = new Map<string, DividendTrade[]>();
     const findings: Array<{
       id: string;

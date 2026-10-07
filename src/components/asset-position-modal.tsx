@@ -27,10 +27,11 @@ import {
   totalReceived,
   totalScheduled,
 } from "@/lib/dividends";
-import { formatEUR, formatMoney } from "@/lib/format";
+import { formatEUR, formatMoney, parseNumberOr } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
 import { Button, Field, Modal, TextInput } from "@/components/ui-bits";
 import { cn } from "@/lib/utils";
+import { todayLisbon } from "@/lib/dates";
 
 interface Props {
   asset: Asset | null;
@@ -68,12 +69,11 @@ interface Preview {
   breakdown: { lotId?: string; traded_at: string; quantity: number; unitCost: number }[];
 }
 
-function num(s: string) {
-  const n = parseFloat(s.replace(",", "."));
-  return Number.isFinite(n) ? n : 0;
+function num(s: string): number {
+  return parseNumberOr(s, 0);
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todayLisbon();
 
 export function AssetPositionModal({ asset, onClose }: Props) {
   const { hidden } = usePrivateMode();
