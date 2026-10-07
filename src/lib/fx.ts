@@ -8,7 +8,8 @@
  * sinalizado).
  */
 
-export type FxSource = "eur" | "manual" | "historical" | "current" | "current_fallback";
+/** broker = câmbio efetivo do extrato importado (ex.: XTB). */
+export type FxSource = "eur" | "manual" | "broker" | "historical" | "current" | "current_fallback";
 
 export interface TradeFxInput {
   nativeCurrency: string | null | undefined;

@@ -269,7 +269,7 @@ async function tradeFx(
  * reescrevendo o P/L realizado de cada venda e os agregados do ativo.
  * Única fonte de verdade para `assets.quantity/invested_amount/realized_pl`.
  */
-async function recomputeAsset(supabase: SupabaseLike, assetId: string) {
+export async function recomputeAsset(supabase: SupabaseLike, assetId: string) {
   const { asset, entries } = await loadPosition(supabase, assetId);
   const replay = replayLedger(entries);
 
