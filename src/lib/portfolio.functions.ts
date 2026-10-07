@@ -49,6 +49,8 @@ const assetInputSchema = z.object({
   purchase_price_native: z.number().min(0).nullable().default(null),
   current_price_native: z.number().min(0).nullable().default(null),
   dividend_frequency: z.string().nullable().default(null),
+  /** Retenção na fonte dos dividendos (fração 0..1); null = por omissão do domicílio. */
+  withholding_rate: z.number().min(0).lt(1).nullable().default(null),
 });
 
 export const listAssets = createServerFn({ method: "GET" })

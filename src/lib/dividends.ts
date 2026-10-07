@@ -301,41 +301,73 @@ export function netOf(d: DividendRecord): number {
   return net == null ? grossOf(d) : Number(net) || 0;
 }
 
-export function totalReceived(rows: DividendRecord[], today = todayISO()): number {
-  return rows.filter((d) => isReceived(d, today)).reduce((s, d) => s + grossOf(d), 0);
+/** Base de agregação: líquido (KPIs, rendimento efetivo) ou bruto (fiscal). */
+export type DividendBasis = "net" | "gross";
+
+export function amountOf(d: DividendRecord, basis: DividendBasis = "net"): number {
+  return basis === "gross" ? grossOf(d) : netOf(d);
 }
 
-export function totalScheduled(rows: DividendRecord[], today = todayISO()): number {
-  return rows.filter((d) => !isReceived(d, today)).reduce((s, d) => s + grossOf(d), 0);
+/** Imposto retido em EUR: o guardado ou, na falta dele, bruto − líquido. */
+export function taxOf(d: DividendRecord & { tax_amount?: number | null }): number {
+  const stored = Number(d.tax_amount ?? 0) || 0;
+  if (stored > 0) return stored;
+  return Math.max(0, grossOf(d) - netOf(d));
 }
 
-export function receivedInYear(rows: DividendRecord[], year: number, today = todayISO()): number {
+export function totalReceived(
+  rows: DividendRecord[],
+  today = todayISO(),
+  basis: DividendBasis = "net",
+): number {
+  return rows.filter((d) => isReceived(d, today)).reduce((s, d) => s + amountOf(d, basis), 0);
+}
+
+export function totalScheduled(
+  rows: DividendRecord[],
+  today = todayISO(),
+  basis: DividendBasis = "net",
+): number {
+  return rows.filter((d) => !isReceived(d, today)).reduce((s, d) => s + amountOf(d, basis), 0);
+}
+
+export function receivedInYear(
+  rows: DividendRecord[],
+  year: number,
+  today = todayISO(),
+  basis: DividendBasis = "net",
+): number {
   return rows
     .filter(
       (d) => isReceived(d, today) && (d.payment_date ?? d.paid_at).slice(0, 4) === String(year),
     )
-    .reduce((s, d) => s + grossOf(d), 0);
+    .reduce((s, d) => s + amountOf(d, basis), 0);
 }
 
 export function receivedByMonth(
   rows: DividendRecord[],
   today = todayISO(),
+  basis: DividendBasis = "net",
 ): Record<string, number> {
   const out: Record<string, number> = {};
   for (const d of rows) {
     if (!isReceived(d, today)) continue;
     const key = (d.payment_date ?? d.paid_at).slice(0, 7);
-    out[key] = (out[key] ?? 0) + grossOf(d);
+    out[key] = (out[key] ?? 0) + amountOf(d, basis);
   }
   return out;
 }
 
-export function receivedByYear(rows: DividendRecord[], today = todayISO()): Record<string, number> {
+export function receivedByYear(
+  rows: DividendRecord[],
+  today = todayISO(),
+  basis: DividendBasis = "net",
+): Record<string, number> {
   const out: Record<string, number> = {};
   for (const d of rows) {
     if (!isReceived(d, today)) continue;
     const key = (d.payment_date ?? d.paid_at).slice(0, 4);
-    out[key] = (out[key] ?? 0) + grossOf(d);
+    out[key] = (out[key] ?? 0) + amountOf(d, basis);
   }
   return out;
 }
@@ -343,6 +375,7 @@ export function receivedByYear(rows: DividendRecord[], today = todayISO()): Reco
 export function receivedByAsset(
   rows: DividendRecord[],
   today = todayISO(),
+  basis: DividendBasis = "net",
 ): Array<{
   assetId: string | null;
   assetName: string;
@@ -362,7 +395,7 @@ export function receivedByAsset(
       total: 0,
       count: 0,
     };
-    cur.total += grossOf(d);
+    cur.total += amountOf(d, basis);
     cur.count += 1;
     map.set(key, cur);
   }
@@ -395,13 +428,17 @@ export function currentYield(perShareTTM: number, currentPrice: number): number 
   return (perShareTTM / currentPrice) * 100;
 }
 
-export function receivedLast12Months(rows: DividendRecord[], today = todayISO()): number {
+export function receivedLast12Months(
+  rows: DividendRecord[],
+  today = todayISO(),
+  basis: DividendBasis = "net",
+): number {
   const d = new Date(`${today}T00:00:00Z`);
   d.setUTCFullYear(d.getUTCFullYear() - 1);
   const cutoff = d.toISOString().slice(0, 10);
   return rows
     .filter((r) => isReceived(r, today) && (r.payment_date ?? r.paid_at) >= cutoff)
-    .reduce((s, r) => s + grossOf(r), 0);
+    .reduce((s, r) => s + amountOf(r, basis), 0);
 }
 
 export function lastDividend(rows: DividendRecord[], today = todayISO()): DividendRecord | null {
