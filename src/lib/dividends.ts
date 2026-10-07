@@ -84,7 +84,7 @@ export function quantityHeldBefore(trades: DividendTrade[], date: string): numbe
 }
 
 /** Data da primeira compra (aquisição inicial), ou null se não houver compras. */
-export function firstPurchaseDate(trades: DividendTrade[]): string | null {
+function firstPurchaseDate(trades: DividendTrade[]): string | null {
   const buys = sortTrades(trades).filter((t) => t.type === "buy" && Number(t.quantity) > 0);
   return buys.length > 0 ? buys[0]!.traded_at : null;
 }
@@ -160,23 +160,6 @@ export function computeDividendHistory(
 /* ------------------------------------------------------------------ */
 /* Identidade determinística e auditoria                               */
 /* ------------------------------------------------------------------ */
-
-/**
- * Chave determinística de um evento de dividendos.
- * Usada para deduplicação/idempotência: correr a sincronização N vezes
- * produz sempre a mesma chave e, portanto, o mesmo registo.
- */
-export function dividendEventKey(input: {
-  source: string;
-  symbol: string;
-  exDate: string;
-  currency?: string | null;
-  perShareNative?: number | null;
-}): string {
-  const cur = (input.currency ?? "EUR").toUpperCase();
-  const per = input.perShareNative == null ? "" : `:${Number(input.perShareNative).toFixed(6)}`;
-  return `${input.source}:${input.symbol.toUpperCase()}:${input.exDate}:${cur}${per}`;
-}
 
 export type DividendIssue =
   | "future_marked_received"
@@ -353,20 +336,6 @@ export function receivedByMonth(
   for (const d of rows) {
     if (!isReceived(d, today)) continue;
     const key = (d.payment_date ?? d.paid_at).slice(0, 7);
-    out[key] = (out[key] ?? 0) + amountOf(d, basis);
-  }
-  return out;
-}
-
-export function receivedByYear(
-  rows: DividendRecord[],
-  today = todayISO(),
-  basis: DividendBasis = "net",
-): Record<string, number> {
-  const out: Record<string, number> = {};
-  for (const d of rows) {
-    if (!isReceived(d, today)) continue;
-    const key = (d.payment_date ?? d.paid_at).slice(0, 4);
     out[key] = (out[key] ?? 0) + amountOf(d, basis);
   }
   return out;

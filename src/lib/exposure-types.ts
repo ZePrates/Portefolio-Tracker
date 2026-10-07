@@ -278,7 +278,7 @@ export function currencyOfCountry(country: string | null | undefined): string {
 }
 
 /** Nomes de setor devolvidos pelo Yahoo (chaves) → etiquetas em português. */
-export const SECTOR_LABELS: Record<string, string> = {
+const SECTOR_LABELS: Record<string, string> = {
   technology: "Tecnologia",
   financial_services: "Financeiro",
   financialservices: "Financeiro",

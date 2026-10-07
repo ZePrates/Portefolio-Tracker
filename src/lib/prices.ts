@@ -60,7 +60,7 @@ export function toPricePerGram(price: number, unit: MetalUnit): number {
 }
 
 /** Valor da posição na moeda nativa. */
-export function positionValueNative(quantity: number, priceNative: number): number {
+function positionValueNative(quantity: number, priceNative: number): number {
   return Math.max(0, quantity) * priceNative;
 }
 

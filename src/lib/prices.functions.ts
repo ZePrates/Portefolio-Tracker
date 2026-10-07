@@ -4,8 +4,6 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware-ext
 import { runPriceUpdate, type PriceablePosition, type Quote } from "@/lib/prices";
 import { takeSnapshot, type SB } from "@/lib/snapshots.functions";
 
-export { toYahooSymbol } from "@/lib/yahoo";
-
 /** Procura no Yahoo Finance toda a informação de um ticker (preço, moeda, dividendos, yield). */
 export const lookupTicker = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -133,6 +131,3 @@ export const updateAllPrices = createServerFn({ method: "POST" })
       finishedAt: new Date().toISOString(),
     };
   });
-
-/** Alias retrocompatível. */
-export const refreshPricesFromYahoo = updateAllPrices;
