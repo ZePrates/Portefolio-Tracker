@@ -8,7 +8,7 @@ export interface YahooQuote {
   dividends: Array<{ date: string; amount: number }>;
 }
 
-export { toYahooSymbol } from "@/lib/yahoo";
+export { toYahooSymbol, yahooSymbolFor } from "@/lib/yahoo";
 
 export async function fetchYahoo(symbol: string, range = "1d"): Promise<YahooQuote | null> {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
