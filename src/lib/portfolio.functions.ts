@@ -604,3 +604,109 @@ export const previewSale = createServerFn({ method: "POST" })
       remainingCost: result.remainingCost,
     };
   });
+
+/**
+ * Corrige o câmbio de movimentos antigos gravados com a taxa de "hoje" (F1):
+ * usa o fecho USD/…→EUR da data de cada movimento (Yahoo) e recalcula as
+ * posições. Só toca em movimentos sem câmbio confirmado (fx_source vazio ou
+ * fallback); os importados do broker ou com taxa manual ficam intactos.
+ * `dryRun: true` devolve apenas a pré-visualização (antes/depois).
+ */
+export const refreshHistoricalFx = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ dryRun: z.boolean().default(true) }).parse(input ?? {}))
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase;
+    const { data: txs, error } = await sb
+      .from("transactions")
+      .select(
+        "id, asset_id, type, quantity, price, price_native, fee, fee_native, fx_rate, fx_source, native_currency, traded_at",
+      )
+      .neq("native_currency", "EUR")
+      .or("fx_source.is.null,fx_source.eq.current_fallback");
+    if (error) throw dbError(error);
+
+    const { getRateOnDate } = await import("@/lib/yahoo.server");
+    const cache = new Map<string, number | null>();
+    const changes: Array<{
+      id: string;
+      assetId: string | null;
+      tradedAt: string;
+      fxBefore: number;
+      fxAfter: number;
+      costBefore: number;
+      costAfter: number;
+    }> = [];
+    const missing: string[] = [];
+    for (const t of txs ?? []) {
+      if (t.price_native == null) continue;
+      const rate = await getRateOnDate(t.native_currency, t.traded_at, cache);
+      if (rate == null) {
+        missing.push(`${t.traded_at} (${t.native_currency})`);
+        continue;
+      }
+      const qty = Number(t.quantity);
+      const feeNative = Number(t.fee_native ?? 0);
+      changes.push({
+        id: t.id,
+        assetId: t.asset_id,
+        tradedAt: t.traded_at,
+        fxBefore: Number(t.fx_rate),
+        fxAfter: rate,
+        costBefore: qty * Number(t.price) + Number(t.fee ?? 0),
+        costAfter: qty * Number(t.price_native) * rate + feeNative * rate,
+      });
+    }
+
+    if (!data.dryRun) {
+      // Valida cada livro resultante antes de gravar.
+      const byAsset = new Map<string, typeof changes>();
+      for (const c of changes)
+        if (c.assetId) byAsset.set(c.assetId, [...(byAsset.get(c.assetId) ?? []), c]);
+      for (const [assetId, list] of byAsset) {
+        const { entries } = await loadPosition(sb, assetId);
+        const fix = new Map(list.map((c) => [c.id, c]));
+        replayLedger(
+          entries.map((e) => {
+            const c = e.id ? fix.get(e.id) : undefined;
+            return c
+              ? {
+                  ...e,
+                  price: (e.price / c.fxBefore) * c.fxAfter,
+                  fee: ((e.fee ?? 0) / c.fxBefore) * c.fxAfter,
+                }
+              : e;
+          }),
+        );
+      }
+      for (const t of txs ?? []) {
+        const c = changes.find((x) => x.id === t.id);
+        if (!c) continue;
+        const price = Number(t.price_native) * c.fxAfter;
+        const fee = Number(t.fee_native ?? 0) * c.fxAfter;
+        const qty = Number(t.quantity);
+        const { error: upErr } = await sb
+          .from("transactions")
+          .update({
+            price,
+            fee,
+            fx_rate: c.fxAfter,
+            fx_source: "historical",
+            total: t.type === "buy" ? qty * price + fee : qty * price - fee,
+          })
+          .eq("id", t.id);
+        if (upErr) throw dbError(upErr);
+      }
+      for (const assetId of byAsset.keys()) await recomputeAsset(sb, assetId);
+    }
+
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+    return {
+      dryRun: data.dryRun,
+      count: changes.length,
+      costBefore: round2(changes.reduce((s, c) => s + c.costBefore, 0)),
+      costAfter: round2(changes.reduce((s, c) => s + c.costAfter, 0)),
+      changes,
+      missing,
+    };
+  });
