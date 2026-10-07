@@ -180,6 +180,7 @@ export function AssetPositionModal({ asset, onClose }: Props) {
             quantity: q,
             price_native: num(price),
             fee_native: num(fee),
+            traded_at: date,
           },
         })) as Preview;
         if (!cancelled) {
@@ -197,7 +198,7 @@ export function AssetPositionModal({ asset, onClose }: Props) {
       cancelled = true;
       clearTimeout(t);
     };
-  }, [mode, quantity, price, fee, asset?.id]);
+  }, [mode, quantity, price, fee, date, asset?.id]);
 
   if (!asset) return null;
 

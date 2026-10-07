@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { applySale, buildOpenLots, totalCost, totalQuantity, type LedgerEntry } from "./fifo";
+import {
+  applySale,
+  buildOpenLots,
+  openLotsAt,
+  replayLedger,
+  totalCost,
+  totalQuantity,
+  type LedgerEntry,
+} from "./fifo";
 
 const buy = (id: string, qty: number, price: number, date: string, fee = 0): LedgerEntry => ({
   id,
@@ -72,5 +80,61 @@ describe("FIFO", () => {
     expect(r.breakdown[1]!.quantity).toBe(2);
     expect(r.remainingQuantity).toBe(8);
     expect(r.remainingCost).toBe(1600);
+  });
+});
+
+describe("replayLedger", () => {
+  const sell = (id: string, qty: number, price: number, date: string, fee = 0): LedgerEntry => ({
+    id,
+    type: "sell",
+    quantity: qty,
+    price,
+    fee,
+    traded_at: date,
+  });
+
+  it("calcula P/L realizado por venda e lotes restantes", () => {
+    const r = replayLedger([
+      buy("b1", 10, 100, "2025-01-10", 1),
+      buy("b2", 10, 120, "2025-02-10"),
+      sell("s1", 15, 130, "2025-03-10", 2),
+    ]);
+    // custo: 10 × 100,1 + 5 × 120 = 1601; produto 1950 − 2 comissão
+    expect(r.sales).toHaveLength(1);
+    expect(r.sales[0]!.costBasis).toBeCloseTo(1601);
+    expect(r.sales[0]!.realizedPL).toBeCloseTo(1950 - 2 - 1601);
+    expect(totalQuantity(r.lots)).toBeCloseTo(5);
+    expect(totalCost(r.lots)).toBeCloseTo(600);
+    expect(r.fees).toBeCloseTo(3);
+    expect(r.lastSellDate).toBe("2025-03-10");
+  });
+
+  it("uma venda com data anterior a uma compra não consome essa compra", () => {
+    // Antes: sellAsset aplicava FIFO aos lotes de HOJE, incluindo compras posteriores.
+    const r = replayLedger([
+      buy("b1", 5, 100, "2025-01-10"),
+      sell("s1", 5, 150, "2025-02-01"),
+      buy("b2", 5, 200, "2025-03-01"),
+    ]);
+    expect(r.sales[0]!.costBasis).toBeCloseTo(500);
+    expect(r.sales[0]!.breakdown.map((b) => b.lotId)).toEqual(["b1"]);
+    expect(totalCost(r.lots)).toBeCloseTo(1000);
+  });
+
+  it("rejeita livros onde se vende mais do que se detém nessa data", () => {
+    expect(() =>
+      replayLedger([sell("s1", 5, 150, "2025-01-05"), buy("b1", 5, 100, "2025-01-10")]),
+    ).toThrow(/05\/01\/2025.*só detinhas 0/);
+  });
+
+  it("apagar uma compra de que depende uma venda é detetado antes de gravar", () => {
+    const ledger = [buy("b1", 5, 100, "2025-01-10"), sell("s1", 5, 150, "2025-02-01")];
+    expect(() => replayLedger(ledger.filter((e) => e.id !== "b1"))).toThrow(/Movimento inválido/);
+  });
+
+  it("openLotsAt devolve os lotes detidos no fim de uma data", () => {
+    const ledger = [buy("b1", 5, 100, "2025-01-10"), buy("b2", 5, 200, "2025-03-01")];
+    expect(totalQuantity(openLotsAt(ledger, "2025-02-01"))).toBe(5);
+    expect(totalQuantity(openLotsAt(ledger, "2025-03-01"))).toBe(10);
   });
 });
