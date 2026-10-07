@@ -14,6 +14,7 @@
  * são descartadas (o FT publica 0,00% quando não tem a informação).
  */
 import type { ProviderHolding, ProviderResult } from "@/lib/exposure-providers/types";
+import { fetchWithTimeout } from "@/lib/http";
 
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
@@ -153,7 +154,7 @@ export function parseFtHoldings(html: string): FtHoldingsData | null {
 export async function fetchFtEtf(isin: string | null): Promise<ProviderResult | null> {
   if (!isin) return null;
   try {
-    const search = await fetch(
+    const search = await fetchWithTimeout(
       `https://markets.ft.com/data/search?query=${encodeURIComponent(isin)}&assetClass=ETF`,
       { headers: { "User-Agent": UA, Accept: "text/html" } },
     );
@@ -161,7 +162,7 @@ export async function fetchFtEtf(isin: string | null): Promise<ProviderResult | 
     const code = pickFtCode(parseFtSearchCodes(await search.text()));
     if (!code) return null;
 
-    const page = await fetch(
+    const page = await fetchWithTimeout(
       `https://markets.ft.com/data/etfs/tearsheet/holdings?s=${encodeURIComponent(code)}`,
       { headers: { "User-Agent": UA, Accept: "text/html" } },
     );

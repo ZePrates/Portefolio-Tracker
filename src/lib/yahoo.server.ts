@@ -1,5 +1,6 @@
 /** Acesso ao Yahoo Finance (dados estruturados, sem scraping de HTML e sem LLM). */
 
+import { fetchWithTimeout } from "@/lib/http";
 export interface YahooQuote {
   price: number;
   currency: string;
@@ -14,7 +15,7 @@ export async function fetchYahoo(symbol: string, range = "1d"): Promise<YahooQuo
     symbol,
   )}?interval=1d&range=${range}&events=div`;
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json" },
     });
     if (!res.ok) return null;
@@ -98,7 +99,7 @@ export async function getRateOnDate(
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${cur}EUR=X?interval=1d&period1=${start}&period2=${end}`;
   let rate: number | null = null;
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json" },
     });
     if (res.ok) {
