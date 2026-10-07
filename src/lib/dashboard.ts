@@ -93,7 +93,7 @@ export interface PortfolioSummary {
   dividendsScheduled: number;
   /** realizado + não realizado + dividendos recebidos. */
   totalResult: number;
-  /** totalResult / (cost basis + custo das posições fechadas), em %. */
+  /** totalResult / (cost basis atual + custo das unidades já vendidas), em %. */
   totalReturnPct: number | null;
   /** Base usada para a rentabilidade total, em EUR. */
   returnBasis: number;
@@ -107,6 +107,7 @@ export function portfolioSummary(
   assets: Asset[],
   dividends: DividendRecord[],
   today = todayISO(),
+  transactions?: TimelineTransaction[],
 ): PortfolioSummary {
   const open = assets.filter(isOpenPosition);
   const closed = assets.filter((a) => !isOpenPosition(a));
@@ -122,8 +123,19 @@ export function portfolioSummary(
     .filter((d) => !isReceived(d, today))
     .reduce((s, d) => s + netOf(d), 0);
 
-  const closedCost = closed.reduce((s, a) => s + (Number(a.invested_amount) || 0), 0);
-  const returnBasis = costBasis + closedCost;
+  // Custo das unidades já vendidas (produto − comissão − realizado), a partir do
+  // ledger. As posições fechadas têm invested_amount = 0, por isso sem o ledger
+  // a base ficava subestimada e a rentabilidade inflacionada.
+  const soldCost = transactions
+    ? transactions
+        .filter((t) => t.type === "sell")
+        .reduce((s, t) => {
+          const proceeds = (Number(t.quantity) || 0) * (Number(t.price) || 0);
+          const cost = proceeds - (Number(t.fee ?? 0) || 0) - (Number(t.realized_pl ?? 0) || 0);
+          return s + Math.max(0, cost);
+        }, 0)
+    : closed.reduce((s, a) => s + (Number(a.invested_amount) || 0), 0);
+  const returnBasis = costBasis + soldCost;
   const totalResult = realizedPL + unrealizedPL + dividendsReceived;
 
   const last12 = dividends

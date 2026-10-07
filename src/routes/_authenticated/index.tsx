@@ -190,8 +190,12 @@ function DashboardPage() {
     realized_pl: number | null;
   }>;
 
+  const summary = useMemo(
+    () => portfolioSummary(assets, dividends, undefined, transactions),
+    [assets, dividends, transactions],
+  );
   const range = useMemo(() => periodRange(period), [period]);
-  const summary = useMemo(() => portfolioSummary(assets, dividends), [assets, dividends]);
+
   const allocation = useMemo(() => allocationByClass(assets), [assets]);
   const perf = useMemo(() => assetPerformance(assets), [assets]);
   const best = useMemo(() => bestPerformers(perf, 5), [perf]);

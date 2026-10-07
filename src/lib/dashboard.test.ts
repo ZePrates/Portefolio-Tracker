@@ -268,3 +268,38 @@ describe("garantias estruturais", () => {
     expect(/assets\.map\(/.test(page)).toBe(false);
   });
 });
+
+describe("portfolioSummary — base da rentabilidade com vendas (F8)", () => {
+  // Comprou 10 a 100 (custo 1000), vendeu 10 a 150 (+500). Posição fechada:
+  // invested_amount fica 0 e a base antiga era 0 → rentabilidade null/inflacionada.
+  const closed = asset({
+    id: "closed",
+    quantity: 0,
+    invested_amount: 0,
+    realized_pl: 500,
+    status: "closed",
+  });
+  const open = asset({
+    id: "open",
+    quantity: 10,
+    average_price: 100,
+    current_price: 110,
+    invested_amount: 1000,
+  });
+  const sells = [
+    { type: "sell", traded_at: "2026-05-01", quantity: 10, price: 150, fee: 0, realized_pl: 500 },
+  ];
+
+  it("inclui o custo das unidades vendidas na base", () => {
+    const s = portfolioSummary([closed, open], [], TODAY, sells);
+    // resultado = 500 realizado + 100 latente; base = 1000 (aberta) + 1000 (vendida)
+    expect(s.totalResult).toBeCloseTo(600);
+    expect(s.returnBasis).toBeCloseTo(2000);
+    expect(s.totalReturnPct).toBeCloseTo(30);
+  });
+
+  it("sem transações mantém o comportamento anterior", () => {
+    const s = portfolioSummary([closed, open], [], TODAY);
+    expect(s.returnBasis).toBeCloseTo(1000);
+  });
+});
