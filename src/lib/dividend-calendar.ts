@@ -96,7 +96,7 @@ export function projectDividendCalendar(input: {
       currency === "EUR"
         ? 1
         : currency === (a.native_currency ?? "EUR").toUpperCase()
-          ? (currentRateOf(a) ?? Number(last.fx_rate) ?? 1)
+          ? (currentRateOf(a) ?? (Number(last.fx_rate) || 1))
           : Number(last.fx_rate) || 1;
     const perShare = Number(last.per_share_native);
     const wht = withholdingRateFor(a).rate;
