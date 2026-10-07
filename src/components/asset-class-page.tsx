@@ -47,7 +47,7 @@ import {
 } from "@/components/ui-bits";
 import { cn } from "@/lib/utils";
 import { todayLisbon } from "@/lib/dates";
-import { isinCode } from "@/lib/validation";
+import { isValidIsin } from "@/lib/identifiers";
 import {
   assetSortValue,
   isQuantityClass,
@@ -316,7 +316,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
       return;
     }
     const isin = form.isin.trim().toUpperCase();
-    if (isin && !isinCode.safeParse(isin).success) {
+    if (isin && !isValidIsin(isin)) {
       toast.error("ISIN inválido — tem de ter 12 caracteres (ex.: IE00BK5BQT80).");
       return;
     }

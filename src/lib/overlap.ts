@@ -4,6 +4,7 @@
  * a fração de A que também está em B (e vice-versa) nas holdings conhecidas.
  */
 
+import { isValidIsin } from "@/lib/identifiers";
 import { normalizeCompanyKey } from "@/lib/intelligence";
 
 export interface EtfHoldings {
@@ -26,7 +27,7 @@ export interface OverlapPair {
 
 function keyOf(h: { name: string; isin?: string | null; symbol?: string | null }): string {
   const isin = h.isin?.trim().toUpperCase();
-  if (isin && /^[A-Z]{2}[A-Z0-9]{9}\d$/.test(isin)) return `isin:${isin}`;
+  if (isin && isValidIsin(isin)) return `isin:${isin}`;
   return `name:${normalizeCompanyKey(h.name || h.symbol || "")}`;
 }
 

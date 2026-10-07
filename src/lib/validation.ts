@@ -1,6 +1,7 @@
 /** Esquemas zod partilhados pelas server functions. */
 import { z } from "zod";
 import { isValidISODate, todayLisbon } from "@/lib/dates";
+import { ISIN_PATTERN } from "@/lib/identifiers";
 
 /** Data de calendário real em YYYY-MM-DD (rejeita "abc" e 2026-02-30). */
 export const isoDate = z
@@ -25,4 +26,4 @@ export const isinCode = z
   .string()
   .trim()
   .transform((s) => s.toUpperCase())
-  .pipe(z.string().regex(/^[A-Z]{2}[A-Z0-9]{9}[0-9]$/, "ISIN inválido."));
+  .pipe(z.string().regex(ISIN_PATTERN, "ISIN inválido."));
