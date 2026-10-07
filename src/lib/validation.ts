@@ -19,3 +19,10 @@ export const currencyCode = z
   .trim()
   .transform((s) => s.toUpperCase())
   .pipe(z.string().regex(/^[A-Z]{3}$/, "Moeda inválida (ex.: EUR, USD)."));
+
+/** ISIN (ISO 6166): 2 letras do país + 9 alfanuméricos + dígito de controlo. */
+export const isinCode = z
+  .string()
+  .trim()
+  .transform((s) => s.toUpperCase())
+  .pipe(z.string().regex(/^[A-Z]{2}[A-Z0-9]{9}[0-9]$/, "ISIN inválido."));

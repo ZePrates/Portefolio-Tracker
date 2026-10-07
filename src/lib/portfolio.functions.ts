@@ -13,7 +13,7 @@ import {
 } from "@/lib/fifo";
 import { currentRateOf, needsHistoricalRate, resolveTradeFx, type TradeFx } from "@/lib/fx";
 import { dbError } from "@/lib/errors";
-import { currencyCode, isoDate, tradeDate } from "@/lib/validation";
+import { currencyCode, isinCode, isoDate, tradeDate } from "@/lib/validation";
 
 type AssetUpdate = Database["public"]["Tables"]["assets"]["Update"];
 type AssetRow = Database["public"]["Tables"]["assets"]["Row"];
@@ -34,13 +34,7 @@ const assetInputSchema = z.object({
   class: assetClassSchema,
   name: z.string().trim().min(1, "Nome é obrigatório").max(200),
   ticker: z.string().trim().max(32).nullable().default(null),
-  isin: z
-    .string()
-    .trim()
-    .transform((s) => s.toUpperCase())
-    .pipe(z.string().regex(/^[A-Z]{2}[A-Z0-9]{9}d$/, "ISIN inválido."))
-    .nullable()
-    .default(null),
+  isin: isinCode.nullable().default(null),
   quantity: z.number().min(0).default(0),
   average_price: z.number().min(0).default(0),
   current_price: z.number().min(0).default(0),

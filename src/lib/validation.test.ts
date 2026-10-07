@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { currencyCode, isoDate, tradeDate } from "./validation";
+import { currencyCode, isinCode, isoDate, tradeDate } from "./validation";
 
 describe("validation", () => {
   it("isoDate aceita datas reais e rejeita inválidas", () => {
@@ -17,5 +17,17 @@ describe("validation", () => {
   it("currencyCode normaliza para maiúsculas", () => {
     expect(currencyCode.parse(" usd ")).toBe("USD");
     expect(currencyCode.safeParse("dollar").success).toBe(false);
+  });
+});
+
+describe("isinCode", () => {
+  it("aceita ISINs reais e normaliza para maiúsculas", () => {
+    expect(isinCode.parse("ie00bk5bqt80")).toBe("IE00BK5BQT80");
+    expect(isinCode.safeParse("US0378331005").success).toBe(true);
+  });
+
+  it("rejeita formatos inválidos", () => {
+    expect(isinCode.safeParse("IE00BK5BQT8X").success).toBe(false);
+    expect(isinCode.safeParse("VWCE").success).toBe(false);
   });
 });
