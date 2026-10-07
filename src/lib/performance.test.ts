@@ -12,6 +12,8 @@ import {
   xirr,
   xirrFlows,
   type PerfTransaction,
+  twrFlows,
+  valuationsFromSnapshots,
 } from "@/lib/performance";
 import type { Asset } from "@/lib/portfolio-types";
 import type { DividendRecord } from "@/lib/dividends";
@@ -305,5 +307,45 @@ describe("buildSnapshotSeries", () => {
 
   it("devolve lista vazia para um âmbito sem fotografias", () => {
     expect(buildSnapshotSeries(snaps, "class:reit")).toEqual([]);
+  });
+});
+
+describe("TWR com dividendos e snapshots (F9)", () => {
+  it("dividendos pagos em dinheiro contam como rendimento no TWR", () => {
+    // V: 1000 → 1000 entre dois snapshots, mas pagou 30 de dividendos (saíram da carteira).
+    const vals = [
+      { date: "2026-01-01", value: 1000 },
+      { date: "2026-02-01", value: 1000 },
+    ];
+    const divs: DividendRecord[] = [
+      {
+        asset_id: "a",
+        asset_name: "A",
+        amount: 30,
+        net_amount: 30,
+        paid_at: "2026-01-15",
+        payment_date: "2026-01-15",
+        status: "received",
+      },
+    ];
+    // Antes (só fluxos do ledger): 0 %. Agora: +3 %.
+    expect(twr(vals, cashFlowsFromLedger([])).totalPct).toBeCloseTo(0);
+    expect(twr(vals, twrFlows([], divs, "2026-10-07")).totalPct).toBeCloseTo(3);
+  });
+
+  it("valuationsFromSnapshots usa o âmbito pedido e ignora valores em falta", () => {
+    const v = valuationsFromSnapshots(
+      [
+        { snapshotDate: "2026-01-02", scope: "total", marketValue: 110 },
+        { snapshotDate: "2026-01-01", scope: "total", marketValue: 100 },
+        { snapshotDate: "2026-01-03", scope: "total", marketValue: null },
+        { snapshotDate: "2026-01-01", scope: "class:etf", marketValue: 50 },
+      ],
+      "total",
+    );
+    expect(v).toEqual([
+      { date: "2026-01-01", value: 100 },
+      { date: "2026-01-02", value: 110 },
+    ]);
   });
 });

@@ -3,6 +3,7 @@
  * Toda a informação financeira vem de APIs estruturadas (ver yahoo.server.ts).
  */
 
+import { mapWithConcurrency } from "@/lib/http";
 export const TROY_OUNCE_GRAMS = 31.1034768;
 
 export type MetalUnit = "troy_ounce" | "gram" | "kilogram";
@@ -60,7 +61,7 @@ export function toPricePerGram(price: number, unit: MetalUnit): number {
 }
 
 /** Valor da posição na moeda nativa. */
-export function positionValueNative(quantity: number, priceNative: number): number {
+function positionValueNative(quantity: number, priceNative: number): number {
   return Math.max(0, quantity) * priceNative;
 }
 
@@ -117,8 +118,9 @@ export interface UpdateOutcome {
 }
 
 /**
- * Percorre todos os ativos com um fornecedor de cotações injetável.
- * Um erro num ativo nunca interrompe os restantes.
+ * Percorre todos os ativos com um fornecedor de cotações injetável, com no
+ * máximo `concurrency` pedidos em simultâneo (antes: um a um, em série).
+ * Um erro num ativo nunca interrompe os restantes; a ordem dos resultados mantém-se.
  */
 export async function runPriceUpdate(
   assets: PriceablePosition[],
@@ -126,28 +128,29 @@ export async function runPriceUpdate(
   getRate: (currency: string) => Promise<number | null>,
   save: (asset: PriceablePosition, patch: PricePatch) => Promise<void>,
   now: Date = new Date(),
+  concurrency = 4,
 ): Promise<{ updated: number; failed: UpdateOutcome[]; results: UpdateOutcome[] }> {
-  const results: UpdateOutcome[] = [];
-  for (const asset of assets) {
-    try {
-      const quote = await getQuote(asset);
-      const rate = quote ? await getRate(quote.currency) : null;
-      const plan = planPriceUpdate(asset, quote, rate, now);
-      if (!plan.ok) {
-        results.push({ id: asset.id, name: asset.name, ok: false, error: plan.error });
-        continue;
+  const results = await mapWithConcurrency(
+    assets,
+    concurrency,
+    async (asset): Promise<UpdateOutcome> => {
+      try {
+        const quote = await getQuote(asset);
+        const rate = quote ? await getRate(quote.currency) : null;
+        const plan = planPriceUpdate(asset, quote, rate, now);
+        if (!plan.ok) return { id: asset.id, name: asset.name, ok: false, error: plan.error };
+        await save(asset, plan.patch);
+        return { id: asset.id, name: asset.name, ok: true, source: plan.patch.price_source };
+      } catch (e) {
+        return {
+          id: asset.id,
+          name: asset.name,
+          ok: false,
+          error: e instanceof Error ? e.message : "Erro desconhecido.",
+        };
       }
-      await save(asset, plan.patch);
-      results.push({ id: asset.id, name: asset.name, ok: true, source: plan.patch.price_source });
-    } catch (e) {
-      results.push({
-        id: asset.id,
-        name: asset.name,
-        ok: false,
-        error: e instanceof Error ? e.message : "Erro desconhecido.",
-      });
-    }
-  }
+    },
+  );
   const failed = results.filter((r) => !r.ok);
   return { updated: results.length - failed.length, failed, results };
 }

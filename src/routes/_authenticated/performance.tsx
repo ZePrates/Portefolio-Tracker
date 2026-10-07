@@ -25,6 +25,7 @@ import {
   performanceByClass,
   periodPerformance,
   buildSnapshotSeries,
+  valuationsFromSnapshots,
   type PerfTransaction,
 } from "@/lib/performance";
 import type { Asset } from "@/lib/portfolio-types";
@@ -103,16 +104,19 @@ function PerformancePage() {
     queryFn: () => listPortfolioSnapshots(),
   });
 
-  const assets = (assetsQ.data ?? []) as Asset[];
-  const transactions = (txQ.data ?? []) as PerfTransaction[];
-  const dividends = (divQ.data ?? []) as DividendRecord[];
+  const assets = useMemo(() => (assetsQ.data ?? []) as Asset[], [assetsQ.data]);
+  const transactions = useMemo(() => (txQ.data ?? []) as PerfTransaction[], [txQ.data]);
+  const dividends = useMemo(() => (divQ.data ?? []) as DividendRecord[], [divQ.data]);
+  const snapshots = useMemo(() => snapQ.data ?? [], [snapQ.data]);
+  // Valorizações reais da carteira (fotografias diárias) para TWR e drawdown.
+  const valuations = useMemo(() => valuationsFromSnapshots(snapshots, "total"), [snapshots]);
   const loading = assetsQ.isLoading || txQ.isLoading || divQ.isLoading;
 
   const range = useMemo(() => periodRange(period), [period]);
 
   const perf = useMemo(
-    () => periodPerformance(assets, transactions, dividends, range),
-    [assets, transactions, dividends, range],
+    () => periodPerformance(assets, transactions, dividends, range, valuations),
+    [assets, transactions, dividends, range, valuations],
   );
   const series = useMemo(
     () => buildLedgerSeries(transactions, dividends),
@@ -127,8 +131,7 @@ function PerformancePage() {
     [assets, dividends, range],
   );
   // Drawdown só é calculável sobre séries reais de valor de mercado.
-  const dd = useMemo(() => drawdown([]), []);
-  const snapshots = snapQ.data ?? [];
+  const dd = useMemo(() => drawdown(valuations), [valuations]);
   const [snapScope, setSnapScope] = useState<"class:etf" | "total">("class:etf");
   const snapSeries = useMemo(
     () => buildSnapshotSeries(snapshots, snapScope),

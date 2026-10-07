@@ -125,23 +125,3 @@ export function goalProjection(
     valueAtEnd: summary.final.value,
   };
 }
-
-/** Simula crescimento por classe sem alterar dados reais. */
-export function futureValueByClass(
-  values: Record<string, number>,
-  monthlyContributions: Record<string, number>,
-  annualReturnPct: number,
-  years: number,
-): Record<string, number> {
-  return Object.fromEntries(
-    Object.keys(values).map((key) => [
-      key,
-      finalProjection({
-        currentValue: values[key] ?? 0,
-        monthlyContribution: monthlyContributions[key] ?? 0,
-        annualReturnPct,
-        years,
-      }).value,
-    ]),
-  );
-}

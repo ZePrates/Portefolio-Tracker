@@ -8,9 +8,15 @@ import {
   isReceived,
   quantityHeldBefore,
   receivedByCurrency,
+  receivedByAsset,
   receivedByMonth,
+  receivedInYear,
+  receivedLast12Months,
+  taxOf,
   totalReceived,
+  totalScheduled,
   yieldOnCost,
+  type DividendRecord,
   type DividendTrade,
 } from "@/lib/dividends";
 
@@ -297,5 +303,51 @@ describe("agregações", () => {
   it("yield sobre o custo", () => {
     expect(yieldOnCost(15, 300)).toBeCloseTo(5, 10);
     expect(yieldOnCost(15, 0)).toBeNull();
+  });
+});
+
+describe("convenção bruto vs líquido (F7)", () => {
+  const rows: DividendRecord[] = [
+    {
+      asset_id: "a",
+      asset_name: "A",
+      amount: 10,
+      gross_amount: 10,
+      net_amount: 8.5,
+      paid_at: "2026-08-01",
+      payment_date: "2026-08-01",
+      status: "received",
+    },
+    {
+      asset_id: "a",
+      asset_name: "A",
+      amount: 4,
+      gross_amount: 4,
+      net_amount: 3.4,
+      paid_at: "2026-12-01",
+      payment_date: "2026-12-01",
+      status: "scheduled",
+    },
+  ];
+
+  it("por omissão os agregados usam o líquido (igual ao dashboard)", () => {
+    // Antes: totalReceived somava sempre o bruto (10), divergindo do dashboard (8,5).
+    expect(totalReceived(rows, TODAY)).toBe(8.5);
+    expect(totalScheduled(rows, TODAY)).toBe(3.4);
+    expect(receivedByMonth(rows, TODAY)).toEqual({ "2026-08": 8.5 });
+    expect(receivedLast12Months(rows, TODAY)).toBe(8.5);
+    expect(receivedInYear(rows, 2026, TODAY)).toBe(8.5);
+    expect(receivedByAsset(rows, TODAY)[0]!.total).toBe(8.5);
+  });
+
+  it("o bruto continua disponível de forma explícita (fiscal)", () => {
+    expect(totalReceived(rows, TODAY, "gross")).toBe(10);
+    expect(totalScheduled(rows, TODAY, "gross")).toBe(4);
+    expect(receivedByMonth(rows, TODAY, "gross")).toEqual({ "2026-08": 10 });
+    expect(receivedLast12Months(rows, TODAY, "gross")).toBe(10);
+  });
+
+  it("taxOf devolve a retenção (bruto − líquido) quando não está guardada", () => {
+    expect(taxOf(rows[0]!)).toBeCloseTo(1.5);
   });
 });

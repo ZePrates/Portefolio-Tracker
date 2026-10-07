@@ -278,3 +278,18 @@ export function computeExposure(positions: PositionInput[]): ExposureReport {
     coverage: pctOf(knownCountryAmount),
   };
 }
+
+/**
+ * Junta linhas com a mesma chave somando o peso (ex.: Alphabet classe A e C
+ * com o mesmo nome). Evita violar a chave única num upsert em lote.
+ */
+export function mergeByKey<T extends { weight?: number }>(rows: T[], keyOf: (r: T) => string): T[] {
+  const map = new Map<string, T>();
+  for (const r of rows) {
+    const k = keyOf(r);
+    const cur = map.get(k);
+    if (cur) map.set(k, { ...cur, weight: (cur.weight ?? 0) + (r.weight ?? 0) });
+    else map.set(k, { ...r });
+  }
+  return [...map.values()];
+}

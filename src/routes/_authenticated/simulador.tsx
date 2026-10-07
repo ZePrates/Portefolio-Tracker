@@ -13,7 +13,7 @@ function Simulador() {
   const fetch = useServerFn(listAssets);
   const { hidden } = usePrivateMode();
   const { data } = useQuery({ queryKey: ["assets"], queryFn: () => fetch() });
-  const assets = (data ?? []) as Asset[];
+  const assets = useMemo(() => (data ?? []) as Asset[], [data]);
   const [amount, setAmount] = useState("250");
   const [cls, setCls] = useState<AssetClass>("etf");
   const [assetId, setAssetId] = useState("");
