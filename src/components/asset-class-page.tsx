@@ -47,6 +47,14 @@ import {
 } from "@/components/ui-bits";
 import { cn } from "@/lib/utils";
 import { todayLisbon } from "@/lib/dates";
+import { isinCode } from "@/lib/validation";
+import {
+  assetSortValue,
+  isQuantityClass,
+  isSecurityClass,
+  paysDividendsClass,
+  type AssetSortKey,
+} from "@/lib/asset-class";
 
 interface Props {
   assetClass: AssetClass;
@@ -71,9 +79,6 @@ interface FormState {
   currency: string;
   frequency: string;
 }
-
-/** Formato básico de ISIN: 2 letras de país + 9 alfanuméricos + 1 dígito de controlo. Não valida o dígito. */
-const ISIN_RE = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/;
 
 const CURRENCIES = ["USD", "EUR", "GBP", "CHF", "CAD"];
 const today = () => todayLisbon();
@@ -105,43 +110,12 @@ function num(s: string): number {
   return parseNumberOr(s, 0);
 }
 
-function isSecurity(c: AssetClass) {
-  return c === "etf" || c === "reit" || c === "acao_dividendo" || c === "acao_crescimento";
-}
-
-/** Ativos geridos por quantidade × preço (títulos e metais). P2P é valor agregado. */
-function isQuantityAsset(c: AssetClass) {
-  return isSecurity(c) || c === "metal";
-}
-
-function paysDividends(c: AssetClass) {
-  return c === "reit" || c === "acao_dividendo";
-}
-
-type SortKey =
-  "name" | "quantity" | "buyPrice" | "currentPrice" | "invested" | "value" | "pl" | "yield";
+const isSecurity = isSecurityClass;
+const isQuantityAsset = isQuantityClass;
+const paysDividends = paysDividendsClass;
+const sortValue = assetSortValue;
+type SortKey = AssetSortKey;
 type SortDir = "asc" | "desc";
-
-function sortValue(a: Asset, key: SortKey): string | number {
-  switch (key) {
-    case "name":
-      return a.name.toLowerCase();
-    case "quantity":
-      return a.quantity || 0;
-    case "buyPrice":
-      return a.average_price || 0;
-    case "currentPrice":
-      return a.current_price || 0;
-    case "invested":
-      return assetInvested(a);
-    case "value":
-      return assetCurrentValue(a);
-    case "pl":
-      return assetPL(a).abs;
-    case "yield":
-      return a.annual_yield ?? -1;
-  }
-}
 
 export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Props) {
   const { hidden } = usePrivateMode();
@@ -342,7 +316,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
       return;
     }
     const isin = form.isin.trim().toUpperCase();
-    if (isin && !ISIN_RE.test(isin)) {
+    if (isin && !isinCode.safeParse(isin).success) {
       toast.error("ISIN inválido — tem de ter 12 caracteres (ex.: IE00BK5BQT80).");
       return;
     }

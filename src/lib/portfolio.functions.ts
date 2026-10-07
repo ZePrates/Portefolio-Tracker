@@ -13,6 +13,7 @@ import {
 } from "@/lib/fifo";
 import { currentRateOf, needsHistoricalRate, resolveTradeFx, type TradeFx } from "@/lib/fx";
 import { dbError } from "@/lib/errors";
+import { stripLedgerFields } from "@/lib/asset-class";
 import { currencyCode, isinCode, isoDate, tradeDate } from "@/lib/validation";
 
 type AssetUpdate = Database["public"]["Tables"]["assets"]["Update"];
@@ -83,9 +84,20 @@ export const updateAsset = createServerFn({ method: "POST" })
     z.object({ id: z.string().uuid(), patch: assetInputSchema.partial() }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const patch = Object.fromEntries(
+    let patch = Object.fromEntries(
       Object.entries(data.patch).filter(([, v]) => v !== undefined),
     ) as AssetUpdate;
+    // Com movimentos no livro, quantidade/custo/realizado vêm SEMPRE do FIFO:
+    // o formulário de edição não os pode reescrever (antes reescrevia-os com o
+    // preço de compra × câmbio de hoje, divergindo do livro).
+    const { count, error: countError } = await context.supabase
+      .from("transactions")
+      .select("id", { count: "exact", head: true })
+      .eq("asset_id", data.id);
+    if (countError) throw dbError(countError);
+    const hasLedger = (count ?? 0) > 0;
+    if (hasLedger) patch = stripLedgerFields(patch) as AssetUpdate;
+
     const { data: row, error } = await context.supabase
       .from("assets")
       .update(patch)
@@ -93,6 +105,15 @@ export const updateAsset = createServerFn({ method: "POST" })
       .select()
       .single();
     if (error) throw dbError(error);
+    if (hasLedger) {
+      await recomputeAsset(context.supabase, data.id);
+      const { data: fresh } = await context.supabase
+        .from("assets")
+        .select()
+        .eq("id", data.id)
+        .single();
+      return fresh ?? row;
+    }
     return row;
   });
 
