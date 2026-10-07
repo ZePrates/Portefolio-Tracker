@@ -94,3 +94,24 @@ export const listPortfolioSnapshots = createServerFn({ method: "GET" })
     }));
     return rows;
   });
+
+/**
+ * Garante uma fotografia por dia sem depender do botão "Atualizar preços":
+ * chamado ao abrir a app; se já existir a fotografia de hoje não faz nada.
+ * Usa os últimos preços guardados (o alerta de preços desatualizados avisa
+ * quando estão velhos).
+ */
+export const ensureDailySnapshot = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const today = todayLisbon();
+    const { data } = await context.supabase
+      .from("portfolio_snapshots")
+      .select("id")
+      .eq("snapshot_date", today)
+      .eq("scope", "total")
+      .limit(1);
+    if (data && data.length > 0) return { created: false, date: today };
+    await takeSnapshot(context.supabase as unknown as SB, context.userId);
+    return { created: true, date: today };
+  });

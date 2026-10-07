@@ -103,6 +103,24 @@ export interface PortfolioSummary {
   closedPositions: number;
 }
 
+/**
+ * Custo das unidades já vendidas, a partir do ledger: produto − comissão − realizado.
+ * As posições fechadas têm invested_amount = 0, por isso não servem de base.
+ */
+export function soldCostBasis(
+  transactions: Array<
+    Pick<TimelineTransaction, "type" | "quantity" | "price" | "fee" | "realized_pl">
+  >,
+): number {
+  return transactions
+    .filter((t) => t.type === "sell")
+    .reduce((s, t) => {
+      const proceeds = (Number(t.quantity) || 0) * (Number(t.price) || 0);
+      const cost = proceeds - (Number(t.fee ?? 0) || 0) - (Number(t.realized_pl ?? 0) || 0);
+      return s + Math.max(0, cost);
+    }, 0);
+}
+
 export function portfolioSummary(
   assets: Asset[],
   dividends: DividendRecord[],
@@ -127,13 +145,7 @@ export function portfolioSummary(
   // ledger. As posições fechadas têm invested_amount = 0, por isso sem o ledger
   // a base ficava subestimada e a rentabilidade inflacionada.
   const soldCost = transactions
-    ? transactions
-        .filter((t) => t.type === "sell")
-        .reduce((s, t) => {
-          const proceeds = (Number(t.quantity) || 0) * (Number(t.price) || 0);
-          const cost = proceeds - (Number(t.fee ?? 0) || 0) - (Number(t.realized_pl ?? 0) || 0);
-          return s + Math.max(0, cost);
-        }, 0)
+    ? soldCostBasis(transactions)
     : closed.reduce((s, a) => s + (Number(a.invested_amount) || 0), 0);
   const returnBasis = costBasis + soldCost;
   const totalResult = realizedPL + unrealizedPL + dividendsReceived;

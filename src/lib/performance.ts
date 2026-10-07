@@ -20,7 +20,7 @@ import {
   isOpenPosition,
 } from "@/lib/portfolio-types";
 import { isReceived, netOf, type DividendRecord } from "@/lib/dividends";
-import { inRange, todayISO, type DateRange } from "@/lib/dashboard";
+import { inRange, soldCostBasis, todayISO, type DateRange } from "@/lib/dashboard";
 
 /* ------------------------------------------------------------------ */
 /* Tipos base                                                          */
@@ -157,6 +157,28 @@ export function cashFlowsFromLedger(transactions: PerfTransaction[]): CashFlow[]
       t.type === "buy" ? qty * price + fee : t.type === "sell" ? -(qty * price - fee) : 0;
     if (amount === 0) continue;
     map.set(date, (map.get(date) ?? 0) + amount);
+  }
+  return [...map.entries()]
+    .map(([date, amount]) => ({ date, amount }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/**
+ * Fluxos para o TWR: aportes/levantamentos do ledger e dividendos recebidos
+ * como distribuição (saem da carteira em dinheiro). Sem estes, um ETF de
+ * distribuição parecia render menos do que um de acumulação.
+ */
+export function twrFlows(
+  transactions: PerfTransaction[],
+  dividends: DividendRecord[],
+  today = todayISO(),
+): CashFlow[] {
+  const map = new Map<string, number>();
+  for (const f of cashFlowsFromLedger(transactions)) map.set(f.date, f.amount);
+  for (const d of dividends) {
+    if (!isReceived(d, today)) continue;
+    const date = (d.payment_date ?? d.paid_at).slice(0, 10);
+    map.set(date, (map.get(date) ?? 0) - netOf(d));
   }
   return [...map.entries()]
     .map(([date, amount]) => ({ date, amount }))
@@ -629,9 +651,6 @@ export function periodPerformance(
   const open = assets.filter(isOpenPosition);
   const currentValue = open.reduce((s, a) => s + assetCurrentValue(a), 0);
   const costBasis = open.reduce((s, a) => s + assetInvested(a), 0);
-  const closedCost = assets
-    .filter((a) => !isOpenPosition(a))
-    .reduce((s, a) => s + (Number(a.invested_amount) || 0), 0);
 
   const unrealized = currentValue - costBasis;
   const realized = transactions
@@ -643,11 +662,12 @@ export function periodPerformance(
     )
     .reduce((s, d) => s + netOf(d), 0);
 
-  const basis = costBasis + closedCost;
+  // Custo das unidades vendidas vem do ledger (ver dashboard.soldCostBasis).
+  const basis = costBasis + soldCostBasis(transactions);
   const absolute = unrealized + realized + divs;
 
   const inWindow = valuations.filter((v) => v.date >= range.from && v.date <= range.to);
-  const flows = cashFlowsFromLedger(transactions).filter(
+  const flows = twrFlows(transactions, dividends, today).filter(
     (f) => f.date >= range.from && f.date <= range.to,
   );
 
@@ -662,6 +682,17 @@ export function periodPerformance(
     twr: twr(inWindow, flows),
     mwr: xirr(xirrFlows(transactions, dividends, currentValue, today)),
   };
+}
+
+/** Valorizações reais (fotografias) de um âmbito, para TWR e drawdown. */
+export function valuationsFromSnapshots(
+  snapshots: Array<{ snapshotDate: string; scope: string; marketValue: number | null }>,
+  scope = "total",
+): ValuationPoint[] {
+  return snapshots
+    .filter((s) => s.scope === scope && s.marketValue != null && Number.isFinite(s.marketValue))
+    .map((s) => ({ date: s.snapshotDate, value: Number(s.marketValue) }))
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 export interface SnapshotPoint {
