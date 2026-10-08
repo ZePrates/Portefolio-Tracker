@@ -6,8 +6,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { listAssets } from "@/lib/portfolio.functions";
 import {
   type Asset,
-  type AssetClass,
   CLASS_LABELS,
+  CLASS_ORDER,
   assetCurrentValue,
   assetInvested,
   assetPL,

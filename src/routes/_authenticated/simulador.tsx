@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { listAssets } from "@/lib/portfolio.functions";
 import { analyzePurchase } from "@/lib/decision";
-import { CLASS_LABELS, type AssetClass, type Asset } from "@/lib/portfolio-types";
+import { CLASS_LABELS, CLASS_ORDER, type AssetClass, type Asset } from "@/lib/portfolio-types";
 import { PageHeader, MetricCard } from "@/components/ui-bits";
 import { usePrivateMode } from "@/components/private-mode";
 import { formatEUR, formatNumber, formatPct, formatPp } from "@/lib/format";
