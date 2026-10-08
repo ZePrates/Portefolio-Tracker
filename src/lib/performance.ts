@@ -586,32 +586,31 @@ export function performanceByClass(
     divByClass.set(a.class, (divByClass.get(a.class) ?? 0) + netOf(d));
   }
 
-  return CLASS_ORDER
-    .map((c) => {
-      const rows = assets.filter((a) => a.class === c);
-      const value = rows.reduce((s, a) => s + assetCurrentValue(a), 0);
-      const invested = rows.reduce((s, a) => s + assetInvested(a), 0);
-      const realized = rows.reduce((s, a) => s + (Number(a.realized_pl) || 0), 0);
-      const divs = divByClass.get(c) ?? 0;
-      const unrealized = value - invested;
-      const closedCost = rows
-        .filter((a) => !isOpenPosition(a))
-        .reduce((s, a) => s + (Number(a.invested_amount) || 0), 0);
-      const basis = invested + closedCost;
-      const totalResult = unrealized + realized + divs;
-      return {
-        class: c,
-        label: CLASS_LABELS[c],
-        value,
-        invested,
-        unrealized,
-        realized,
-        dividends: divs,
-        totalResult,
-        returnPct: basis > 0 ? (totalResult / basis) * 100 : null,
-        count: rows.length,
-      };
-    })
+  return CLASS_ORDER.map((c) => {
+    const rows = assets.filter((a) => a.class === c);
+    const value = rows.reduce((s, a) => s + assetCurrentValue(a), 0);
+    const invested = rows.reduce((s, a) => s + assetInvested(a), 0);
+    const realized = rows.reduce((s, a) => s + (Number(a.realized_pl) || 0), 0);
+    const divs = divByClass.get(c) ?? 0;
+    const unrealized = value - invested;
+    const closedCost = rows
+      .filter((a) => !isOpenPosition(a))
+      .reduce((s, a) => s + (Number(a.invested_amount) || 0), 0);
+    const basis = invested + closedCost;
+    const totalResult = unrealized + realized + divs;
+    return {
+      class: c,
+      label: CLASS_LABELS[c],
+      value,
+      invested,
+      unrealized,
+      realized,
+      dividends: divs,
+      totalResult,
+      returnPct: basis > 0 ? (totalResult / basis) * 100 : null,
+      count: rows.length,
+    };
+  })
     .filter((r) => r.count > 0)
     .sort((a, b) => b.value - a.value);
 }

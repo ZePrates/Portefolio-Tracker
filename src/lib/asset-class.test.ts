@@ -53,23 +53,23 @@ describe("assetSortValue", () => {
     expect(assetSortValue(a, "value")).toBe(30);
     expect(assetSortValue(a, "pl")).toBe(10);
     expect(assetSortValue(a, "yield")).toBe(-1);
-});
-
-describe("CLASS_ORDER", () => {
-  const byLabel = new Map(Object.entries(CLASS_LABELS).map(([c, l]) => [l, c]));
-
-  it("segue a mesma ordem da barra lateral", () => {
-    const expected = ASSETS_NAV.map((n) => byLabel.get(n.label)).filter(
-      (c): c is string => typeof c === "string",
-    );
-    // O pedido do utilizador: Ações de Crescimento em 2.º, logo abaixo de ETFs.
-    expect(CLASS_ORDER).toEqual(expected);
-    expect(CLASS_ORDER.slice(0, 3)).toEqual(["etf", "acao_crescimento", "reit"]);
   });
 
-  it("cobre todas as classes sem repetidas", () => {
-    expect([...CLASS_ORDER].sort()).toEqual(Object.keys(CLASS_LABELS).sort());
-    expect(new Set(CLASS_ORDER).size).toBe(CLASS_ORDER.length);
+  describe("CLASS_ORDER", () => {
+    const byLabel = new Map(Object.entries(CLASS_LABELS).map(([c, l]) => [l, c]));
+
+    it("segue a mesma ordem da barra lateral", () => {
+      const expected = ASSETS_NAV.map((n) => byLabel.get(n.label)).filter(
+        (c): c is string => typeof c === "string",
+      );
+      // O pedido do utilizador: Ações de Crescimento em 2.º, logo abaixo de ETFs.
+      expect(CLASS_ORDER).toEqual(expected);
+      expect(CLASS_ORDER.slice(0, 3)).toEqual(["etf", "acao_crescimento", "reit"]);
+    });
+
+    it("cobre todas as classes sem repetidas", () => {
+      expect([...CLASS_ORDER].sort()).toEqual(Object.keys(CLASS_LABELS).sort());
+      expect(new Set(CLASS_ORDER).size).toBe(CLASS_ORDER.length);
+    });
   });
-});
 });

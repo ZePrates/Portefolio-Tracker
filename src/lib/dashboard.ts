@@ -187,19 +187,17 @@ export interface AllocationSlice {
 export function allocationByClass(assets: Asset[]): AllocationSlice[] {
   const open = assets.filter(isOpenPosition);
   const total = open.reduce((s, a) => s + assetCurrentValue(a), 0);
-  return CLASS_ORDER
-    .map((c) => {
-      const rows = open.filter((a) => a.class === c);
-      const value = rows.reduce((s, a) => s + assetCurrentValue(a), 0);
-      return {
-        class: c,
-        label: CLASS_LABELS[c],
-        value,
-        pct: total > 0 ? (value / total) * 100 : 0,
-        count: rows.length,
-      };
-    })
-    .filter((x) => x.value > 0 || x.count > 0);
+  return CLASS_ORDER.map((c) => {
+    const rows = open.filter((a) => a.class === c);
+    const value = rows.reduce((s, a) => s + assetCurrentValue(a), 0);
+    return {
+      class: c,
+      label: CLASS_LABELS[c],
+      value,
+      pct: total > 0 ? (value / total) * 100 : 0,
+      count: rows.length,
+    };
+  }).filter((x) => x.value > 0 || x.count > 0);
 }
 
 /* ------------------------------------------------------------------ */
