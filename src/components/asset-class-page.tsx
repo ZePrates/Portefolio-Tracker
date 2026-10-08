@@ -43,6 +43,7 @@ import {
   IconButton,
   Modal,
   Field,
+  SelectInput,
   TextInput,
   useConfirm,
 } from "@/components/ui-bits";
@@ -50,7 +51,7 @@ import { DataTable, type Column } from "@/components/data-table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { todayLisbon } from "@/lib/dates";
-import { isValidIsin } from "@/lib/identifiers";
+import { validateAssetForm, type AssetFormValues } from "@/lib/asset-form";
 import {
   assetSortValue,
   isQuantityClass,
@@ -139,6 +140,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   const [importingId, setImportingId] = useState<string | null>(null);
   const [positionAsset, setPositionAsset] = useState<Asset | null>(null);
   const [fxRate, setFxRate] = useState<number>(1);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   const {
     data: allAssets,
@@ -180,7 +182,21 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
     null,
   );
 
+  const formErrors = useMemo(
+    () =>
+      validateAssetForm(form, {
+        quantityAsset: isQuantityAsset(assetClass),
+        editing: !!editing,
+        isEtf: assetClass === "etf",
+        today: today(),
+      }),
+    [form, assetClass, editing],
+  );
+  const err = (k: keyof AssetFormValues) => (touched[k] ? formErrors[k] : undefined);
+  const touch = (k: keyof AssetFormValues) => () => setTouched((t) => ({ ...t, [k]: true }));
+
   const openCreate = () => {
+    setTouched({});
     setEditing(null);
     setForm(emptyForm(assetClass));
     setFxRate(1);
@@ -188,6 +204,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   };
 
   const openEdit = (a: Asset) => {
+    setTouched({});
     setEditing(a);
     const cur = a.native_currency || "EUR";
     const rate =
@@ -264,19 +281,19 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   };
 
   const save = async () => {
-    if (!form.name.trim()) {
-      toast.error("Indica o nome do ativo.");
-      return;
-    }
-    if (!editing && isQuantityAsset(assetClass) && num(form.quantity) > 0 && !form.purchase_date) {
-      toast.error("Indica a data da compra.");
-      return;
-    }
+    setTouched({
+      name: true,
+      isin: true,
+      quantity: true,
+      purchase_price: true,
+      purchase_date: true,
+      current_price: true,
+      invested_amount: true,
+      current_value: true,
+      annual_yield: true,
+    });
+    if (Object.keys(formErrors).length > 0) return;
     const isin = form.isin.trim().toUpperCase();
-    if (isin && !isValidIsin(isin)) {
-      toast.error("ISIN inválido — tem de ter 12 caracteres (ex.: IE00BK5BQT80).");
-      return;
-    }
     setSaving(true);
     try {
       const quantity = num(form.quantity);
@@ -438,8 +455,10 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   };
 
   const set =
-    (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       setForm((f) => ({ ...f, [key]: e.target.value }));
+      setTouched((t) => ({ ...t, [key]: true }));
+    };
 
   const showYield = assetClass === "acao_dividendo" || assetClass === "reit";
   const quantityLabel = assetClass === "metal" ? "Gramas" : assetClass === "p2p" ? "Grupo" : "Qtd.";
@@ -866,7 +885,14 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         onClose={() => setDialogOpen(false)}
         title={editing ? "Editar ativo" : "Adicionar ativo"}
       >
-        <div className="space-y-4">
+        <form
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault();
+            void save();
+          }}
+          className="space-y-4"
+        >
           {isSecurity(assetClass) && (
             <>
               <Field label="Ticker">
@@ -875,10 +901,11 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                     value={form.ticker}
                     onChange={set("ticker")}
                     placeholder="Ex.: O, VICI, VWCE.DE"
+                    autoComplete="off"
                   />
                   {assetClass !== "etf" && (
-                    <Button variant="outline" onClick={lookup} disabled={looking}>
-                      <Search className={cn("h-4 w-4", looking && "animate-pulse")} />
+                    <Button type="button" variant="outline" onClick={lookup} loading={looking}>
+                      {!looking && <Search aria-hidden className="h-4 w-4" />}
                       {looking ? "A procurar…" : "Procurar"}
                     </Button>
                   )}
@@ -886,25 +913,31 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
               </Field>
 
               {assetClass === "etf" && (
-                <Field label="ISIN (opcional)">
+                <Field
+                  label="ISIN (opcional)"
+                  error={err("isin")}
+                  hint="Usado para obter a composição e exposição exclusivamente no JustETF."
+                >
                   <TextInput
                     value={form.isin}
                     onChange={set("isin")}
+                    onBlur={touch("isin")}
                     placeholder="Ex.: IE00BK5BQT80"
                     maxLength={12}
+                    autoComplete="off"
+                    className="uppercase"
                   />
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Usado para obter a composição e exposição exclusivamente no JustETF.
-                  </p>
                 </Field>
               )}
             </>
           )}
 
-          <Field label="Nome">
+          <Field label="Nome" required error={err("name")}>
             <TextInput
               value={form.name}
               onChange={set("name")}
+              onBlur={touch("name")}
+              autoComplete="off"
               placeholder={
                 assetClass === "p2p"
                   ? "Ex.: Mintos"
@@ -917,115 +950,119 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
 
           {assetClass === "metal" && (
             <Field label="Metal">
-              <select
-                value={form.metal_type}
-                onChange={set("metal_type")}
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-ring"
-              >
+              <SelectInput value={form.metal_type} onChange={set("metal_type")}>
                 <option value="Ouro">Ouro</option>
                 <option value="Prata">Prata</option>
-              </select>
+              </SelectInput>
             </Field>
           )}
 
           {assetClass === "p2p" && (
             <Field label="Grupo">
-              <select
-                value={form.p2p_group}
-                onChange={set("p2p_group")}
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-ring"
-              >
-                <option value="A">Grupo A — até 12.4%</option>
-                <option value="B">Grupo B — até 25%</option>
-              </select>
+              <SelectInput value={form.p2p_group} onChange={set("p2p_group")}>
+                <option value="A">Grupo A — até 12,4 %</option>
+                <option value="B">Grupo B — até 25 %</option>
+              </SelectInput>
             </Field>
           )}
 
           {isQuantityAsset(assetClass) ? (
             <>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label={assetClass === "metal" ? "Peso (gramas)" : "Quantidade"}>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field
+                  label={assetClass === "metal" ? "Peso (gramas)" : "Quantidade"}
+                  error={err("quantity")}
+                >
                   <TextInput
                     inputMode="decimal"
+                    autoComplete="off"
                     value={form.quantity}
                     onChange={set("quantity")}
+                    onBlur={touch("quantity")}
                     placeholder="0"
                   />
                 </Field>
                 <Field label="Moeda">
-                  <select
-                    value={form.currency}
-                    onChange={set("currency")}
-                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-ring"
-                  >
+                  <SelectInput value={form.currency} onChange={set("currency")}>
                     {CURRENCIES.map((c) => (
                       <option key={c} value={c}>
                         {c}
                       </option>
                     ))}
-                  </select>
+                  </SelectInput>
                 </Field>
               </div>
               {!editing && (
-                <Field label="Data da compra">
+                <Field label="Data da compra" error={err("purchase_date")}>
                   <TextInput
                     type="date"
                     value={form.purchase_date}
                     onChange={set("purchase_date")}
+                    onBlur={touch("purchase_date")}
+                    max={today()}
                   />
                 </Field>
               )}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <Field
                   label={`Preço de compra por ${assetClass === "metal" ? "grama" : "ação"} (${form.currency})`}
+                  error={err("purchase_price")}
                 >
                   <TextInput
                     inputMode="decimal"
+                    autoComplete="off"
                     value={form.purchase_price}
                     onChange={set("purchase_price")}
+                    onBlur={touch("purchase_price")}
                     placeholder="0,00"
                   />
                 </Field>
-                <Field label={`Preço atual (${form.currency})`}>
+                <Field label={`Preço atual (${form.currency})`} error={err("current_price")}>
                   <TextInput
                     inputMode="decimal"
+                    autoComplete="off"
                     value={form.current_price}
                     onChange={set("current_price")}
+                    onBlur={touch("current_price")}
                     placeholder="0,00"
                   />
                 </Field>
               </div>
             </>
           ) : (
-            <>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Total investido (€)">
-                  <TextInput
-                    inputMode="decimal"
-                    value={form.invested_amount}
-                    onChange={set("invested_amount")}
-                    placeholder="0,00"
-                  />
-                </Field>
-                <Field label="Valor atual (€)">
-                  <TextInput
-                    inputMode="decimal"
-                    value={form.current_value}
-                    onChange={set("current_value")}
-                    placeholder="0,00"
-                  />
-                </Field>
-              </div>
-            </>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Total investido (€)" error={err("invested_amount")}>
+                <TextInput
+                  inputMode="decimal"
+                  autoComplete="off"
+                  value={form.invested_amount}
+                  onChange={set("invested_amount")}
+                  onBlur={touch("invested_amount")}
+                  placeholder="0,00"
+                />
+              </Field>
+              <Field label="Valor atual (€)" error={err("current_value")}>
+                <TextInput
+                  inputMode="decimal"
+                  autoComplete="off"
+                  value={form.current_value}
+                  onChange={set("current_value")}
+                  onBlur={touch("current_value")}
+                  placeholder="0,00"
+                />
+              </Field>
+            </div>
           )}
 
           {(assetClass === "p2p" || paysDividends(assetClass)) && (
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Yield anual (%)">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Yield anual (%)" error={err("annual_yield")}>
                 <TextInput
                   inputMode="decimal"
+                  autoComplete="off"
                   value={form.annual_yield}
                   onChange={set("annual_yield")}
+                  onBlur={touch("annual_yield")}
                   placeholder="Ex.: 5,2"
                 />
               </Field>
@@ -1042,14 +1079,14 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
           )}
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={save} disabled={saving}>
-              {saving ? "A guardar…" : editing ? "Guardar alterações" : "Adicionar"}
+            <Button type="submit" loading={saving}>
+              {editing ? "Guardar alterações" : "Adicionar"}
             </Button>
           </div>
-        </div>
+        </form>
       </Modal>
     </div>
   );
