@@ -34,7 +34,7 @@ import {
 import { updateAllPrices, lookupTicker } from "@/lib/prices.functions";
 import { syncDividendsForAsset } from "@/lib/dividends.functions";
 
-import { formatEUR, formatMoney, formatPercent, parseNumberOr } from "@/lib/format";
+import { formatEUR, formatMoney, formatNumber, formatPercent, parseNumberOr } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
 import {
   PageHeader,
@@ -288,7 +288,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
       }));
       toast.success(
         info.annualYield != null
-          ? `${info.name}: ${info.price} ${info.currency} · yield ${info.annualYield.toFixed(2)}%`
+          ? `${info.name}: ${info.price} ${info.currency} · yield ${formatNumber(info.annualYield, 2)} %`
           : `${info.name}: ${info.price} ${info.currency}`,
         { id },
       );

@@ -46,7 +46,7 @@ import {
   realizedInRange,
   worstPerformers,
 } from "@/lib/dashboard";
-import { formatEUR, formatPercent } from "@/lib/format";
+import { countryNamePt, formatEUR, formatPct, formatPercent, sectorNamePt } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
 import { PageHeader, MetricCard, EmptyState, Button } from "@/components/ui-bits";
 
@@ -468,7 +468,7 @@ function DashboardPage() {
                     </Link>
                     <span className="ml-auto font-medium">{formatEUR(c.value, hidden)}</span>
                     <span className="w-14 text-right text-xs text-muted-foreground">
-                      {c.pct.toFixed(1)}%
+                      {formatPct(c.pct, 1, hidden)}
                     </span>
                   </li>
                 ))}
@@ -497,11 +497,13 @@ function DashboardPage() {
                     "Países",
                     exposure.report.country
                       .slice(0, 4)
-                      .map((s) => ({ label: s.value, pct: s.pct })),
+                      .map((s) => ({ label: countryNamePt(s.value), pct: s.pct })),
                   ],
                   [
                     "Setores",
-                    exposure.report.sector.slice(0, 4).map((s) => ({ label: s.value, pct: s.pct })),
+                    exposure.report.sector
+                      .slice(0, 4)
+                      .map((s) => ({ label: sectorNamePt(s.value), pct: s.pct })),
                   ],
                   [
                     "Empresas",
@@ -522,7 +524,7 @@ function DashboardPage() {
                       rows.map((r) => (
                         <li key={r.label} className="flex justify-between gap-2 text-xs">
                           <span className="truncate text-muted-foreground">{r.label}</span>
-                          <span className="font-medium">{r.pct.toFixed(1)}%</span>
+                          <span className="font-medium">{formatPct(r.pct, 1, hidden)}</span>
                         </li>
                       ))
                     )}
@@ -545,7 +547,7 @@ function DashboardPage() {
                     {r.name}
                   </Link>
                   <span className="shrink-0 text-xs text-muted-foreground">
-                    {r.weight.toFixed(1)}% da carteira
+                    {formatPct(r.weight, 1, hidden)} da carteira
                   </span>
                   <span className="w-28 shrink-0 text-right font-medium text-success">
                     {formatEUR(r.unrealized, hidden)} ({formatPercent(r.unrealizedPct ?? 0, hidden)}
@@ -572,7 +574,7 @@ function DashboardPage() {
                     {r.name}
                   </Link>
                   <span className="shrink-0 text-xs text-muted-foreground">
-                    {r.weight.toFixed(1)}% da carteira
+                    {formatPct(r.weight, 1, hidden)} da carteira
                   </span>
                   <span
                     className={cn(

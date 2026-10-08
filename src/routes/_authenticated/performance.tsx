@@ -30,7 +30,7 @@ import {
 } from "@/lib/performance";
 import type { Asset } from "@/lib/portfolio-types";
 import type { DividendRecord } from "@/lib/dividends";
-import { formatEUR } from "@/lib/format";
+import { formatEUR, formatPct } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
 import { Button, EmptyState, MetricCard, PageHeader } from "@/components/ui-bits";
 import { cn } from "@/lib/utils";
@@ -90,7 +90,7 @@ function Card({
 }
 
 const pct = (v: number | null, hidden: boolean) =>
-  hidden ? "••" : v == null ? "Dados não disponíveis" : `${v.toFixed(2).replace(".", ",")}%`;
+  hidden ? "••••" : v == null ? "Dados não disponíveis" : formatPct(v, 2);
 
 function PerformancePage() {
   const { hidden } = usePrivateMode();

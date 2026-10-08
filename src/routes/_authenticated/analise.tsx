@@ -12,7 +12,7 @@ import {
   assetInvested,
   assetPL,
 } from "@/lib/portfolio-types";
-import { formatEUR, formatPercent } from "@/lib/format";
+import { formatEUR, formatPct, formatPercent } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
 import { PageHeader, EmptyState, Button, MetricCard } from "@/components/ui-bits";
 import { cn } from "@/lib/utils";
@@ -96,7 +96,7 @@ function AnalisePage() {
         <MetricCard label="Valor total" value={formatEUR(total, hidden)} />
         <MetricCard
           label="Concentração (top 3)"
-          value={hidden ? "••••" : `${concentration.toFixed(1).replace(".", ",")}%`}
+          value={formatPct(concentration, 1, hidden)}
           sub="Percentagem das 3 maiores posições"
         />
         <MetricCard label="Nº de posições" value={String(assets.length)} />
@@ -183,7 +183,7 @@ function AnalisePage() {
                     <p className="font-medium">{a.name}</p>
                     <p className="text-xs text-muted-foreground">
                       {CLASS_LABELS[a.class]}
-                      {total > 0 && !hidden && ` · ${((value / total) * 100).toFixed(1)}%`}
+                      {total > 0 && !hidden && ` · ${formatPct((value / total) * 100, 1)}`}
                     </p>
                   </div>
                   <div className="text-right">

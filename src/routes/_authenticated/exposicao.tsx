@@ -6,7 +6,7 @@ import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { getExposure, syncAllAssetExposure } from "@/lib/exposure.functions";
 import type { Slice } from "@/lib/exposure-types";
-import { formatEUR } from "@/lib/format";
+import { countryNamePt, formatEUR, formatPct, sectorNamePt } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
 import { Button, EmptyState, MetricCard, PageHeader } from "@/components/ui-bits";
 import { cn } from "@/lib/utils";
@@ -31,7 +31,7 @@ export const Route = createFileRoute("/_authenticated/exposicao")({
   component: ExposicaoPage,
 });
 
-const pct = (v: number, hidden: boolean) => (hidden ? "••" : `${v.toFixed(1).replace(".", ",")}%`);
+const pct = (v: number, hidden: boolean) => formatPct(v, 1, hidden);
 
 function SliceList({
   title,
@@ -39,12 +39,15 @@ function SliceList({
   slices,
   hidden,
   limit = 8,
+  translate,
 }: {
   title: string;
   note?: string;
   slices: Slice[];
   hidden: boolean;
   limit?: number;
+  /** Traduz o rótulo da fonte (ex.: países e setores em inglês). */
+  translate?: (value: string) => string;
 }) {
   const [open, setOpen] = useState<string | null>(null);
   const rows = slices.slice(0, limit);
@@ -62,7 +65,7 @@ function SliceList({
               className="w-full px-4 py-2.5 text-left"
             >
               <div className="flex items-center justify-between text-sm">
-                <span className="font-medium">{s.value}</span>
+                <span className="font-medium">{translate ? translate(s.value) : s.value}</span>
                 <span className="text-muted-foreground">
                   {formatEUR(s.amount, hidden)} · {pct(s.pct, hidden)}
                 </span>
@@ -284,8 +287,14 @@ function ExposicaoPage() {
           note="Exposição económica subjacente, não o país de domiciliação do fundo."
           slices={report.country}
           hidden={hidden}
+          translate={countryNamePt}
         />
-        <SliceList title="Por região" slices={report.region} hidden={hidden} />
+        <SliceList
+          title="Por região"
+          slices={report.region}
+          hidden={hidden}
+          translate={countryNamePt}
+        />
         <SliceList title="Por continente" slices={report.continent} hidden={hidden} />
         <SliceList
           title="Desenvolvido vs. emergente"
@@ -293,14 +302,26 @@ function ExposicaoPage() {
           hidden={hidden}
           limit={4}
         />
-        <SliceList title="Por setor" slices={report.sector} hidden={hidden} limit={12} />
+        <SliceList
+          title="Por setor"
+          slices={report.sector}
+          hidden={hidden}
+          limit={12}
+          translate={sectorNamePt}
+        />
         <SliceList
           title="Por moeda económica"
           note="Moeda dos ativos subjacentes, não a moeda de cotação."
           slices={report.currency}
           hidden={hidden}
         />
-        <SliceList title="Por indústria" slices={report.industry} hidden={hidden} limit={10} />
+        <SliceList
+          title="Por indústria"
+          slices={report.industry}
+          hidden={hidden}
+          limit={10}
+          translate={sectorNamePt}
+        />
       </div>
 
       <div className="rounded-xl border border-border bg-card p-5">

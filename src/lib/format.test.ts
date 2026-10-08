@@ -1,5 +1,20 @@
 import { describe, it, expect } from "vitest";
-import { formatDatePt, formatEUR, formatPercent, parseNumberPt, parseNumberOr } from "@/lib/format";
+import {
+  countryNamePt,
+  formatCompact,
+  formatDatePt,
+  formatEUR,
+  formatEURCompact,
+  formatMonthPt,
+  formatNumber,
+  formatPct,
+  formatPercent,
+  formatPp,
+  formatQuantity,
+  parseNumberPt,
+  parseNumberOr,
+  sectorNamePt,
+} from "@/lib/format";
 import { todayLisbon } from "@/lib/dates";
 
 /** Normaliza espaços inseparáveis do Intl para comparar com strings legíveis. */
@@ -70,7 +85,8 @@ describe("formatDatePt", () => {
 
 describe("formatEUR / formatPercent", () => {
   it("formata euros em pt-PT", () => {
-    expect(plain(formatEUR(1234.5))).toBe("1234,50 €");
+    // Antes: "1234,50 €" (o pt-PT só agrupa a partir de 5 dígitos)
+    expect(plain(formatEUR(1234.5))).toBe("1 234,50 €");
     expect(plain(formatEUR(12345.5))).toBe("12 345,50 €");
   });
 
@@ -100,5 +116,48 @@ describe("todayLisbon", () => {
 
   it("no inverno, Lisboa coincide com UTC", () => {
     expect(todayLisbon(new Date("2026-01-15T23:30:00Z"))).toBe("2026-01-15");
+  });
+});
+
+describe("formatação PT-PT de interface", () => {
+  it("agrupa sempre os milhares e usa vírgula decimal", () => {
+    expect(plain(formatNumber(1448.4))).toBe("1 448,40");
+    expect(formatNumber(1, 0)).toBe("1");
+    expect(plain(formatPct(62.14))).toBe("62,1 %");
+    expect(plain(formatPp(2.5))).toBe("+2,5 pp");
+    expect(plain(formatPp(-0.25, 2))).toBe("-0,25 pp");
+  });
+
+  it("não deixa o % sozinho na linha seguinte (espaço inseparável)", () => {
+    expect(formatPct(5)).toContain("\u00a0%");
+    expect(formatPercent(5)).toContain("\u00a0%");
+  });
+
+  it("quantidades sem zeros à direita", () => {
+    expect(formatQuantity(0.5)).toBe("0,5");
+    expect(plain(formatQuantity(12345.678))).toBe("12 345,678");
+    expect(formatQuantity(3)).toBe("3");
+  });
+
+  it("modo privado e valores inválidos", () => {
+    expect(formatPct(1, 1, true)).toBe("••••");
+    expect(formatNumber(Number.NaN)).toBe("—");
+    expect(formatCompact(Number.NaN)).toBe("—");
+  });
+
+  it("eixos de gráficos abreviados e meses em PT", () => {
+    expect(plain(formatCompact(16000))).toBe("16 mil");
+    expect(plain(formatEURCompact(16000))).toBe("16 mil €");
+    expect(formatMonthPt("2026-01")).toBe("jan/26");
+    expect(formatMonthPt("2025-07-15")).toBe("jul/25");
+    expect(formatMonthPt("xyz")).toBe("—");
+  });
+
+  it("traduz países e setores conhecidos e preserva os desconhecidos", () => {
+    expect(countryNamePt("United States")).toBe("Estados Unidos");
+    expect(countryNamePt("Other")).toBe("Outros");
+    expect(countryNamePt("Narnia")).toBe("Narnia");
+    expect(sectorNamePt("Finance")).toBe("Financeiro");
+    expect(sectorNamePt("Tecnologia")).toBe("Tecnologia");
   });
 });

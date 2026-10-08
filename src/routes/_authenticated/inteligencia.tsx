@@ -10,6 +10,7 @@ import type { Asset, AssetClass } from "@/lib/portfolio-types";
 import { CLASS_LABELS } from "@/lib/portfolio-types";
 import { PageHeader, MetricCard } from "@/components/ui-bits";
 import { usePrivateMode } from "@/components/private-mode";
+import { formatNumber, formatPct } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/inteligencia")({ component: Inteligencia });
 
@@ -24,7 +25,7 @@ function Inteligencia() {
   const report = exResult?.report;
   const positions = exResult?.positions;
   const intel = portfolioIntelligence(assets, report, positions);
-  const pct = (v: number) => (hidden ? "•••" : `${v.toFixed(1)}%`);
+  const pct = (v: number) => formatPct(v, 1, hidden);
 
   return (
     <div className="space-y-6">
@@ -33,7 +34,7 @@ function Inteligencia() {
         subtitle="Concentração calculada com look-through: o peso de cada empresa dentro dos ETFs conta para a exposição real, não só o rótulo do instrumento."
       />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <MetricCard label="Score" value={hidden ? "•••" : `${intel.score.toFixed(0)}/100`} />
+        <MetricCard label="Score" value={hidden ? "••••" : `${formatNumber(intel.score, 0)}/100`} />
         <MetricCard
           label="Maior empresa (look-through)"
           value={pct(intel.metrics.largestCompany)}
@@ -129,7 +130,7 @@ function Inteligencia() {
         {report && intel.metrics.coverage < 99 ? (
           <>
             ⚠️ A cobertura dos dados de exposição é de{" "}
-            <strong>{intel.metrics.coverage.toFixed(1)}%</strong>. As métricas de concentração
+            <strong>{formatPct(intel.metrics.coverage, 1)}</strong>. As métricas de concentração
             económica e as recomendações podem estar incompletas. Atualize os dados de exposição
             para aumentar a confiança da análise.
           </>
