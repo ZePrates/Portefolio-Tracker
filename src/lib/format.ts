@@ -128,6 +128,13 @@ export function formatDayMonthPt(iso: string | null | undefined): string {
   return m ? `${m[2]}/${m[1]}` : EMPTY;
 }
 
+/** Chave de período de gráficos ("2026", "2026-01", "2026-01-15") em PT-PT. */
+export function formatPeriodKey(key: string, long = false): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(key)) return long ? formatDatePt(key) : formatDayMonthPt(key);
+  if (/^\d{4}-\d{2}$/.test(key)) return formatMonthPt(key);
+  return key;
+}
+
 const COUNTRIES_PT: Record<string, string> = {
   "united states": "Estados Unidos",
   usa: "Estados Unidos",

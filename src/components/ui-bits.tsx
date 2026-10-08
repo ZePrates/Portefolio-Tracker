@@ -68,15 +68,19 @@ export function Card({
   action,
   children,
   className,
+  headingLevel = 2,
 }: {
-  title?: string;
-  description?: string;
+  title?: string | undefined;
+  description?: string | undefined;
   icon?: ReactNode;
   action?: ReactNode;
   children?: ReactNode;
-  className?: string;
+  className?: string | undefined;
+  /** Nível do título: 3 quando o cartão está dentro de uma secção com <h2>. */
+  headingLevel?: 2 | 3;
 }) {
   const titleId = useId();
+  const Heading = headingLevel === 3 ? "h3" : "h2";
   return (
     <section
       aria-labelledby={title ? titleId : undefined}
@@ -87,9 +91,9 @@ export function Card({
           <div className="flex min-w-0 items-center gap-2">
             {icon}
             {title && (
-              <h2 id={titleId} className="truncate text-sm font-semibold">
+              <Heading id={titleId} className="truncate text-sm font-semibold">
                 {title}
-              </h2>
+              </Heading>
             )}
           </div>
           {action && <div className="shrink-0 text-xs">{action}</div>}
@@ -391,10 +395,10 @@ export function Field({
 }: {
   label: string;
   children: ReactNode;
-  hint?: string;
-  error?: string | null;
-  required?: boolean;
-  className?: string;
+  hint?: string | undefined;
+  error?: string | null | undefined;
+  required?: boolean | undefined;
+  className?: string | undefined;
 }) {
   const messageId = useId();
   const message = error || hint;

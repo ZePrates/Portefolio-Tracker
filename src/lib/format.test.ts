@@ -9,6 +9,7 @@ import {
   formatNumber,
   formatPct,
   formatPercent,
+  formatPeriodKey,
   formatPp,
   formatQuantity,
   parseNumberPt,
@@ -151,6 +152,10 @@ describe("formatação PT-PT de interface", () => {
     expect(formatMonthPt("2026-01")).toBe("jan/26");
     expect(formatMonthPt("2025-07-15")).toBe("jul/25");
     expect(formatMonthPt("xyz")).toBe("—");
+    expect(formatPeriodKey("2026-03")).toBe("mar/26");
+    expect(formatPeriodKey("2026-03-09")).toBe("09/03");
+    expect(formatPeriodKey("2026-03-09", true)).toBe("09/03/2026");
+    expect(formatPeriodKey("2026")).toBe("2026");
   });
 
   it("traduz países e setores conhecidos e preserva os desconhecidos", () => {
