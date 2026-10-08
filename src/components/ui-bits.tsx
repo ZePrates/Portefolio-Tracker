@@ -97,7 +97,7 @@ export function Card({
           <div className="flex min-w-0 items-center gap-2">
             {icon}
             {title && (
-              <Heading id={titleId} className="truncate text-sm font-semibold">
+              <Heading id={titleId} className="truncate text-[15px] font-semibold">
                 {title}
               </Heading>
             )}
@@ -162,7 +162,7 @@ export function MetricCard({
       className={cn("min-w-0 rounded-xl border border-border bg-card p-4 md:p-5", className)}
       aria-busy={loading || undefined}
     >
-      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-[12.5px] font-medium text-muted-foreground">{label}</p>
       {loading ? (
         <>
           <Skeleton className="mt-3 h-7 w-3/4" />
