@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 
 interface PrivateModeContextValue {
   hidden: boolean;
@@ -11,15 +11,23 @@ const PrivateModeContext = createContext<PrivateModeContextValue>({
 });
 
 export function PrivateModeProvider({ children }: { children: ReactNode }) {
-  const [hidden, setHidden] = useState(false);
-
-  useEffect(() => {
-    setHidden(window.localStorage.getItem("pt_private_mode") === "1");
-  }, []);
+  // As rotas autenticadas não são renderizadas no servidor, por isso pode ler-se
+  // o valor guardado logo na primeira pintura (sem mostrar os valores um instante).
+  const [hidden, setHidden] = useState(() => {
+    try {
+      return window.localStorage.getItem("pt_private_mode") === "1";
+    } catch {
+      return false;
+    }
+  });
 
   const toggle = () => {
     setHidden((prev) => {
-      window.localStorage.setItem("pt_private_mode", prev ? "0" : "1");
+      try {
+        window.localStorage.setItem("pt_private_mode", prev ? "0" : "1");
+      } catch {
+        // Sem armazenamento: o modo vale só nesta sessão.
+      }
       return !prev;
     });
   };

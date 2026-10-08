@@ -44,6 +44,7 @@ import {
   Modal,
   Field,
   TextInput,
+  useConfirm,
 } from "@/components/ui-bits";
 import { cn } from "@/lib/utils";
 import { todayLisbon } from "@/lib/dates";
@@ -120,6 +121,7 @@ type SortDir = "asc" | "desc";
 export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Props) {
   const { hidden } = usePrivateMode();
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const fetchAssets = useServerFn(listAssets);
   const createFn = useServerFn(createAsset);
   const buyFn = useServerFn(buyAsset);
@@ -432,7 +434,14 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   };
 
   const remove = async (a: Asset) => {
-    if (!window.confirm(`Eliminar "${a.name}"?`)) return;
+    const ok = await confirm({
+      title: `Eliminar "${a.name}"?`,
+      description:
+        "A posição e todos os movimentos e dividendos associados deixam de aparecer na carteira. Esta ação não pode ser anulada.",
+      confirmLabel: "Eliminar",
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       await deleteFn({ data: { id: a.id } });
       toast.success("Ativo eliminado.");

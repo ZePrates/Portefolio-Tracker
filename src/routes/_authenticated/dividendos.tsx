@@ -43,6 +43,7 @@ import {
   Modal,
   Field,
   TextInput,
+  useConfirm,
 } from "@/components/ui-bits";
 
 export const Route = createFileRoute("/_authenticated/dividendos")({
@@ -71,6 +72,7 @@ const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "
 function DividendosPage() {
   const { hidden } = usePrivateMode();
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const fetchAssets = useServerFn(listAssets);
   const fetchDividends = useServerFn(listDividends);
   const createFn = useServerFn(createDividend);
@@ -225,7 +227,13 @@ function DividendosPage() {
   };
 
   const remove = async (d: Dividend) => {
-    if (!window.confirm("Eliminar este registo de dividendo?")) return;
+    const ok = await confirm({
+      title: "Eliminar este dividendo?",
+      description: `${d.asset_name ?? "Dividendo"} · ${formatDatePt(d.payment_date ?? d.paid_at)}. Esta ação não pode ser anulada.`,
+      confirmLabel: "Eliminar",
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       await deleteFn({ data: { id: d.id } });
       await queryClient.invalidateQueries({ queryKey: ["dividends"] });

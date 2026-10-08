@@ -37,7 +37,7 @@ import {
   parseNumberOr,
 } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
-import { Button, Field, Modal, TextInput } from "@/components/ui-bits";
+import { Button, Field, Modal, TextInput, useConfirm } from "@/components/ui-bits";
 import { cn } from "@/lib/utils";
 import { todayLisbon } from "@/lib/dates";
 
@@ -86,6 +86,7 @@ const today = () => todayLisbon();
 export function AssetPositionModal({ asset, onClose }: Props) {
   const { hidden } = usePrivateMode();
   const queryClient = useQueryClient();
+  const askConfirm = useConfirm();
   const positionFn = useServerFn(getPosition);
   const previewFn = useServerFn(previewSale);
   const buyFn = useServerFn(buyAsset);
@@ -334,7 +335,13 @@ export function AssetPositionModal({ asset, onClose }: Props) {
   };
 
   const removeTx = async (t: Tx) => {
-    if (!window.confirm(`Apagar o movimento de ${t.traded_at}?`)) return;
+    const ok = await askConfirm({
+      title: `Apagar o movimento de ${formatDatePt(t.traded_at)}?`,
+      description: "A posição e o custo FIFO são recalculados sem este movimento.",
+      confirmLabel: "Apagar",
+      destructive: true,
+    });
+    if (!ok) return;
     setSaving(true);
     try {
       await deleteTxFn({ data: { id: t.id } });
@@ -351,7 +358,7 @@ export function AssetPositionModal({ asset, onClose }: Props) {
     v > 0 ? "text-success" : v < 0 ? "text-destructive" : "text-muted-foreground";
 
   return (
-    <Modal open={!!asset} onClose={onClose} title={asset.name} className="max-w-3xl">
+    <Modal open={!!asset} onClose={onClose} title={asset.name} size="lg">
       <div className="space-y-5">
         {isLoading || !pos ? (
           <p className="text-sm text-muted-foreground">A carregar posição…</p>
