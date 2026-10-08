@@ -43,7 +43,7 @@ O que um investidor FIRE core-satellite precisa de ver primeiro: **quanto tenho,
 | # | Problema | Grav. | Esf. |
 |---|---|---|---|
 | D1 | 12 KPIs com o mesmo peso visual; nenhum "herói" (valor atual + variação). | A | M |
-| D2 | Progresso FIRE, core vs satélite e desvio face ao objetivo (Parte 1: `getFireProgress`, `getAllocation`) não aparecem em lado nenhum. | A | M |
+| D2 | Progresso FIRE e desvio face a alvos opcionais (Parte 1: `getFireProgress`, `getAllocation`) não aparecem em lado nenhum. | A | M |
 | D3 | A evolução mostra capital investido (linha) e uma série quase nula que dá a ideia de "valor de mercado = 0". Os snapshots diários da Parte 1 só enchem com o tempo. | M | S |
 | D4 | Os alertas de qualidade de dados (`getDataQualityAlerts`) e a data da última atualização de preços não têm sítio visível. | M | S |
 | D5 | Rótulos como "Dados não disponíveis" a 24 px no lugar de um valor. | B | S |
@@ -171,7 +171,7 @@ Ordem de leitura de cima para baixo, uma pergunta por faixa:
 
 1. **Faixa "Quanto tenho":** valor atual (grande) + variação do dia/período + P/L não realizado e realizado; botão de atualizar preços com "atualizado há X" e aviso se houver preços com mais de 3 dias.
 2. **Faixa "Estou no caminho?":** progresso FIRE (barra + data estimada, `getFireProgress`) · rendimento de dividendos (12 m, yield sobre custo) · poupança necessária.
-3. **Faixa "Como estou distribuído?":** **core vs satélite** com desvio face ao objetivo (`getAllocation`), donut por classe, e abas região/setor (exposição consolidada).
+3. **Faixa "Como estou distribuído?":** donut por classe (cores fixas por classe) e abas região/setor (exposição consolidada). Sem divisão core/satélite: o desvio face a um objetivo só aparece por classe e **só se definires alvos** (opcional, `getAllocation`).
 4. **Faixa "O que mudou?":** evolução temporal (valor vs. investido, com os snapshots), melhores/piores, próximos dividendos (`getDividendCalendar`).
 5. **Faixa "O que preciso de tratar?":** alertas de qualidade de dados e fiscais (`getDataQualityAlerts`), importação pendente.
 
@@ -187,7 +187,7 @@ Em mobile: uma coluna, faixas colapsáveis, KPIs em carrossel horizontal com *sn
 | **Alto** | `Dialog`/`ConfirmDialog` acessíveis (substituem `window.confirm` e o `Modal`) | S | F3, F4 |
 | **Alto** | Foco visível global, `lang="pt-PT"`, skip link, contraste dos rótulos, `color-scheme` | S | A11y-1/2, R4 |
 | **Alto** | Skeletons e estados de erro/vazio em todas as páginas; 404 e erro em PT-PT | M | 3.7 |
-| **Alto** | Dashboard em 5 faixas (KPI herói, FIRE, core vs satélite) | M | D1, D2 |
+| **Alto** | Dashboard em 5 faixas (KPI herói, FIRE, alocação por classe) | M | D1, D2 |
 | **Alto** | Validação em tempo real nos formulários, junto ao campo | M | F1 |
 | **Alto** | `DataTable` com cabeçalho fixo, filtros, colunas e paginação | M | T2, T5 |
 | **Médio** | Tema claro + automático; tokens consolidados | M | V1 |
@@ -205,7 +205,7 @@ Em mobile: uma coluna, faixas colapsáveis, KPIs em carrossel horizontal com *sn
 | **D2** | Navegação mobile | (a) manter a gaveta; (b) barra inferior com 4 destinos (Painel, Ativos, Dividendos, Análise) + "Mais" | **(b)** |
 | **D3** | Tabelas em mobile | (a) scroll horizontal com a 1.ª coluna fixa; (b) cartões com 3 métricas e detalhe ao tocar | **(b)**; o scroll mantém-se só nas tabelas de análise densas. |
 | **D4** | Dashboard | (a) **Painel por faixas** (secção 5); (b) compacto, tipo terminal, muita densidade; (c) minimalista, só 4 KPIs e 2 gráficos | **(a)** |
-| **D5** | Core vs satélite | Preciso da tua definição para o desvio face ao objetivo. Hoje não está guardada. Proposta: **core = ETFs (e metais)**, **satélite = REITs e ações**, com alvos editáveis em `allocation_targets` (já existe). | Confirma ou corrige a definição e os alvos (ex.: 70/30). |
+| **D5** | Core vs satélite | **Decidido: não se define core.** O dashboard não mostra essa divisão. Alvos de alocação por classe ficam como funcionalidade opcional (`allocation_targets`), sem valores por defeito. | — |
 | **D6** | PWA | (a) nada; (b) manifest + ícones (instalável, sem *service worker*, sem dependências); (c) `vite-plugin-pwa` com *offline* | **(b)**; dados financeiros não devem ficar em cache offline. |
 | **D7** | Lighthouse | (a) corres tu no DevTools antes e depois nas 4 páginas principais; (b) uso o `/auth` + um build local com sessão simulada | **(a)** para os números reais; eu junto o `/auth` automático. |
 | **D8** | Escopo das páginas da Parte 1 | (a) só redesenhar o que existe; (b) incluir também as páginas novas (IRS, Import XTB, FIRE, calendário, alocação, qualidade de dados) | **(b)**, em PRs separados dentro do mesmo branch, por esta ordem: Import XTB, IRS, FIRE+alocação, calendário. |
