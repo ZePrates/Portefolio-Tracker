@@ -1,18 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  RefreshCw,
-  Search,
-  Download,
-  ArrowLeftRight,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-} from "lucide-react";
+import { Plus, Pencil, Trash2, RefreshCw, Search, Download, ArrowLeftRight } from "lucide-react";
 import { toast } from "sonner";
 import {
   type Asset,
@@ -34,18 +23,31 @@ import {
 import { updateAllPrices, lookupTicker } from "@/lib/prices.functions";
 import { syncDividendsForAsset } from "@/lib/dividends.functions";
 
-import { formatEUR, formatMoney, formatNumber, formatPercent, parseNumberOr } from "@/lib/format";
+import {
+  formatDatePt,
+  formatEUR,
+  formatMoney,
+  formatNumber,
+  formatPercent,
+  formatQuantity,
+  parseNumberOr,
+} from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
 import {
   PageHeader,
   MetricCard,
   EmptyState,
+  ErrorState,
   Button,
+  Delta,
+  IconButton,
   Modal,
   Field,
   TextInput,
   useConfirm,
 } from "@/components/ui-bits";
+import { DataTable, type Column } from "@/components/data-table";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { todayLisbon } from "@/lib/dates";
 import { isValidIsin } from "@/lib/identifiers";
@@ -54,7 +56,6 @@ import {
   isQuantityClass,
   isSecurityClass,
   paysDividendsClass,
-  type AssetSortKey,
 } from "@/lib/asset-class";
 
 interface Props {
@@ -115,8 +116,6 @@ const isSecurity = isSecurityClass;
 const isQuantityAsset = isQuantityClass;
 const paysDividends = paysDividendsClass;
 const sortValue = assetSortValue;
-type SortKey = AssetSortKey;
-type SortDir = "asc" | "desc";
 
 export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Props) {
   const { hidden } = usePrivateMode();
@@ -141,7 +140,12 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   const [positionAsset, setPositionAsset] = useState<Asset | null>(null);
   const [fxRate, setFxRate] = useState<number>(1);
 
-  const { data: allAssets, isLoading } = useQuery({
+  const {
+    data: allAssets,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["assets"],
     queryFn: () => fetchAssets(),
   });
@@ -153,55 +157,6 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   const assets = useMemo(() => classAssets.filter(isOpenPosition), [classAssets]);
   const closedAssets = useMemo(() => classAssets.filter((a) => !isOpenPosition(a)), [classAssets]);
 
-  const [sortKey, setSortKey] = useState<SortKey>("name");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
-
-  const sortedAssets = useMemo(() => {
-    const list = [...assets];
-    list.sort((a, b) => {
-      const va = sortValue(a, sortKey);
-      const vb = sortValue(b, sortKey);
-      const cmp =
-        typeof va === "string" && typeof vb === "string"
-          ? va.localeCompare(vb, "pt")
-          : (va as number) - (vb as number);
-      return sortDir === "asc" ? cmp : -cmp;
-    });
-    return list;
-  }, [assets, sortKey, sortDir]);
-
-  const toggleSort = (key: SortKey) => {
-    if (key === sortKey) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir(key === "name" ? "asc" : "desc");
-    }
-  };
-
-  const SortableTh = ({ label, k }: { label: React.ReactNode; k: SortKey }) => (
-    <th className="px-4 py-3 text-right font-medium">
-      <button
-        type="button"
-        onClick={() => toggleSort(k)}
-        className={cn(
-          "inline-flex items-center justify-end gap-1 uppercase tracking-wider transition-colors hover:text-foreground",
-          sortKey === k && "text-foreground",
-        )}
-      >
-        {label}
-        {sortKey === k ? (
-          sortDir === "asc" ? (
-            <ArrowUp className="h-3 w-3" />
-          ) : (
-            <ArrowDown className="h-3 w-3" />
-          )
-        ) : (
-          <ArrowUpDown className="h-3 w-3 opacity-40" />
-        )}
-      </button>
-    </th>
-  );
   const realizedTotal = classAssets.reduce((s, a) => s + assetRealizedPL(a), 0);
 
   const totals = assets.reduce(
@@ -486,6 +441,304 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
     (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       setForm((f) => ({ ...f, [key]: e.target.value }));
 
+  const showYield = assetClass === "acao_dividendo" || assetClass === "reit";
+  const quantityLabel = assetClass === "metal" ? "Gramas" : assetClass === "p2p" ? "Grupo" : "Qtd.";
+  const quantityText = (a: Asset) =>
+    assetClass === "p2p" ? (a.p2p_group ?? "—") : a.quantity ? formatQuantity(a.quantity) : "—";
+
+  /** Valor em EUR com a moeda original por baixo (ativos em moeda estrangeira). */
+  const withNative = (eur: number, native: number | null | undefined, cur: string) => (
+    <>
+      {formatEUR(eur, hidden)}
+      {cur !== "EUR" && native != null && (
+        <span className="block whitespace-nowrap text-xs text-muted-foreground">
+          {formatMoney(native, cur, hidden)}
+        </span>
+      )}
+    </>
+  );
+  const rateOf = (a: Asset) =>
+    a.current_price_native && a.current_price_native > 0 && a.current_price > 0
+      ? a.current_price / a.current_price_native
+      : 1;
+
+  const assetName = (a: Asset) => (
+    <div className="min-w-0 max-w-[26rem]">
+      <p className="font-medium">{a.name}</p>
+      {a.ticker && <p className="text-xs text-muted-foreground">{a.ticker}</p>}
+    </div>
+  );
+
+  const rowActions = (a: Asset) => (
+    <div className="flex justify-end gap-1">
+      {isQuantityAsset(assetClass) && (
+        <IconButton label={`Comprar ou vender ${a.name}`} onClick={() => setPositionAsset(a)}>
+          <ArrowLeftRight aria-hidden className="h-4 w-4" />
+        </IconButton>
+      )}
+      {paysDividends(assetClass) && a.ticker && (
+        <IconButton
+          label={`Importar dividendos de ${a.name}`}
+          onClick={() => importDividends(a)}
+          disabled={importingId === a.id}
+        >
+          <Download aria-hidden className="h-4 w-4" />
+        </IconButton>
+      )}
+      <IconButton label={`Editar ${a.name}`} onClick={() => openEdit(a)}>
+        <Pencil aria-hidden className="h-4 w-4" />
+      </IconButton>
+      <IconButton
+        label={`Eliminar ${a.name}`}
+        className="hover:bg-destructive/15 hover:text-destructive"
+        onClick={() => remove(a)}
+      >
+        <Trash2 aria-hidden className="h-4 w-4" />
+      </IconButton>
+    </div>
+  );
+
+  const openColumns: Column<Asset>[] = [
+    {
+      id: "name",
+      header: "Ativo",
+      label: "Ativo",
+      required: true,
+      sortValue: (a) => sortValue(a, "name"),
+      cell: assetName,
+    },
+    {
+      id: "quantity",
+      header: quantityLabel,
+      align: "right",
+      sortValue: (a) => sortValue(a, "quantity"),
+      cell: (a) => <span className="text-muted-foreground">{quantityText(a)}</span>,
+    },
+    ...(isQuantityAsset(assetClass)
+      ? ([
+          {
+            id: "buyPrice",
+            header: "Preço compra",
+            align: "right",
+            sortValue: (a) => sortValue(a, "buyPrice"),
+            cell: (a) =>
+              withNative(a.average_price ?? 0, a.purchase_price_native, a.native_currency || "EUR"),
+          },
+          {
+            id: "currentPrice",
+            header: "Preço atual",
+            align: "right",
+            sortValue: (a) => sortValue(a, "currentPrice"),
+            cell: (a) =>
+              withNative(a.current_price ?? 0, a.current_price_native, a.native_currency || "EUR"),
+          },
+        ] satisfies Column<Asset>[])
+      : []),
+    {
+      id: "invested",
+      header: "Investido",
+      align: "right",
+      sortValue: (a) => sortValue(a, "invested"),
+      cell: (a) =>
+        withNative(assetInvested(a), assetInvested(a) / rateOf(a), a.native_currency || "EUR"),
+    },
+    {
+      id: "value",
+      header: "Valor atual",
+      align: "right",
+      sortValue: (a) => sortValue(a, "value"),
+      cell: (a) =>
+        withNative(
+          assetCurrentValue(a),
+          assetCurrentValue(a) / rateOf(a),
+          a.native_currency || "EUR",
+        ),
+    },
+    {
+      id: "pl",
+      header: "P/L",
+      align: "right",
+      sortValue: (a) => sortValue(a, "pl"),
+      cell: (a) => {
+        const p = assetPL(a);
+        return (
+          <span className="flex flex-col items-end">
+            <Delta value={p.abs}>{formatEUR(p.abs, hidden)}</Delta>
+            <span
+              className={cn(
+                "text-xs",
+                p.abs > 0
+                  ? "text-success"
+                  : p.abs < 0
+                    ? "text-destructive"
+                    : "text-muted-foreground",
+              )}
+            >
+              {formatPercent(p.pct, hidden)}
+            </span>
+          </span>
+        );
+      },
+    },
+    ...(showYield
+      ? ([
+          {
+            id: "yield",
+            header: "Yield",
+            align: "right",
+            sortValue: (a) => sortValue(a, "yield"),
+            cell: (a) => (
+              <span className="font-medium text-primary">
+                {a.annual_yield == null ? "—" : formatPercent(a.annual_yield, hidden)}
+              </span>
+            ),
+          },
+        ] satisfies Column<Asset>[])
+      : []),
+    {
+      id: "actions",
+      header: <span className="sr-only">Ações</span>,
+      required: true,
+      cell: rowActions,
+    },
+  ];
+
+  const Pair = ({ label, value }: { label: string; value: React.ReactNode }) => (
+    <div className="min-w-0">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="num font-medium">{value}</dd>
+    </div>
+  );
+
+  const openCard = (a: Asset) => {
+    const p = assetPL(a);
+    const cur = a.native_currency || "EUR";
+    return (
+      <div className="space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-medium leading-snug">{a.name}</p>
+            {a.ticker && <p className="text-xs text-muted-foreground">{a.ticker}</p>}
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="num font-semibold">{formatEUR(assetCurrentValue(a), hidden)}</p>
+            <Delta value={p.abs} className="justify-end text-xs">
+              {formatEUR(p.abs, hidden)} · {formatPercent(p.pct, hidden)}
+            </Delta>
+          </div>
+        </div>
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+          <Pair label={quantityLabel} value={quantityText(a)} />
+          <Pair label="Investido" value={formatEUR(assetInvested(a), hidden)} />
+          {isQuantityAsset(assetClass) && (
+            <>
+              <Pair
+                label="Preço compra"
+                value={withNative(a.average_price ?? 0, a.purchase_price_native, cur)}
+              />
+              <Pair
+                label="Preço atual"
+                value={withNative(a.current_price ?? 0, a.current_price_native, cur)}
+              />
+            </>
+          )}
+          {showYield && (
+            <Pair
+              label="Yield"
+              value={a.annual_yield == null ? "—" : formatPercent(a.annual_yield, hidden)}
+            />
+          )}
+        </dl>
+        <div className="border-t border-border/60 pt-2">{rowActions(a)}</div>
+      </div>
+    );
+  };
+
+  const closedColumns: Column<Asset>[] = [
+    {
+      id: "name",
+      header: "Ativo",
+      required: true,
+      sortValue: (a) => sortValue(a, "name"),
+      cell: assetName,
+    },
+    {
+      id: "realized",
+      header: "P/L realizado",
+      align: "right",
+      sortValue: (a) => assetRealizedPL(a),
+      cell: (a) => (
+        <Delta value={assetRealizedPL(a)}>{formatEUR(assetRealizedPL(a), hidden)}</Delta>
+      ),
+    },
+    {
+      id: "fees",
+      header: "Comissões",
+      align: "right",
+      sortValue: (a) => a.total_fees ?? 0,
+      cell: (a) => (
+        <span className="text-muted-foreground">{formatEUR(a.total_fees ?? 0, hidden)}</span>
+      ),
+    },
+    {
+      id: "closed",
+      header: "Fecho",
+      align: "right",
+      sortValue: (a) => a.closed_at ?? "",
+      cell: (a) => <span className="text-muted-foreground">{formatDatePt(a.closed_at)}</span>,
+    },
+    {
+      id: "actions",
+      header: <span className="sr-only">Ações</span>,
+      required: true,
+      cell: (a) => (
+        <div className="flex justify-end gap-1">
+          <IconButton label={`Ver histórico de ${a.name}`} onClick={() => setPositionAsset(a)}>
+            <ArrowLeftRight aria-hidden className="h-4 w-4" />
+          </IconButton>
+          <IconButton
+            label={`Eliminar ${a.name}`}
+            className="hover:bg-destructive/15 hover:text-destructive"
+            onClick={() => remove(a)}
+          >
+            <Trash2 aria-hidden className="h-4 w-4" />
+          </IconButton>
+        </div>
+      ),
+    },
+  ];
+
+  const closedCard = (a: Asset) => (
+    <div className="space-y-2">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-medium leading-snug">{a.name}</p>
+          {a.ticker && <p className="text-xs text-muted-foreground">{a.ticker}</p>}
+        </div>
+        <Delta value={assetRealizedPL(a)} className="shrink-0">
+          {formatEUR(assetRealizedPL(a), hidden)}
+        </Delta>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Fecho {formatDatePt(a.closed_at)} · comissões {formatEUR(a.total_fees ?? 0, hidden)}
+      </p>
+      <div className="border-t border-border/60 pt-2">
+        <div className="flex justify-end gap-1">
+          <IconButton label={`Ver histórico de ${a.name}`} onClick={() => setPositionAsset(a)}>
+            <ArrowLeftRight aria-hidden className="h-4 w-4" />
+          </IconButton>
+          <IconButton
+            label={`Eliminar ${a.name}`}
+            className="hover:bg-destructive/15 hover:text-destructive"
+            onClick={() => remove(a)}
+          >
+            <Trash2 aria-hidden className="h-4 w-4" />
+          </IconButton>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -493,8 +746,8 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         subtitle={subtitle}
         actions={
           <>
-            <Button variant="outline" onClick={refreshPrices} disabled={refreshing}>
-              <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+            <Button variant="outline" onClick={refreshPrices} loading={refreshing}>
+              {!refreshing && <RefreshCw aria-hidden className="h-4 w-4" />}
               Atualizar preços
             </Button>
             <Button onClick={openCreate}>
@@ -548,9 +801,17 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         )}
       </div>
 
-      {isLoading ? (
-        <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-          A carregar…
+      {isError ? (
+        <ErrorState onRetry={() => void refetch()} />
+      ) : isLoading ? (
+        <div
+          aria-busy="true"
+          aria-label="A carregar posições"
+          className="space-y-2 rounded-xl border border-border bg-card p-4"
+        >
+          {Array.from({ length: 6 }, (_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
         </div>
       ) : assets.length === 0 ? (
         <EmptyState
@@ -558,256 +819,43 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
           description="Adiciona o primeiro ativo para começar a acompanhar esta classe."
           action={
             <Button onClick={openCreate}>
-              <Plus className="h-4 w-4" />
+              <Plus aria-hidden className="h-4 w-4" />
               Adicionar primeiro ativo
             </Button>
           }
         />
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border bg-card">
-          <table className="w-full min-w-[820px] text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
-                <th className="px-4 py-3 font-medium">
-                  <button
-                    type="button"
-                    onClick={() => toggleSort("name")}
-                    className={cn(
-                      "inline-flex items-center gap-1 uppercase tracking-wider transition-colors hover:text-foreground",
-                      sortKey === "name" && "text-foreground",
-                    )}
-                  >
-                    Ativo
-                    {sortKey === "name" ? (
-                      sortDir === "asc" ? (
-                        <ArrowUp className="h-3 w-3" />
-                      ) : (
-                        <ArrowDown className="h-3 w-3" />
-                      )
-                    ) : (
-                      <ArrowUpDown className="h-3 w-3 opacity-40" />
-                    )}
-                  </button>
-                </th>
-                <SortableTh
-                  k="quantity"
-                  label={
-                    assetClass === "metal" ? "Gramas" : assetClass === "p2p" ? "Grupo" : "Qtd."
-                  }
-                />
-                {isQuantityAsset(assetClass) && (
-                  <>
-                    <SortableTh k="buyPrice" label="Preço compra" />
-                    <SortableTh k="currentPrice" label="Preço atual" />
-                  </>
-                )}
-                <SortableTh k="invested" label="Investido" />
-                <SortableTh k="value" label="Valor atual" />
-                <SortableTh k="pl" label="P/L" />
-                {(assetClass === "acao_dividendo" || assetClass === "reit") && (
-                  <SortableTh k="yield" label="Yield" />
-                )}
-                <th className="px-4 py-3 text-right font-medium">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedAssets.map((a) => {
-                const p = assetPL(a);
-                const cur = a.native_currency || "EUR";
-                const foreign = cur !== "EUR";
-                const rate =
-                  a.current_price_native && a.current_price_native > 0 && a.current_price > 0
-                    ? a.current_price / a.current_price_native
-                    : 1;
-                return (
-                  <tr
-                    key={a.id}
-                    className="border-b border-border/60 last:border-0 hover:bg-accent/40"
-                  >
-                    <td className="px-4 py-3">
-                      <p className="font-medium">{a.name}</p>
-                      {a.ticker && <p className="text-xs text-muted-foreground">{a.ticker}</p>}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-muted-foreground">
-                      {assetClass === "p2p" ? (a.p2p_group ?? "—") : a.quantity || "—"}
-                    </td>
-                    {isQuantityAsset(assetClass) && (
-                      <>
-                        <td className="whitespace-nowrap px-4 py-3 text-right">
-                          {formatEUR(a.average_price ?? 0, hidden)}
-                          {foreign && a.purchase_price_native != null && (
-                            <span className="block whitespace-nowrap text-xs text-muted-foreground">
-                              {formatMoney(a.purchase_price_native, cur, hidden)}
-                            </span>
-                          )}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-right">
-                          {formatEUR(a.current_price ?? 0, hidden)}
-                          {foreign && a.current_price_native != null && (
-                            <span className="block whitespace-nowrap text-xs text-muted-foreground">
-                              {formatMoney(a.current_price_native, cur, hidden)}
-                            </span>
-                          )}
-                        </td>
-                      </>
-                    )}
-                    <td className="whitespace-nowrap px-4 py-3 text-right">
-                      {formatEUR(assetInvested(a), hidden)}
-                      {foreign && (
-                        <span className="block whitespace-nowrap text-xs text-muted-foreground">
-                          {formatMoney(assetInvested(a) / rate, cur, hidden)}
-                        </span>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right">
-                      {formatEUR(assetCurrentValue(a), hidden)}
-                      {foreign && (
-                        <span className="block whitespace-nowrap text-xs text-muted-foreground">
-                          {formatMoney(assetCurrentValue(a) / rate, cur, hidden)}
-                        </span>
-                      )}
-                    </td>
-                    <td
-                      className={cn(
-                        "whitespace-nowrap px-4 py-3 text-right font-medium",
-                        p.abs > 0
-                          ? "text-success"
-                          : p.abs < 0
-                            ? "text-destructive"
-                            : "text-muted-foreground",
-                      )}
-                    >
-                      {formatEUR(p.abs, hidden)}
-                      <span className="block whitespace-nowrap text-xs">
-                        {formatPercent(p.pct, hidden)}
-                      </span>
-                    </td>
-                    {(assetClass === "acao_dividendo" || assetClass === "reit") && (
-                      <td className="whitespace-nowrap px-4 py-3 text-right font-medium text-primary">
-                        {a.annual_yield == null ? "—" : formatPercent(a.annual_yield, hidden)}
-                      </td>
-                    )}
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-1">
-                        {isQuantityAsset(assetClass) && (
-                          <button
-                            onClick={() => setPositionAsset(a)}
-                            className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
-                            aria-label={`Comprar ou vender ${a.name}`}
-                            title="Comprar / Vender"
-                          >
-                            <ArrowLeftRight className="h-4 w-4" />
-                          </button>
-                        )}
-                        {paysDividends(assetClass) && a.ticker && (
-                          <button
-                            onClick={() => importDividends(a)}
-                            disabled={importingId === a.id}
-                            className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
-                            aria-label={`Importar dividendos de ${a.name}`}
-                            title="Importar dividendos do Yahoo Finance"
-                          >
-                            <Download className="h-4 w-4" />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => openEdit(a)}
-                          className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
-                          aria-label={`Editar ${a.name}`}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => remove(a)}
-                          className="rounded-lg p-2 text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
-                          aria-label={`Eliminar ${a.name}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          rows={assets}
+          columns={openColumns}
+          rowKey={(a) => a.id}
+          caption={`Posições abertas — ${title}`}
+          storageKey={`assets:${assetClass}`}
+          defaultSort={{ id: "name", dir: "asc" }}
+          searchText={(a) => `${a.name} ${a.ticker ?? ""} ${a.isin ?? ""}`}
+          searchPlaceholder="Pesquisar por nome, ticker ou ISIN…"
+          renderCard={openCard}
+        />
       )}
 
       {closedAssets.length > 0 && (
-        <section className="space-y-3">
+        <section aria-labelledby="posicoes-fechadas" className="space-y-3">
           <div>
-            <h2 className="text-lg font-semibold">Posições fechadas</h2>
+            <h2 id="posicoes-fechadas" className="text-lg font-semibold">
+              Posições fechadas
+            </h2>
             <p className="text-sm text-muted-foreground">
               Ativos totalmente vendidos — o histórico permanece disponível.
             </p>
           </div>
-          <div className="overflow-x-auto rounded-xl border border-border bg-card">
-            <table className="w-full min-w-[620px] text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
-                  <th className="px-4 py-3 font-medium">Ativo</th>
-                  <th className="px-4 py-3 text-right font-medium">P/L realizado</th>
-                  <th className="px-4 py-3 text-right font-medium">Comissões</th>
-                  <th className="px-4 py-3 text-right font-medium">Fecho</th>
-                  <th className="px-4 py-3 text-right font-medium">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {closedAssets.map((a) => {
-                  const r = assetRealizedPL(a);
-                  return (
-                    <tr
-                      key={a.id}
-                      className="border-b border-border/60 last:border-0 hover:bg-accent/40"
-                    >
-                      <td className="px-4 py-3">
-                        <p className="font-medium">{a.name}</p>
-                        {a.ticker && <p className="text-xs text-muted-foreground">{a.ticker}</p>}
-                      </td>
-                      <td
-                        className={cn(
-                          "whitespace-nowrap px-4 py-3 text-right font-medium",
-                          r > 0
-                            ? "text-success"
-                            : r < 0
-                              ? "text-destructive"
-                              : "text-muted-foreground",
-                        )}
-                      >
-                        {formatEUR(r, hidden)}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right text-muted-foreground">
-                        {formatEUR(a.total_fees ?? 0, hidden)}
-                      </td>
-                      <td className="px-4 py-3 text-right text-muted-foreground">
-                        {a.closed_at ? a.closed_at.slice(0, 10) : "—"}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end gap-1">
-                          <button
-                            onClick={() => setPositionAsset(a)}
-                            className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
-                            aria-label={`Ver histórico de ${a.name}`}
-                            title="Ver histórico"
-                          >
-                            <ArrowLeftRight className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => remove(a)}
-                            className="rounded-lg p-2 text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
-                            aria-label={`Eliminar ${a.name}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            rows={closedAssets}
+            columns={closedColumns}
+            rowKey={(a) => a.id}
+            caption={`Posições fechadas — ${title}`}
+            defaultSort={{ id: "closed", dir: "desc" }}
+            renderCard={closedCard}
+          />
         </section>
       )}
 
