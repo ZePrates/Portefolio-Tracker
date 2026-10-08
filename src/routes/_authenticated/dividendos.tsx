@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Plus, Trash2, RefreshCw, ShieldCheck } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { toast } from "sonner";
 import {
   listAssets,
@@ -28,8 +28,10 @@ import {
 import {
   formatEUR,
   formatMoney,
+  formatCompact,
   formatDatePt,
   formatPercent,
+  formatQuantity,
   parseNumberOr,
   parseNumberPt,
 } from "@/lib/format";
@@ -39,12 +41,20 @@ import {
   PageHeader,
   MetricCard,
   EmptyState,
+  ErrorState,
+  Badge,
   Button,
+  Card,
+  IconButton,
   Modal,
   Field,
+  SelectInput,
   TextInput,
   useConfirm,
 } from "@/components/ui-bits";
+import { DataTable, type Column } from "@/components/data-table";
+import { AXIS_LINE, AXIS_TICK, ChartFrame, ChartTooltip, GRID_PROPS } from "@/components/chart-kit";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_authenticated/dividendos")({
   head: () => ({
@@ -91,9 +101,15 @@ function DividendosPage() {
   const [syncing, setSyncing] = useState(false);
   const [auditing, setAuditing] = useState(false);
   const [filter, setFilter] = useState<"all" | "received" | "pending">("all");
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   const { data: assetsRaw } = useQuery({ queryKey: ["assets"], queryFn: () => fetchAssets() });
-  const { data: dividendsRaw, isLoading } = useQuery({
+  const {
+    data: dividendsRaw,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["dividends"],
     queryFn: () => fetchDividends(),
   });
@@ -187,17 +203,34 @@ function DividendosPage() {
     }
   };
 
-  const save = async () => {
+  /** Erros por campo, calculados a cada alteração (mostrados depois de tocar no campo). */
+  const errors = useMemo(() => {
+    const e: Partial<Record<"asset" | "amount" | "tax" | "date" | "exDate", string>> = {};
+    if (!assetId) e.asset = "Escolhe o ativo que pagou o dividendo.";
     const value = parseNumberPt(amount);
-    if (!Number.isFinite(value) || value <= 0) {
-      toast.error("Indica um valor válido.");
-      return;
-    }
+    if (!(value > 0)) e.amount = "Indica o valor bruto (maior que 0).";
+    if (tax.trim() !== "" && !(parseNumberPt(tax) >= 0)) e.tax = "O imposto não pode ser negativo.";
+    if (tax.trim() !== "" && value > 0 && parseNumberPt(tax) > value)
+      e.tax = "O imposto não pode ser maior que o valor bruto.";
+    if (!date) e.date = "Indica a data de pagamento.";
+    if (exDate && date && exDate > date)
+      e.exDate = "A data ex-dividendo é anterior ou igual à de pagamento.";
+    return e;
+  }, [assetId, amount, tax, date, exDate]);
+  const err = (k: keyof typeof errors) => (touched[k] ? errors[k] : undefined);
+  const touch = (k: string) => setTouched((t) => ({ ...t, [k]: true }));
+
+  const openForm = () => {
+    setTouched({});
+    setOpen(true);
+  };
+
+  const save = async () => {
+    setTouched({ asset: true, amount: true, tax: true, date: true, exDate: true });
+    if (Object.keys(errors).length > 0) return;
+    const value = parseNumberPt(amount);
     const asset = assets.find((a) => a.id === assetId);
-    if (!asset) {
-      toast.error("Escolhe o ativo que pagou o dividendo.");
-      return;
-    }
+    if (!asset) return;
     const taxValue = parseNumberOr(tax, 0);
     setSaving(true);
     try {
@@ -243,6 +276,156 @@ function DividendosPage() {
     }
   };
 
+  const filteredDividends = useMemo(
+    () =>
+      dividends.filter((d) => {
+        if (filter === "all") return true;
+        const r = isReceived(d as never);
+        return filter === "received" ? r : !r;
+      }),
+    [dividends, filter],
+  );
+
+  const statusBadge = (d: Dividend) => {
+    const received = isReceived(d as never);
+    return received ? (
+      <Badge tone="gain">Recebido</Badge>
+    ) : (
+      <Badge>{d.status === "unknown" ? "Por confirmar" : "Previsto"}</Badge>
+    );
+  };
+
+  const removeButton = (d: Dividend) => (
+    <IconButton
+      label={`Eliminar dividendo de ${d.asset_name ?? "ativo"} (${formatDatePt(d.payment_date ?? d.paid_at)})`}
+      className="hover:bg-destructive/15 hover:text-destructive"
+      onClick={() => remove(d)}
+    >
+      <Trash2 aria-hidden className="h-4 w-4" />
+    </IconButton>
+  );
+
+  const columns: Column<Dividend>[] = [
+    {
+      id: "payment",
+      header: "Pagamento",
+      required: true,
+      sortValue: (d) => d.payment_date ?? d.paid_at,
+      cell: (d) => (
+        <span className="text-muted-foreground">
+          {formatDatePt(d.payment_date ?? d.paid_at)}
+          {d.payment_date_estimated && (
+            <span className="block text-xs" title="Data estimada a partir da ex-dividendo">
+              estimada
+            </span>
+          )}
+        </span>
+      ),
+    },
+    {
+      id: "ex",
+      header: "Ex-date",
+      sortValue: (d) => d.ex_date ?? "",
+      cell: (d) => <span className="text-muted-foreground">{formatDatePt(d.ex_date)}</span>,
+    },
+    {
+      id: "asset",
+      header: "Ativo",
+      required: true,
+      sortValue: (d) => (d.asset_name ?? "").toLowerCase(),
+      cell: (d) => <span className="font-medium">{d.asset_name}</span>,
+    },
+    {
+      id: "qty",
+      header: "Qtd. elegível",
+      align: "right",
+      sortValue: (d) => d.eligible_quantity ?? null,
+      cell: (d) => (
+        <span className="text-muted-foreground">
+          {d.eligible_quantity == null ? "—" : formatQuantity(d.eligible_quantity)}
+        </span>
+      ),
+    },
+    {
+      id: "perShare",
+      header: "Por ação",
+      align: "right",
+      defaultHidden: true,
+      sortValue: (d) => d.per_share_native ?? null,
+      cell: (d) => (
+        <span className="text-muted-foreground">
+          {d.per_share_native == null
+            ? "—"
+            : formatMoney(d.per_share_native, (d.currency ?? "EUR").toUpperCase(), hidden)}
+        </span>
+      ),
+    },
+    {
+      id: "gross",
+      header: "Bruto",
+      align: "right",
+      sortValue: (d) => d.gross_amount ?? d.amount,
+      cell: (d) => {
+        const cur = (d.currency ?? "EUR").toUpperCase();
+        return (
+          <span className="font-medium text-success">
+            {formatEUR(d.gross_amount ?? d.amount, hidden)}
+            {cur !== "EUR" && d.amount_native != null && (
+              <span className="block text-xs font-normal text-muted-foreground">
+                {formatMoney(d.amount_native, cur, hidden)}
+              </span>
+            )}
+          </span>
+        );
+      },
+    },
+    {
+      id: "net",
+      header: "Líquido",
+      align: "right",
+      sortValue: (d) => d.net_amount ?? d.gross_amount ?? d.amount,
+      cell: (d) => formatEUR(d.net_amount ?? d.gross_amount ?? d.amount, hidden),
+    },
+    {
+      id: "status",
+      header: "Estado",
+      sortValue: (d) => (isReceived(d as never) ? 1 : 0),
+      cell: statusBadge,
+    },
+    {
+      id: "actions",
+      header: <span className="sr-only">Ações</span>,
+      required: true,
+      cell: (d) => <div className="flex justify-end">{removeButton(d)}</div>,
+    },
+  ];
+
+  const renderCard = (d: Dividend) => (
+    <div className="space-y-2">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-medium leading-snug">{d.asset_name}</p>
+          <p className="text-xs text-muted-foreground">
+            {formatDatePt(d.payment_date ?? d.paid_at)}
+            {d.payment_date_estimated ? " (estimada)" : ""}
+          </p>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="num font-semibold text-success">
+            {formatEUR(d.gross_amount ?? d.amount, hidden)}
+          </p>
+          <p className="num text-xs text-muted-foreground">
+            líquido {formatEUR(d.net_amount ?? d.gross_amount ?? d.amount, hidden)}
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center justify-between border-t border-border/60 pt-2">
+        {statusBadge(d)}
+        {removeButton(d)}
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -250,16 +433,16 @@ function DividendosPage() {
         subtitle="Dividendos efetivamente recebidos, calculados sobre a posição elegível em cada data ex-dividendo."
         actions={
           <div className="flex gap-2">
-            <Button variant="outline" onClick={runAudit} disabled={auditing}>
-              <ShieldCheck className="h-4 w-4" />
+            <Button variant="outline" onClick={runAudit} loading={auditing}>
+              {!auditing && <ShieldCheck aria-hidden className="h-4 w-4" />}
               Auditar
             </Button>
-            <Button variant="outline" onClick={sync} disabled={syncing}>
-              <RefreshCw className={syncing ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
+            <Button variant="outline" onClick={sync} loading={syncing}>
+              {!syncing && <RefreshCw aria-hidden className="h-4 w-4" />}
               Sincronizar
             </Button>
-            <Button onClick={() => setOpen(true)}>
-              <Plus className="h-4 w-4" />
+            <Button onClick={openForm}>
+              <Plus aria-hidden className="h-4 w-4" />
               Registar dividendo
             </Button>
           </div>
@@ -288,213 +471,184 @@ function DividendosPage() {
       {Object.keys(stats.byCurrency).length > 0 && (
         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
           {Object.entries(stats.byCurrency).map(([cur, total]) => (
-            <span key={cur} className="rounded-full border border-border px-3 py-1">
+            <Badge key={cur} className="px-3 py-1 text-xs">
               {cur}: {formatMoney(total, cur, hidden)}
-            </span>
+            </Badge>
           ))}
         </div>
       )}
 
-      <div className="rounded-xl border border-border bg-card p-4">
-        <h2 className="mb-3 text-sm font-medium">Recebidos por mês ({year})</h2>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={stats.monthly}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="month" stroke="var(--muted-foreground)" fontSize={12} />
-              <YAxis stroke="var(--muted-foreground)" fontSize={12} />
-              <Tooltip
-                formatter={(v: number) => formatEUR(v, hidden)}
-                contentStyle={{
-                  background: "var(--card)",
-                  border: "1px solid var(--border)",
-                  color: "var(--foreground)",
-                  borderRadius: 8,
-                }}
-              />
-              <Bar dataKey="total" fill="var(--primary)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      <Card title={`Recebidos por mês (${year})`}>
+        <ChartFrame
+          label={`Dividendos recebidos em cada mês de ${year}`}
+          loading={isLoading}
+          empty={stats.monthly.every((m) => m.total === 0)}
+          emptyLabel={`Ainda não há dividendos recebidos em ${year}.`}
+        >
+          <BarChart data={stats.monthly}>
+            <CartesianGrid {...GRID_PROPS} />
+            <XAxis dataKey="month" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
+            <YAxis
+              tick={AXIS_TICK}
+              axisLine={false}
+              tickLine={false}
+              width={44}
+              tickFormatter={(v: number) => (hidden ? "•" : formatCompact(v))}
+            />
+            <Tooltip
+              cursor={{ fill: "var(--color-accent)", opacity: 0.4 }}
+              content={<ChartTooltip valueFormatter={(v) => formatEUR(v, hidden)} />}
+            />
+            <Bar
+              dataKey="total"
+              name="Recebido"
+              fill="var(--color-chart-2)"
+              radius={[4, 4, 0, 0]}
+            />
+          </BarChart>
+        </ChartFrame>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-4">
-          <h2 className="mb-3 text-sm font-medium">Dividendos por ativo</h2>
+        <Card title="Dividendos por ativo">
           {stats.byAsset.length === 0 ? (
             <p className="text-sm text-muted-foreground">Ainda sem dividendos recebidos.</p>
           ) : (
             <ul className="space-y-2 text-sm">
               {stats.byAsset.map((a) => (
-                <li key={a.assetId ?? a.assetName} className="flex justify-between">
-                  <span>
+                <li
+                  key={a.assetId ?? a.assetName}
+                  className="flex items-center justify-between gap-3"
+                >
+                  <span className="min-w-0 flex-1 truncate">
                     {a.assetName}{" "}
-                    <span className="text-xs text-muted-foreground">({a.count} pagamentos)</span>
+                    <span className="text-xs text-muted-foreground">
+                      ({a.count} {a.count === 1 ? "pagamento" : "pagamentos"})
+                    </span>
                   </span>
-                  <span className="font-medium text-success">{formatEUR(a.total, hidden)}</span>
+                  <span className="num shrink-0 font-medium text-success">
+                    {formatEUR(a.total, hidden)}
+                  </span>
                 </li>
               ))}
             </ul>
           )}
-        </div>
+        </Card>
 
-        <div className="rounded-xl border border-border bg-card p-4">
-          <h2 className="mb-3 text-sm font-medium">Próximos pagamentos</h2>
+        <Card title="Próximos pagamentos">
           {upcoming.length === 0 ? (
             <p className="text-sm text-muted-foreground">Sem pagamentos anunciados.</p>
           ) : (
             <ul className="space-y-2 text-sm">
               {upcoming.slice(0, 8).map((d) => (
-                <li key={d.id} className="flex justify-between">
-                  <span>
+                <li key={d.id} className="flex items-center justify-between gap-3">
+                  <span className="min-w-0 flex-1 truncate">
                     {d.asset_name}{" "}
                     <span className="text-xs text-muted-foreground">
                       {formatDatePt(d.payment_date ?? d.paid_at)}
+                      {d.payment_date_estimated ? " (estimada)" : ""}
                     </span>
                   </span>
-                  <span className="font-medium">{formatEUR(grossOf(d as never), hidden)}</span>
+                  <span className="num shrink-0 font-medium">
+                    {formatEUR(grossOf(d as never), hidden)}
+                  </span>
                 </li>
               ))}
             </ul>
           )}
-        </div>
+        </Card>
       </div>
 
-      {isLoading ? (
-        <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-          A carregar…
+      {isError ? (
+        <ErrorState onRetry={() => void refetch()} />
+      ) : isLoading ? (
+        <div
+          aria-busy="true"
+          aria-label="A carregar dividendos"
+          className="space-y-2 rounded-xl border border-border bg-card p-4"
+        >
+          {Array.from({ length: 6 }, (_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
         </div>
       ) : dividends.length === 0 ? (
         <EmptyState
           title="Ainda sem dividendos registados"
           description="Sincroniza os dividendos dos teus ativos ou regista manualmente o primeiro pagamento."
           action={
-            <Button onClick={sync} disabled={syncing}>
-              <RefreshCw className="h-4 w-4" />
+            <Button onClick={sync} loading={syncing}>
+              {!syncing && <RefreshCw aria-hidden className="h-4 w-4" />}
               Sincronizar dividendos
             </Button>
           }
         />
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border bg-card">
-          <div className="flex flex-wrap gap-2 border-b border-border p-3">
-            {(
-              [
-                ["all", `Todos (${dividends.length})`],
+        <section aria-labelledby="hist-dividendos" className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="hist-dividendos" className="text-base font-semibold">
+              Histórico
+            </h2>
+            <div role="group" aria-label="Filtrar por estado" className="flex flex-wrap gap-1.5">
+              {(
                 [
-                  "received",
-                  `Recebidos (${dividends.filter((d) => isReceived(d as never)).length})`,
-                ],
-                ["pending", `Previstos (${upcoming.length})`],
-              ] as const
-            ).map(([key, label]) => (
-              <button
-                key={key}
-                onClick={() => setFilter(key)}
-                className={
-                  filter === key
-                    ? "rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground"
-                    : "rounded-full border border-border px-3 py-1 text-xs text-muted-foreground hover:bg-accent"
-                }
-              >
-                {label}
-              </button>
-            ))}
+                  ["all", `Todos (${dividends.length})`],
+                  [
+                    "received",
+                    `Recebidos (${dividends.filter((d) => isReceived(d as never)).length})`,
+                  ],
+                  ["pending", `Previstos (${upcoming.length})`],
+                ] as const
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  aria-pressed={filter === key}
+                  onClick={() => setFilter(key)}
+                  className={
+                    filter === key
+                      ? "min-h-9 rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground"
+                      : "min-h-9 rounded-full border border-border px-3 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+                  }
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
-          <table className="w-full min-w-[860px] text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Pagamento</th>
-                <th className="px-4 py-3 font-medium">Ex-date</th>
-                <th className="px-4 py-3 font-medium">Ativo</th>
-                <th className="px-4 py-3 text-right font-medium">Qtd. elegível</th>
-                <th className="px-4 py-3 text-right font-medium">Por ação</th>
-                <th className="px-4 py-3 text-right font-medium">Bruto</th>
-                <th className="px-4 py-3 text-right font-medium">Líquido</th>
-                <th className="px-4 py-3 font-medium">Estado</th>
-                <th className="px-4 py-3 text-right font-medium">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {dividends
-                .filter((d) => {
-                  if (filter === "all") return true;
-                  const r = isReceived(d as never);
-                  return filter === "received" ? r : !r;
-                })
-                .map((d) => {
-                  const received = isReceived(d as never);
-                  const cur = (d.currency ?? "EUR").toUpperCase();
-                  return (
-                    <tr
-                      key={d.id}
-                      className="border-b border-border/60 last:border-0 hover:bg-accent/40"
-                    >
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {formatDatePt(d.payment_date ?? d.paid_at)}
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">{formatDatePt(d.ex_date)}</td>
-                      <td className="px-4 py-3 font-medium">{d.asset_name}</td>
-                      <td className="px-4 py-3 text-right text-muted-foreground">
-                        {d.eligible_quantity == null ? "—" : d.eligible_quantity}
-                      </td>
-                      <td className="px-4 py-3 text-right text-muted-foreground">
-                        {d.per_share_native == null
-                          ? "—"
-                          : formatMoney(d.per_share_native, cur, hidden)}
-                      </td>
-                      <td className="px-4 py-3 text-right font-medium text-success">
-                        <div>{formatEUR(d.gross_amount ?? d.amount, hidden)}</div>
-                        {cur !== "EUR" && d.amount_native != null && (
-                          <div className="text-xs font-normal text-muted-foreground">
-                            {formatMoney(d.amount_native, cur, hidden)}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {formatEUR(d.net_amount ?? d.gross_amount ?? d.amount, hidden)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={
-                            received
-                              ? "rounded-full bg-success/15 px-2 py-1 text-xs text-success"
-                              : "rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"
-                          }
-                        >
-                          {received
-                            ? "Recebido"
-                            : d.status === "unknown"
-                              ? "Por confirmar"
-                              : "Previsto"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end">
-                          <button
-                            onClick={() => remove(d)}
-                            className="rounded-lg p-2 text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
-                            aria-label="Eliminar registo"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-            </tbody>
-          </table>
-        </div>
+          <DataTable
+            rows={filteredDividends}
+            columns={columns}
+            rowKey={(d) => d.id}
+            caption="Histórico de dividendos"
+            storageKey="dividends"
+            defaultSort={{ id: "payment", dir: "desc" }}
+            searchText={(d) => `${d.asset_name ?? ""} ${formatDatePt(d.payment_date ?? d.paid_at)}`}
+            searchPlaceholder="Pesquisar por ativo ou data…"
+            pageSize={25}
+            emptyTitle="Sem dividendos neste filtro"
+            emptyDescription="Experimenta outro filtro ou limpa a pesquisa."
+            renderCard={renderCard}
+          />
+        </section>
       )}
 
       <Modal open={open} onClose={() => setOpen(false)} title="Registar dividendo">
-        <div className="space-y-4">
-          <Field label="Ativo">
-            <select
+        <form
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault();
+            void save();
+          }}
+          className="space-y-4"
+        >
+          <Field label="Ativo" required error={err("asset")}>
+            <SelectInput
               value={assetId}
-              onChange={(e) => setAssetId(e.target.value)}
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-ring"
+              onChange={(e) => {
+                setAssetId(e.target.value);
+                touch("asset");
+              }}
+              onBlur={() => touch("asset")}
             >
               <option value="">Escolher ativo…</option>
               {assets.map((a) => (
@@ -502,41 +656,59 @@ function DividendosPage() {
                   {a.name}
                 </option>
               ))}
-            </select>
+            </SelectInput>
           </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Valor bruto (€)">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Valor bruto (€)" required error={err("amount")}>
               <TextInput
                 inputMode="decimal"
+                autoComplete="off"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
+                onBlur={() => touch("amount")}
                 placeholder="0,00"
               />
             </Field>
-            <Field label="Imposto retido (€)">
+            <Field
+              label="Imposto retido (€)"
+              error={err("tax")}
+              hint="Opcional. Se ficar vazio, não há retenção."
+            >
               <TextInput
                 inputMode="decimal"
+                autoComplete="off"
                 value={tax}
                 onChange={(e) => setTax(e.target.value)}
+                onBlur={() => touch("tax")}
                 placeholder="0,00"
               />
             </Field>
-            <Field label="Data ex-dividendo">
-              <TextInput type="date" value={exDate} onChange={(e) => setExDate(e.target.value)} />
+            <Field label="Data ex-dividendo" error={err("exDate")}>
+              <TextInput
+                type="date"
+                value={exDate}
+                onChange={(e) => setExDate(e.target.value)}
+                onBlur={() => touch("exDate")}
+              />
             </Field>
-            <Field label="Data de pagamento">
-              <TextInput type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <Field label="Data de pagamento" required error={err("date")}>
+              <TextInput
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                onBlur={() => touch("date")}
+              />
             </Field>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={save} disabled={saving}>
-              {saving ? "A guardar…" : "Registar"}
+            <Button type="submit" loading={saving}>
+              Registar
             </Button>
           </div>
-        </div>
+        </form>
       </Modal>
     </div>
   );
