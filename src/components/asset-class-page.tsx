@@ -84,6 +84,9 @@ interface FormState {
 }
 
 const CURRENCIES = ["USD", "EUR", "GBP", "CHF", "CAD"];
+const LEDGER_HINT =
+  "Calculado a partir dos movimentos. Para alterar, usa Comprar/Vender → editar movimento.";
+
 const today = () => todayLisbon();
 
 function defaultCurrency(c: AssetClass) {
@@ -972,8 +975,10 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                 <Field
                   label={assetClass === "metal" ? "Peso (gramas)" : "Quantidade"}
                   error={err("quantity")}
+                  hint={editing ? LEDGER_HINT : undefined}
                 >
                   <TextInput
+                    disabled={!!editing}
                     inputMode="decimal"
                     autoComplete="off"
                     value={form.quantity}
@@ -1007,8 +1012,10 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                 <Field
                   label={`Preço de compra por ${assetClass === "metal" ? "grama" : "ação"} (${form.currency})`}
                   error={err("purchase_price")}
+                  hint={editing ? LEDGER_HINT : undefined}
                 >
                   <TextInput
+                    disabled={!!editing}
                     inputMode="decimal"
                     autoComplete="off"
                     value={form.purchase_price}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { currentRateOf, needsHistoricalRate, resolveTradeFx } from "./fx";
+import { currentRateOf, nativeAverageCost, needsHistoricalRate, resolveTradeFx } from "./fx";
 
 const TODAY = "2026-10-07";
 
@@ -123,5 +123,31 @@ describe("currentRateOf", () => {
     ).toBeCloseTo(0.86);
     expect(currentRateOf({ native_currency: "EUR" })).toBe(1);
     expect(currentRateOf({ native_currency: "USD" })).toBeNull();
+  });
+});
+
+describe("nativeAverageCost", () => {
+  it("usa o câmbio de cada lote, não o atual", () => {
+    const avg = nativeAverageCost(
+      [{ id: "a", quantity: 1, unitCost: 172.34 }],
+      new Map([["a", 0.85588]]),
+    );
+    expect(avg).toBeCloseTo(201.36, 1);
+  });
+  it("faz a média ponderada de vários lotes", () => {
+    const avg = nativeAverageCost(
+      [
+        { id: "a", quantity: 1, unitCost: 90 },
+        { id: "b", quantity: 3, unitCost: 45 },
+      ],
+      new Map([
+        ["a", 0.9],
+        ["b", 0.9],
+      ]),
+    );
+    expect(avg).toBeCloseTo((100 + 3 * 50) / 4, 6);
+  });
+  it("devolve null sem câmbio conhecido", () => {
+    expect(nativeAverageCost([{ id: "a", quantity: 1, unitCost: 1 }], new Map())).toBeNull();
   });
 });
