@@ -16,6 +16,7 @@ import {
   Globe,
   Goal,
   Activity,
+  Target,
   Menu,
   X,
 } from "lucide-react";
@@ -42,6 +43,7 @@ const ANALYSIS_NAV: NavItem[] = [
   { to: "/analise", label: "Análise", icon: PieChart },
   { to: "/performance", label: "Performance", icon: Activity },
   { to: "/exposicao", label: "Exposição", icon: Globe },
+  { to: "/objetivos", label: "Objetivos", icon: Target },
   { to: "/projecoes", label: "Projeções", icon: Goal },
   { to: "/simulador", label: "Simulador de Compra", icon: TrendingUp },
   { to: "/inteligencia", label: "Inteligência", icon: PieChart },

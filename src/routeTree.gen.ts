@@ -20,6 +20,7 @@ import { Route as AuthenticatedEtfsRouteImport } from './routes/_authenticated/e
 import { Route as AuthenticatedExposicaoRouteImport } from './routes/_authenticated/exposicao'
 import { Route as AuthenticatedInteligenciaRouteImport } from './routes/_authenticated/inteligencia'
 import { Route as AuthenticatedMetaisRouteImport } from './routes/_authenticated/metais'
+import { Route as AuthenticatedObjetivosRouteImport } from './routes/_authenticated/objetivos'
 import { Route as AuthenticatedP2pRouteImport } from './routes/_authenticated/p2p'
 import { Route as AuthenticatedPerformanceRouteImport } from './routes/_authenticated/performance'
 import { Route as AuthenticatedProjecoesRouteImport } from './routes/_authenticated/projecoes'
@@ -83,6 +84,11 @@ const AuthenticatedMetaisRoute = AuthenticatedMetaisRouteImport.update({
   path: '/metais',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedObjetivosRoute = AuthenticatedObjetivosRouteImport.update({
+  id: '/objetivos',
+  path: '/objetivos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedP2pRoute = AuthenticatedP2pRouteImport.update({
   id: '/p2p',
   path: '/p2p',
@@ -121,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/exposicao': typeof AuthenticatedExposicaoRoute
   '/inteligencia': typeof AuthenticatedInteligenciaRoute
   '/metais': typeof AuthenticatedMetaisRoute
+  '/objetivos': typeof AuthenticatedObjetivosRoute
   '/p2p': typeof AuthenticatedP2pRoute
   '/performance': typeof AuthenticatedPerformanceRoute
   '/projecoes': typeof AuthenticatedProjecoesRoute
@@ -137,6 +144,7 @@ export interface FileRoutesByTo {
   '/exposicao': typeof AuthenticatedExposicaoRoute
   '/inteligencia': typeof AuthenticatedInteligenciaRoute
   '/metais': typeof AuthenticatedMetaisRoute
+  '/objetivos': typeof AuthenticatedObjetivosRoute
   '/p2p': typeof AuthenticatedP2pRoute
   '/performance': typeof AuthenticatedPerformanceRoute
   '/projecoes': typeof AuthenticatedProjecoesRoute
@@ -156,6 +164,7 @@ export interface FileRoutesById {
   '/_authenticated/exposicao': typeof AuthenticatedExposicaoRoute
   '/_authenticated/inteligencia': typeof AuthenticatedInteligenciaRoute
   '/_authenticated/metais': typeof AuthenticatedMetaisRoute
+  '/_authenticated/objetivos': typeof AuthenticatedObjetivosRoute
   '/_authenticated/p2p': typeof AuthenticatedP2pRoute
   '/_authenticated/performance': typeof AuthenticatedPerformanceRoute
   '/_authenticated/projecoes': typeof AuthenticatedProjecoesRoute
@@ -176,6 +185,7 @@ export interface FileRouteTypes {
     | '/exposicao'
     | '/inteligencia'
     | '/metais'
+    | '/objetivos'
     | '/p2p'
     | '/performance'
     | '/projecoes'
@@ -192,6 +202,7 @@ export interface FileRouteTypes {
     | '/exposicao'
     | '/inteligencia'
     | '/metais'
+    | '/objetivos'
     | '/p2p'
     | '/performance'
     | '/projecoes'
@@ -210,6 +221,7 @@ export interface FileRouteTypes {
     | '/_authenticated/exposicao'
     | '/_authenticated/inteligencia'
     | '/_authenticated/metais'
+    | '/_authenticated/objetivos'
     | '/_authenticated/p2p'
     | '/_authenticated/performance'
     | '/_authenticated/projecoes'
@@ -302,6 +314,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMetaisRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/objetivos': {
+      id: '/_authenticated/objetivos'
+      path: '/objetivos'
+      fullPath: '/objetivos'
+      preLoaderRoute: typeof AuthenticatedObjetivosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/p2p': {
       id: '/_authenticated/p2p'
       path: '/p2p'
@@ -349,6 +368,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedExposicaoRoute: typeof AuthenticatedExposicaoRoute
   AuthenticatedInteligenciaRoute: typeof AuthenticatedInteligenciaRoute
   AuthenticatedMetaisRoute: typeof AuthenticatedMetaisRoute
+  AuthenticatedObjetivosRoute: typeof AuthenticatedObjetivosRoute
   AuthenticatedP2pRoute: typeof AuthenticatedP2pRoute
   AuthenticatedPerformanceRoute: typeof AuthenticatedPerformanceRoute
   AuthenticatedProjecoesRoute: typeof AuthenticatedProjecoesRoute
@@ -366,6 +386,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedExposicaoRoute: AuthenticatedExposicaoRoute,
   AuthenticatedInteligenciaRoute: AuthenticatedInteligenciaRoute,
   AuthenticatedMetaisRoute: AuthenticatedMetaisRoute,
+  AuthenticatedObjetivosRoute: AuthenticatedObjetivosRoute,
   AuthenticatedP2pRoute: AuthenticatedP2pRoute,
   AuthenticatedPerformanceRoute: AuthenticatedPerformanceRoute,
   AuthenticatedProjecoesRoute: AuthenticatedProjecoesRoute,
