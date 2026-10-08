@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      allocation_targets: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          scope: string
+          target_pct: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          scope: string
+          target_pct: number
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          scope?: string
+          target_pct?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       asset_expenses: {
         Row: {
           amount: number
@@ -225,6 +255,7 @@ export type Database = {
           total_fees: number
           updated_at: string
           user_id: string
+          withholding_rate: number | null
         }
         Insert: {
           annual_yield?: number | null
@@ -259,6 +290,7 @@ export type Database = {
           total_fees?: number
           updated_at?: string
           user_id: string
+          withholding_rate?: number | null
         }
         Update: {
           annual_yield?: number | null
@@ -293,6 +325,7 @@ export type Database = {
           total_fees?: number
           updated_at?: string
           user_id?: string
+          withholding_rate?: number | null
         }
         Relationships: []
       }
@@ -314,6 +347,7 @@ export type Database = {
           net_amount: number | null
           paid_at: string
           payment_date: string | null
+          payment_date_estimated: boolean
           per_share: number | null
           per_share_native: number | null
           record_date: string | null
@@ -341,6 +375,7 @@ export type Database = {
           net_amount?: number | null
           paid_at?: string
           payment_date?: string | null
+          payment_date_estimated?: boolean
           per_share?: number | null
           per_share_native?: number | null
           record_date?: string | null
@@ -368,6 +403,7 @@ export type Database = {
           net_amount?: number | null
           paid_at?: string
           payment_date?: string | null
+          payment_date_estimated?: boolean
           per_share?: number | null
           per_share_native?: number | null
           record_date?: string | null
@@ -447,6 +483,39 @@ export type Database = {
           },
         ]
       }
+      fire_settings: {
+        Row: {
+          annual_expenses: number
+          created_at: string
+          expected_return_pct: number
+          inflation_pct: number
+          monthly_contribution: number
+          safe_withdrawal_rate: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          annual_expenses: number
+          created_at?: string
+          expected_return_pct?: number
+          inflation_pct?: number
+          monthly_contribution?: number
+          safe_withdrawal_rate?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          annual_expenses?: number
+          created_at?: string
+          expected_return_pct?: number
+          inflation_pct?: number
+          monthly_contribution?: number
+          safe_withdrawal_rate?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       security_profiles: {
         Row: {
           country: string | null
@@ -487,6 +556,7 @@ export type Database = {
           fee: number
           fee_native: number | null
           fx_rate: number
+          fx_source: string | null
           id: string
           lot_breakdown: Json | null
           native_currency: string
@@ -496,6 +566,7 @@ export type Database = {
           quantity: number
           realized_pl: number | null
           source: string
+          source_event_id: string | null
           total: number
           traded_at: string
           type: string
@@ -508,6 +579,7 @@ export type Database = {
           fee?: number
           fee_native?: number | null
           fx_rate?: number
+          fx_source?: string | null
           id?: string
           lot_breakdown?: Json | null
           native_currency?: string
@@ -517,6 +589,7 @@ export type Database = {
           quantity?: number
           realized_pl?: number | null
           source?: string
+          source_event_id?: string | null
           total?: number
           traded_at?: string
           type: string
@@ -529,6 +602,7 @@ export type Database = {
           fee?: number
           fee_native?: number | null
           fx_rate?: number
+          fx_source?: string | null
           id?: string
           lot_breakdown?: Json | null
           native_currency?: string
@@ -538,6 +612,7 @@ export type Database = {
           quantity?: number
           realized_pl?: number | null
           source?: string
+          source_event_id?: string | null
           total?: number
           traded_at?: string
           type?: string
