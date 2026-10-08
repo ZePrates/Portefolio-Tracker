@@ -1,0 +1,33 @@
+{
+  "name": "Portefólio Tracker",
+  "short_name": "Portefólio",
+  "description": "Gere e analisa o teu portefólio de investimentos: ETFs, REITs, ações, metais preciosos, P2P e dividendos.",
+  "lang": "pt-PT",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a0c10",
+  "theme_color": "#f2bb31",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

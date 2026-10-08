@@ -6,9 +6,18 @@ import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { getExposure, syncAllAssetExposure } from "@/lib/exposure.functions";
 import type { Slice } from "@/lib/exposure-types";
-import { formatEUR } from "@/lib/format";
+import { countryNamePt, formatEUR, formatPct, sectorNamePt } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
-import { Button, EmptyState, MetricCard, PageHeader } from "@/components/ui-bits";
+import {
+  Badge,
+  Button,
+  EmptyState,
+  ErrorState,
+  KpiGridSkeleton,
+  MetricCard,
+  PageHeader,
+} from "@/components/ui-bits";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/exposicao")({
@@ -31,7 +40,7 @@ export const Route = createFileRoute("/_authenticated/exposicao")({
   component: ExposicaoPage,
 });
 
-const pct = (v: number, hidden: boolean) => (hidden ? "••" : `${v.toFixed(1).replace(".", ",")}%`);
+const pct = (v: number, hidden: boolean) => formatPct(v, 1, hidden);
 
 function SliceList({
   title,
@@ -39,12 +48,15 @@ function SliceList({
   slices,
   hidden,
   limit = 8,
+  translate,
 }: {
   title: string;
   note?: string;
   slices: Slice[];
   hidden: boolean;
   limit?: number;
+  /** Traduz o rótulo da fonte (ex.: países e setores em inglês). */
+  translate?: (value: string) => string;
 }) {
   const [open, setOpen] = useState<string | null>(null);
   const rows = slices.slice(0, limit);
@@ -62,7 +74,7 @@ function SliceList({
               className="w-full px-4 py-2.5 text-left"
             >
               <div className="flex items-center justify-between text-sm">
-                <span className="font-medium">{s.value}</span>
+                <span className="font-medium">{translate ? translate(s.value) : s.value}</span>
                 <span className="text-muted-foreground">
                   {formatEUR(s.amount, hidden)} · {pct(s.pct, hidden)}
                 </span>
@@ -114,23 +126,9 @@ function sourceLabel(source: string | null): string {
 }
 
 function CoverageBadge({ coverage }: { coverage: number }) {
-  if (coverage >= 99.5)
-    return (
-      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-        Completa
-      </span>
-    );
-  if (coverage > 0)
-    return (
-      <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
-        Parcial
-      </span>
-    );
-  return (
-    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-      Indisponível
-    </span>
-  );
+  if (coverage >= 99.5) return <Badge tone="gain">Completa</Badge>;
+  if (coverage > 0) return <Badge tone="warn">Parcial</Badge>;
+  return <Badge>Indisponível</Badge>;
 }
 
 function ExposicaoPage() {
@@ -139,7 +137,7 @@ function ExposicaoPage() {
   const fetchExposure = useServerFn(getExposure);
   const syncFn = useServerFn(syncAllAssetExposure);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["exposure"],
     queryFn: () => fetchExposure(),
   });
@@ -157,8 +155,8 @@ function ExposicaoPage() {
   const meta = data?.meta ?? [];
 
   const actions = (
-    <Button onClick={() => sync.mutate()} disabled={sync.isPending}>
-      <RefreshCw className={cn("h-4 w-4", sync.isPending && "animate-spin")} />
+    <Button onClick={() => sync.mutate()} loading={sync.isPending}>
+      {!sync.isPending && <RefreshCw aria-hidden className="h-4 w-4" />}
       Atualizar composição
     </Button>
   );
@@ -187,7 +185,14 @@ function ExposicaoPage() {
           subtitle="Exposição económica real da carteira."
           actions={actions}
         />
-        <p className="text-sm text-muted-foreground">A calcular…</p>
+        {isError ? (
+          <ErrorState onRetry={() => void refetch()} />
+        ) : (
+          <div aria-busy="true" aria-label="A calcular a exposição" className="space-y-4">
+            <KpiGridSkeleton count={4} />
+            <Skeleton className="h-64 w-full" />
+          </div>
+        )}
       </div>
     );
   }
@@ -284,8 +289,14 @@ function ExposicaoPage() {
           note="Exposição económica subjacente, não o país de domiciliação do fundo."
           slices={report.country}
           hidden={hidden}
+          translate={countryNamePt}
         />
-        <SliceList title="Por região" slices={report.region} hidden={hidden} />
+        <SliceList
+          title="Por região"
+          slices={report.region}
+          hidden={hidden}
+          translate={countryNamePt}
+        />
         <SliceList title="Por continente" slices={report.continent} hidden={hidden} />
         <SliceList
           title="Desenvolvido vs. emergente"
@@ -293,14 +304,26 @@ function ExposicaoPage() {
           hidden={hidden}
           limit={4}
         />
-        <SliceList title="Por setor" slices={report.sector} hidden={hidden} limit={12} />
+        <SliceList
+          title="Por setor"
+          slices={report.sector}
+          hidden={hidden}
+          limit={12}
+          translate={sectorNamePt}
+        />
         <SliceList
           title="Por moeda económica"
           note="Moeda dos ativos subjacentes, não a moeda de cotação."
           slices={report.currency}
           hidden={hidden}
         />
-        <SliceList title="Por indústria" slices={report.industry} hidden={hidden} limit={10} />
+        <SliceList
+          title="Por indústria"
+          slices={report.industry}
+          hidden={hidden}
+          limit={10}
+          translate={sectorNamePt}
+        />
       </div>
 
       <div className="rounded-xl border border-border bg-card p-5">

@@ -69,3 +69,20 @@ O relatório da auditoria de código, dados e funcionalidade está em [AUDITORIA
 ## Continuar no Lovable
 
 Para desenvolver via prompt em vez de código, usa o [editor Lovable](https://lovable.dev/projects/fb89b30f-b81a-4611-baa2-9ab7f69a190f) — descreve o que queres construir e o Lovable trata da implementação, sincronizando diretamente com o `main` deste repositório.
+
+## Design system
+
+Tudo em PT-PT, com formatação europeia (`1 448,40 €`, `12,5 %`, `dd/mm/aaaa`) vinda de `src/lib/format.ts`; nunca formatar valores à mão.
+
+| Peça | Onde | Notas |
+| --- | --- | --- |
+| Tokens (cores, raios, gráficos `chart-1..8`) | `src/styles.css` | `:root` = claro, `.dark` = escuro; usar `var(--color-…)`, sem cores fixas |
+| Tema claro / escuro / automático | `src/components/theme.tsx` | guardado em `localStorage` (`pt-theme`), sem flash inicial |
+| Componentes base | `src/components/ui-bits.tsx` | `Card`, `MetricCard`, `Badge`, `Button`, `Field`, `Modal`, `EmptyState`, `ErrorState`, `useConfirm` (confirmações destrutivas) |
+| Tabelas | `src/components/data-table.tsx` | ordenação, pesquisa, colunas configuráveis, cabeçalho fixo, paginação, cartões em mobile (`renderCard`) |
+| Gráficos | `src/components/chart-kit.tsx` | `ChartFrame` (vazio/loading), `ChartTooltip`, eixos e grelha uniformes |
+| Navegação | `src/components/nav-config.ts` | sidebar, barra inferior mobile, pesquisa global (Ctrl/⌘+K), atalhos (`?`) |
+| Modo privado | `src/components/private-mode.tsx` | esconde valores; passar `hidden` aos formatadores |
+| PWA | `public/manifest.webmanifest` | só instalável; sem service worker nem cache offline de dados financeiros |
+
+Regras: foco visível sempre; contraste AA; números com a classe `num`; erros de formulário junto ao campo (`Field error`); `min-w-0` em filhos de grelhas para evitar overflow em mobile.
