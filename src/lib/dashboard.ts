@@ -9,6 +9,7 @@ import {
   type Asset,
   type AssetClass,
   CLASS_LABELS,
+  CLASS_ORDER,
   assetCurrentValue,
   assetInvested,
   isOpenPosition,
@@ -186,7 +187,7 @@ export interface AllocationSlice {
 export function allocationByClass(assets: Asset[]): AllocationSlice[] {
   const open = assets.filter(isOpenPosition);
   const total = open.reduce((s, a) => s + assetCurrentValue(a), 0);
-  return (Object.keys(CLASS_LABELS) as AssetClass[])
+  return CLASS_ORDER
     .map((c) => {
       const rows = open.filter((a) => a.class === c);
       const value = rows.reduce((s, a) => s + assetCurrentValue(a), 0);

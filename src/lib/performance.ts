@@ -15,6 +15,7 @@ import {
   type Asset,
   type AssetClass,
   CLASS_LABELS,
+  CLASS_ORDER,
   assetCurrentValue,
   assetInvested,
   isOpenPosition,
@@ -585,7 +586,7 @@ export function performanceByClass(
     divByClass.set(a.class, (divByClass.get(a.class) ?? 0) + netOf(d));
   }
 
-  return (Object.keys(CLASS_LABELS) as AssetClass[])
+  return CLASS_ORDER
     .map((c) => {
       const rows = assets.filter((a) => a.class === c);
       const value = rows.reduce((s, a) => s + assetCurrentValue(a), 0);
