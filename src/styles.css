@@ -168,7 +168,7 @@
   line-height: 1rem;
 }
 
-/* Item de navegação da barra lateral: indicador dourado + gradiente no ativo */
+/* Item de navegação da barra lateral: fundo neutro + barra e ícone dourados no ativo */
 @utility nav-link {
   &::before {
     content: "";
@@ -185,11 +185,15 @@
   }
 
   &[data-status="active"] {
-    background: linear-gradient(90deg, var(--color-sidebar-active), transparent);
-    color: var(--color-sidebar-primary);
+    background: color-mix(in oklab, var(--color-foreground) 6%, transparent);
+    color: var(--color-foreground);
 
     &::before {
       opacity: 1;
+    }
+
+    & > svg:first-child {
+      color: var(--color-sidebar-primary);
     }
   }
 }

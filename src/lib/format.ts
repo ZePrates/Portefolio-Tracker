@@ -34,6 +34,21 @@ export function formatEUR(value: number, hidden = false): string {
   return eurFormatter.format(v);
 }
 
+const signedEurFormatter = new Intl.NumberFormat("pt-PT", {
+  style: "currency",
+  currency: "EUR",
+  signDisplay: "exceptZero",
+  ...GROUP,
+});
+
+/** Euros com sinal explícito ("+6 912,30 €"), para variações. */
+export function formatSignedEUR(value: number, hidden = false): string {
+  if (hidden) return HIDDEN;
+  const v = value ?? 0;
+  if (!Number.isFinite(v)) return EMPTY;
+  return signedEurFormatter.format(v);
+}
+
 /** Formata um valor na moeda original do ativo (ex.: USD). */
 export function formatMoney(value: number, currency = "EUR", hidden = false): string {
   if (hidden) return HIDDEN;
@@ -226,6 +241,32 @@ export function formatDatePt(iso: string | null | undefined): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return EMPTY;
   return dateFormatter.format(d);
+}
+
+const dayLongFormatter = new Intl.DateTimeFormat("pt-PT", {
+  timeZone: APP_TIME_ZONE,
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+});
+
+/** Dia por extenso, ex.: "quarta-feira, 8 de outubro". */
+export function formatDayLongPt(date: Date = new Date()): string {
+  return dayLongFormatter.format(date);
+}
+
+const timeFormatter = new Intl.DateTimeFormat("pt-PT", {
+  timeZone: APP_TIME_ZONE,
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+/** Hora em HH:MM no fuso da aplicação. */
+export function formatTimePt(iso: string | null | undefined): string {
+  if (!iso) return EMPTY;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return EMPTY;
+  return timeFormatter.format(d);
 }
 
 /**

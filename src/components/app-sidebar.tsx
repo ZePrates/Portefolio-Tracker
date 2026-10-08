@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouteContext, useRouterState } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import {
   ChartColumn,
   Coins,
@@ -15,16 +17,33 @@ import {
   Moon,
   PieChart,
   Search,
+  Settings,
   Sun,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePrivateMode } from "@/components/private-mode";
 import { useTheme, type ThemeChoice } from "@/components/theme";
 import { useAppShell } from "@/components/app-shell";
-import { Modal } from "@/components/ui-bits";
+import { IconButton, Modal } from "@/components/ui-bits";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { CLASS_COLOR } from "@/components/chart-kit";
+import { listAssets } from "@/lib/portfolio.functions";
+import { allocationByClass } from "@/lib/dashboard";
+import { formatPct } from "@/lib/format";
+import type { Asset, AssetClass } from "@/lib/portfolio-types";
 import {
   ANALYSIS_NAV,
   ASSETS_NAV,
+  CLASS_ROUTES,
   DASHBOARD_NAV,
   TOOLS_NAV,
   type NavItem,
@@ -76,16 +95,19 @@ function useSignOut() {
   };
 }
 
+const NAV_ITEM =
+  "nav-link relative flex min-h-9 items-center gap-3 rounded-lg px-3 py-1.5 text-[13.5px] font-medium text-muted-foreground transition-colors duration-150 ease-out hover:bg-sidebar-accent hover:text-foreground";
+
 function NavLinks({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => void }) {
   return (
-    <ul className="space-y-1">
+    <ul className="space-y-0.5">
       {items.map((item) => (
         <li key={item.to}>
           <Link
             to={item.to}
             onClick={onNavigate}
             activeOptions={{ exact: item.to === "/" }}
-            className="nav-link relative flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
+            className={NAV_ITEM}
           >
             <item.icon aria-hidden className="h-4 w-4 shrink-0" />
             {item.label}
@@ -93,6 +115,55 @@ function NavLinks({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => 
         </li>
       ))}
     </ul>
+  );
+}
+
+const CLASS_OF_ROUTE = Object.fromEntries(
+  Object.entries(CLASS_ROUTES).map(([cls, to]) => [to, cls as AssetClass]),
+) as Record<string, AssetClass>;
+
+/** Carteira: quadrado com a cor da classe e o peso na carteira à direita. */
+function ClassNavLinks({ items }: { items: NavItem[] }) {
+  const { hidden } = usePrivateMode();
+  const fetchAssets = useServerFn(listAssets);
+  const { data } = useQuery({ queryKey: ["assets"], queryFn: () => fetchAssets() });
+  const weights = useMemo(
+    () => new Map(allocationByClass((data ?? []) as Asset[]).map((c) => [c.class, c.pct])),
+    [data],
+  );
+  return (
+    <ul className="space-y-0.5">
+      {items.map((item) => {
+        const cls = CLASS_OF_ROUTE[item.to];
+        const pct = cls ? weights.get(cls) : undefined;
+        return (
+          <li key={item.to}>
+            <Link to={item.to} className={NAV_ITEM}>
+              <span
+                aria-hidden
+                className="h-2 w-2 shrink-0 rounded-[2px]"
+                style={{ background: cls ? CLASS_COLOR[cls] : undefined }}
+              />
+              <span className="min-w-0 flex-1 truncate">{item.label}</span>
+              {pct !== undefined && (
+                <span className="num text-xs font-normal text-muted-foreground">
+                  {formatPct(pct, 0, hidden)}
+                </span>
+              )}
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function NavSection({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <>
+      <p className="px-3 pb-1.5 pt-5 text-xs font-medium text-muted-foreground">{label}</p>
+      {children}
+    </>
   );
 }
 
@@ -112,13 +183,71 @@ function Brand() {
   );
 }
 
-const FOOTER_BUTTON =
-  "flex min-h-10 w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground";
+function initialsOf(email: string | null | undefined): string {
+  const local = (email ?? "").split("@")[0] ?? "";
+  const parts = local.split(/[._-]+/).filter(Boolean);
+  const letters = parts.length > 1 ? parts[0]![0]! + parts[1]![0]! : local.slice(0, 2);
+  return letters.toUpperCase() || "?";
+}
+
+/** Rodapé compacto: iniciais, "Valores em EUR", modo privado e menu de definições. */
+function SidebarFooter() {
+  const { hidden, toggle } = usePrivateMode();
+  const { openHelp } = useAppShell();
+  const { theme, setTheme } = useTheme();
+  const signOut = useSignOut();
+  const ctx = useRouteContext({ strict: false }) as { user?: { email?: string | null } };
+
+  return (
+    <div className="flex items-center gap-2 border-t border-sidebar-border px-3 py-3">
+      <span
+        aria-hidden
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent text-xs font-semibold"
+      >
+        {initialsOf(ctx.user?.email)}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">Valores em EUR</span>
+      <IconButton label="Modo privado" aria-pressed={hidden} onClick={toggle}>
+        {hidden ? (
+          <EyeOff aria-hidden className="h-4 w-4 text-primary" />
+        ) : (
+          <Eye aria-hidden className="h-4 w-4" />
+        )}
+      </IconButton>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <IconButton label="Definições">
+            <Settings aria-hidden className="h-4 w-4" />
+          </IconButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent side="top" align="end" className="w-56">
+          <DropdownMenuLabel>Tema</DropdownMenuLabel>
+          <DropdownMenuRadioGroup value={theme} onValueChange={(v) => setTheme(v as ThemeChoice)}>
+            {THEMES.map(({ value, label, icon: Icon }) => (
+              <DropdownMenuRadioItem key={value} value={value}>
+                <Icon aria-hidden className="mr-2 h-4 w-4" />
+                {label}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={openHelp}>
+            <Keyboard aria-hidden className="mr-2 h-4 w-4" />
+            Atalhos de teclado
+            <kbd className="ml-auto rounded border border-border px-1.5 text-micro">?</kbd>
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => void signOut()}>
+            <LogOut aria-hidden className="mr-2 h-4 w-4" />
+            Sair
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
 
 function DesktopSidebar() {
-  const { hidden, toggle } = usePrivateMode();
-  const { openPalette, openHelp } = useAppShell();
-  const signOut = useSignOut();
+  const { openPalette } = useAppShell();
 
   return (
     <aside
@@ -144,55 +273,20 @@ function DesktopSidebar() {
       <nav aria-label="Páginas" className="flex-1 overflow-y-auto px-3 py-4">
         <NavLinks items={DASHBOARD_NAV} />
 
-        <p className="px-3 pb-2 pt-6 text-micro font-bold uppercase tracking-[0.15em] text-muted-foreground">
-          Ativos
-        </p>
-        <NavLinks items={ASSETS_NAV} />
+        <NavSection label="Carteira">
+          <ClassNavLinks items={ASSETS_NAV} />
+        </NavSection>
 
-        <p className="px-3 pb-2 pt-6 text-micro font-bold uppercase tracking-[0.15em] text-muted-foreground">
-          Análise
-        </p>
-        <NavLinks items={ANALYSIS_NAV} />
+        <NavSection label="Análise">
+          <NavLinks items={ANALYSIS_NAV} />
+        </NavSection>
 
-        <p className="px-3 pb-2 pt-6 text-micro font-bold uppercase tracking-[0.15em] text-muted-foreground">
-          Ferramentas
-        </p>
-        <NavLinks items={TOOLS_NAV} />
+        <NavSection label="Ferramentas">
+          <NavLinks items={TOOLS_NAV} />
+        </NavSection>
       </nav>
 
-      <div className="space-y-1 border-t border-sidebar-border px-3 py-3">
-        <div className="flex items-center justify-between px-3 pb-1">
-          <span className="text-xs font-medium text-muted-foreground">Tema</span>
-          <ThemeToggle />
-        </div>
-        <button type="button" onClick={toggle} aria-pressed={hidden} className={FOOTER_BUTTON}>
-          {hidden ? (
-            <EyeOff aria-hidden className="h-4 w-4" />
-          ) : (
-            <Eye aria-hidden className="h-4 w-4" />
-          )}
-          Modo privado
-          <span
-            aria-hidden
-            className={cn(
-              "ml-auto h-2 w-2 rounded-full",
-              hidden ? "bg-primary" : "bg-border-strong",
-            )}
-          />
-        </button>
-        <button type="button" onClick={openHelp} className={FOOTER_BUTTON}>
-          <Keyboard aria-hidden className="h-4 w-4" />
-          Atalhos
-          <kbd className="ml-auto rounded border border-border px-1.5 text-micro">?</kbd>
-        </button>
-        <button type="button" onClick={signOut} className={FOOTER_BUTTON}>
-          <LogOut aria-hidden className="h-4 w-4" />
-          Sair
-        </button>
-        <p className="px-3 pt-1 text-micro font-medium uppercase tracking-[0.2em] text-muted-foreground">
-          Valores em EUR
-        </p>
-      </div>
+      <SidebarFooter />
     </aside>
   );
 }
@@ -298,7 +392,7 @@ function MobileBottomNav() {
         </Link>
         {sheetButton(
           "ativos",
-          "Ativos",
+          "Carteira",
           <Layers aria-hidden className="h-5 w-5" />,
           inGroup(ASSETS_NAV),
         )}
@@ -315,7 +409,7 @@ function MobileBottomNav() {
         {sheetButton("mais", "Mais", <Ellipsis aria-hidden className="h-5 w-5" />, false)}
       </nav>
 
-      <Modal open={sheet === "ativos"} onClose={close} title="Ativos">
+      <Modal open={sheet === "ativos"} onClose={close} title="Carteira">
         <SheetLinks items={ASSETS_NAV} onNavigate={close} />
       </Modal>
       <Modal open={sheet === "analise"} onClose={close} title="Análise">

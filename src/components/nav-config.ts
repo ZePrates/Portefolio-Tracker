@@ -18,6 +18,7 @@ import {
   Target,
   TrendingUp,
 } from "lucide-react";
+import type { AssetClass } from "@/lib/portfolio-types";
 
 export interface NavItem {
   to: string;
@@ -46,7 +47,7 @@ export const DASHBOARD_NAV: NavItem[] = [
 ];
 
 export const ASSETS_NAV: NavItem[] = [
-  { to: "/etfs", label: "ETFs", icon: Layers, key: "e", keywords: "fundos índice" },
+  { to: "/etfs", label: "ETFs", icon: Layers, key: "e", keywords: "fundos índice carteira" },
   { to: "/reits", label: "REITs", icon: Building2, key: "r", keywords: "imobiliário" },
   {
     to: "/acoes-dividendos",
@@ -71,10 +72,10 @@ export const ANALYSIS_NAV: NavItem[] = [
   { to: "/analise", label: "Análise", icon: PieChart, key: "n", keywords: "concentração classes" },
   {
     to: "/performance",
-    label: "Performance",
+    label: "Desempenho",
     icon: Activity,
     key: "f",
-    keywords: "twr xirr rentabilidade",
+    keywords: "performance twr xirr rentabilidade",
   },
   {
     to: "/exposicao",
@@ -83,15 +84,14 @@ export const ANALYSIS_NAV: NavItem[] = [
     key: "x",
     keywords: "países setores empresas",
   },
-  { to: "/objetivos", label: "Objetivos", icon: Target, key: "o", keywords: "fire alocação alvo" },
-  { to: "/projecoes", label: "Projeções", icon: Goal, key: "j", keywords: "simulação futuro" },
   {
-    to: "/simulador",
-    label: "Simulador de Compra",
-    icon: Calculator,
-    key: "s",
-    keywords: "comprar",
+    to: "/objetivos",
+    label: "Objetivos e FIRE",
+    icon: Target,
+    key: "o",
+    keywords: "objetivos fire independência financeira alocação alvo",
   },
+  { to: "/projecoes", label: "Projeções", icon: Goal, key: "j", keywords: "simulação futuro" },
   {
     to: "/inteligencia",
     label: "Inteligência",
@@ -102,6 +102,13 @@ export const ANALYSIS_NAV: NavItem[] = [
 ];
 
 export const TOOLS_NAV: NavItem[] = [
+  {
+    to: "/simulador",
+    label: "Simulador de Compra",
+    icon: Calculator,
+    key: "s",
+    keywords: "comprar",
+  },
   {
     to: "/calendario",
     label: "Calendário de dividendos",
@@ -127,7 +134,7 @@ export const TOOLS_NAV: NavItem[] = [
 
 export const NAV_GROUPS: NavGroup[] = [
   { id: "inicio", label: "Início", items: DASHBOARD_NAV },
-  { id: "ativos", label: "Ativos", items: ASSETS_NAV },
+  { id: "ativos", label: "Carteira", items: ASSETS_NAV },
   { id: "analise", label: "Análise", items: ANALYSIS_NAV },
   { id: "ferramentas", label: "Ferramentas", items: TOOLS_NAV },
 ];
@@ -138,3 +145,13 @@ export const ALL_NAV: NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
 export const GO_SHORTCUTS: Record<string, NavItem> = Object.fromEntries(
   ALL_NAV.filter((i) => i.key).map((i) => [i.key as string, i]),
 );
+
+/** Página de cada classe de ativo (ligações a partir de cartões e do menu). */
+export const CLASS_ROUTES: Record<AssetClass, string> = {
+  etf: "/etfs",
+  reit: "/reits",
+  acao_dividendo: "/acoes-dividendos",
+  acao_crescimento: "/acoes-crescimento",
+  metal: "/metais",
+  p2p: "/p2p",
+};

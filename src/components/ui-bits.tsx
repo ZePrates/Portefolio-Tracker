@@ -43,16 +43,22 @@ import { Skeleton } from "@/components/ui/skeleton";
 export function PageHeader({
   title,
   subtitle,
+  meta,
   actions,
 }: {
   title: string;
   subtitle?: string;
+  /** Texto discreto ao lado do título (ex.: a data de hoje). */
+  meta?: ReactNode;
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
       <div className="min-w-0">
-        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{title}</h1>
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+          <h1 className="text-[22px] font-semibold tracking-[-0.01em] md:text-[28px]">{title}</h1>
+          {meta && <span className="text-[13px] text-muted-foreground">{meta}</span>}
+        </div>
         {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -91,7 +97,7 @@ export function Card({
           <div className="flex min-w-0 items-center gap-2">
             {icon}
             {title && (
-              <Heading id={titleId} className="truncate text-sm font-semibold">
+              <Heading id={titleId} className="truncate text-[15px] font-semibold">
                 {title}
               </Heading>
             )}
@@ -156,7 +162,7 @@ export function MetricCard({
       className={cn("min-w-0 rounded-xl border border-border bg-card p-4 md:p-5", className)}
       aria-busy={loading || undefined}
     >
-      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-[12.5px] font-medium text-muted-foreground">{label}</p>
       {loading ? (
         <>
           <Skeleton className="mt-3 h-7 w-3/4" />
