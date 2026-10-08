@@ -34,6 +34,21 @@ export function formatEUR(value: number, hidden = false): string {
   return eurFormatter.format(v);
 }
 
+const signedEurFormatter = new Intl.NumberFormat("pt-PT", {
+  style: "currency",
+  currency: "EUR",
+  signDisplay: "exceptZero",
+  ...GROUP,
+});
+
+/** Euros com sinal explícito ("+6 912,30 €"), para variações. */
+export function formatSignedEUR(value: number, hidden = false): string {
+  if (hidden) return HIDDEN;
+  const v = value ?? 0;
+  if (!Number.isFinite(v)) return EMPTY;
+  return signedEurFormatter.format(v);
+}
+
 /** Formata um valor na moeda original do ativo (ex.: USD). */
 export function formatMoney(value: number, currency = "EUR", hidden = false): string {
   if (hidden) return HIDDEN;

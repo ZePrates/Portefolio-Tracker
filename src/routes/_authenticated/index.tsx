@@ -15,21 +15,12 @@ import {
   TrendingUp,
   TriangleAlert,
 } from "lucide-react";
-import {
-  Pie,
-  PieChart,
-  Cell,
-  Tooltip,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  BarChart,
-  Bar,
-} from "recharts";
+import { Pie, PieChart, Cell, Tooltip, XAxis, YAxis, CartesianGrid, BarChart, Bar } from "recharts";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { listPortfolioSnapshots } from "@/lib/snapshots.functions";
+import { DashboardHero, DashboardHeroSkeleton } from "@/components/dashboard-hero";
+import { heroSeries, periodChange } from "@/lib/dashboard-period";
 import { listAssets, listDividends, listTransactions } from "@/lib/portfolio.functions";
 import { getExposure } from "@/lib/exposure.functions";
 import { updateAllPrices } from "@/lib/prices.functions";
@@ -41,16 +32,14 @@ import { type Asset, type AssetClass, CLASS_LABELS, isOpenPosition } from "@/lib
 import type { DividendRecord } from "@/lib/dividends";
 import {
   type PeriodKey,
-  PERIOD_LABELS,
   allocationByClass,
   assetPerformance,
   bestPerformers,
-  buildTimeline,
   dividendSummary,
-  granularityFor,
   periodRange,
   portfolioSummary,
   realizedInRange,
+  todayISO,
   worstPerformers,
 } from "@/lib/dashboard";
 import {
@@ -59,7 +48,6 @@ import {
   formatDatePt,
   formatDayLongPt,
   formatEUR,
-  formatEURCompact,
   formatNumber,
   formatPct,
   formatPercent,
@@ -75,8 +63,6 @@ import {
   Delta,
   EmptyState,
   ErrorState,
-  KpiGridSkeleton,
-  MetricCard,
   Modal,
   PageHeader,
 } from "@/components/ui-bits";
@@ -120,13 +106,8 @@ const CLASS_ROUTES: Record<AssetClass, string> = {
   p2p: "/p2p",
 };
 
-const PERIODS: PeriodKey[] = ["today", "month", "ytd", "1y", "all"];
-
 /** Cotações com mais de 3 dias consideram-se desatualizadas. */
 const STALE_PRICE_DAYS = 3;
-
-const toneOf = (n: number): "positive" | "negative" | "default" =>
-  n > 0 ? "positive" : n < 0 ? "negative" : "default";
 
 function NoData({ label = "Dados não disponíveis" }: { label?: string }) {
   return <p className="py-8 text-center text-sm text-muted-foreground">{label}</p>;
@@ -254,6 +235,7 @@ function DashboardPage() {
   const fetchExposure = useServerFn(getExposure);
   const fetchFire = useServerFn(getFireProgress);
   const fetchAlerts = useServerFn(getDataQualityAlerts);
+  const fetchSnapshots = useServerFn(listPortfolioSnapshots);
   const refreshFn = useServerFn(updateAllPrices);
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
@@ -312,6 +294,10 @@ function DashboardPage() {
     queryFn: () => fetchExposure(),
   });
   const { data: fire } = useQuery({ queryKey: ["fire"], queryFn: () => fetchFire() });
+  const { data: snapshotsRaw } = useQuery({
+    queryKey: ["portfolio-snapshots"],
+    queryFn: () => fetchSnapshots(),
+  });
   const { data: alertsData } = useQuery({
     queryKey: ["data-quality"],
     queryFn: () => fetchAlerts(),
@@ -345,12 +331,25 @@ function DashboardPage() {
   const perf = useMemo(() => assetPerformance(assets), [assets]);
   const best = useMemo(() => bestPerformers(perf, 5), [perf]);
   const worst = useMemo(() => worstPerformers(perf, 5), [perf]);
-  const timeline = useMemo(
-    () => buildTimeline(transactions, dividends, range, granularityFor(period)),
-    [transactions, dividends, range, period],
-  );
   const divs = useMemo(() => dividendSummary(dividends, range), [dividends, range]);
   const realizedPeriod = useMemo(() => realizedInRange(transactions, range), [transactions, range]);
+  const snapshots = useMemo(() => snapshotsRaw ?? [], [snapshotsRaw]);
+  const change = useMemo(
+    () =>
+      periodChange({
+        isAll: period === "all",
+        range,
+        today: todayISO(),
+        currentValue: summary.currentValue,
+        totalResult: summary.totalResult,
+        totalReturnPct: summary.totalReturnPct,
+        snapshots,
+        transactions,
+        dividends,
+      }),
+    [period, range, summary, snapshots, transactions, dividends],
+  );
+  const heroPoints = useMemo(() => heroSeries(snapshots, range, todayISO()), [snapshots, range]);
 
   // Frescura das cotações: quando foi a última e quantas estão desatualizadas.
   const freshness = useMemo(() => {
@@ -377,7 +376,6 @@ function DashboardPage() {
     | undefined;
 
   const alerts = (alertsData?.alerts ?? []) as DataQualityAlert[];
-  const year = new Date().getFullYear();
 
   const refreshButton = (
     <Button
@@ -415,11 +413,7 @@ function DashboardPage() {
     return (
       <div className="space-y-6" aria-busy="true">
         <PageHeader title="Dashboard" subtitle="A carregar a carteira…" />
-        <KpiGridSkeleton count={4} />
-        <KpiGridSkeleton count={4} />
-        <ChartFrame label="A carregar gráfico" loading height={256}>
-          <></>
-        </ChartFrame>
+        <DashboardHeroSkeleton />
       </div>
     );
   }
@@ -484,85 +478,16 @@ function DashboardPage() {
         />
       )}
 
-      {/* 1 · Quanto tenho */}
-      <Section id="sec-valor" title="Quanto tenho">
-        <div className="grid gap-3 md:gap-4 lg:grid-cols-3">
-          <div className="min-w-0 rounded-xl border border-border bg-card p-5 lg:col-span-2 md:p-6">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Valor atual
-            </p>
-            <p className="num mt-2 break-words text-3xl font-bold md:text-4xl">
-              {formatEUR(summary.currentValue, hidden)}
-            </p>
-            <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
-              <div className="min-w-0">
-                <dt className="text-xs text-muted-foreground">Não realizado</dt>
-                <dd className="mt-0.5">
-                  <Delta value={summary.unrealizedPL}>
-                    {formatEUR(summary.unrealizedPL, hidden)}{" "}
-                    <span className="text-xs">
-                      ({formatPercent(summary.unrealizedPct, hidden)})
-                    </span>
-                  </Delta>
-                </dd>
-              </div>
-              <div className="min-w-0">
-                <dt className="text-xs text-muted-foreground">Realizado</dt>
-                <dd className="num mt-0.5 font-medium">
-                  {formatEUR(summary.realizedPL, hidden)}
-                  <span className="ml-1 text-xs font-normal text-muted-foreground">
-                    · {summary.closedPositions} fechadas
-                  </span>
-                </dd>
-              </div>
-            </dl>
-          </div>
-          <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-1">
-            <MetricCard
-              label="Capital investido"
-              value={formatEUR(summary.costBasis, hidden)}
-              sub={`${summary.openPositions} posições abertas`}
-            />
-            <MetricCard
-              label="Rentabilidade total"
-              value={
-                summary.totalReturnPct === null
-                  ? "Sem dados"
-                  : formatPercent(summary.totalReturnPct, hidden)
-              }
-              sub={`sobre ${formatEUR(summary.returnBasis, hidden)} aplicados`}
-              tone={toneOf(summary.totalReturnPct ?? 0)}
-            />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-3">
-          <MetricCard
-            label="Resultado histórico"
-            value={formatEUR(summary.totalResult, hidden)}
-            sub="realizado + latente + dividendos"
-            tone={toneOf(summary.totalResult)}
-            className="col-span-2 lg:col-span-1"
-          />
-          <MetricCard
-            label="Dividendos recebidos"
-            value={formatEUR(summary.dividendsReceived, hidden)}
-            sub={
-              summary.dividendsScheduled > 0
-                ? `${formatEUR(summary.dividendsScheduled, hidden)} previstos`
-                : "líquidos, sem previsões"
-            }
-          />
-          <MetricCard
-            label="Yield sobre custo (12 m)"
-            value={
-              summary.yieldOnCost === null
-                ? "Sem dados"
-                : formatPercent(summary.yieldOnCost, hidden)
-            }
-            sub="dividendos líquidos ÷ custo atual"
-          />
-        </div>
-      </Section>
+      <DashboardHero
+        period={period}
+        onPeriodChange={setPeriod}
+        summary={summary}
+        change={change}
+        rangeFrom={range.from}
+        realizedPeriod={realizedPeriod}
+        series={heroPoints}
+        hidden={hidden}
+      />
 
       {/* 2 · Estou no caminho? */}
       <Section
@@ -814,106 +739,8 @@ function DashboardPage() {
         </div>
       </Section>
 
-      {/* 4 · O que mudou? */}
-      <Section
-        id="sec-mudou"
-        title="O que mudou?"
-        action={
-          <div role="group" aria-label="Período" className="flex flex-wrap items-center gap-1.5">
-            {PERIODS.map((p) => (
-              <button
-                key={p}
-                type="button"
-                aria-pressed={period === p}
-                onClick={() => setPeriod(p)}
-                className={cn(
-                  "min-h-9 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
-                  period === p
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
-                )}
-              >
-                {PERIOD_LABELS[p]}
-              </button>
-            ))}
-          </div>
-        }
-      >
-        <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
-          <MetricCard label="Dividendos no período" value={formatEUR(divs.period, hidden)} />
-          <MetricCard
-            label="Realizado no período"
-            value={formatEUR(realizedPeriod, hidden)}
-            tone={toneOf(realizedPeriod)}
-          />
-          <MetricCard label={`Dividendos ${year}`} value={formatEUR(divs.year, hidden)} />
-          <MetricCard label="Dividendos (total)" value={formatEUR(divs.total, hidden)} />
-        </div>
-
-        <Card
-          headingLevel={3}
-          title="Evolução (movimentos registados)"
-          icon={<TrendingUp aria-hidden className="h-4 w-4 text-primary" />}
-          description="Reconstruída a partir de compras, vendas e dividendos registados; não é o valor de mercado ao longo do tempo."
-        >
-          <ChartFrame
-            label="Evolução do capital investido, dividendos acumulados e resultado realizado no período"
-            empty={timeline.length < 2}
-            emptyLabel="Sem histórico suficiente no período selecionado."
-          >
-            <AreaChart data={timeline}>
-              <CartesianGrid {...GRID_PROPS} />
-              <XAxis
-                dataKey="key"
-                tick={AXIS_TICK}
-                axisLine={AXIS_LINE}
-                tickLine={false}
-                tickFormatter={(k: string) => formatPeriodKey(k)}
-                minTickGap={24}
-              />
-              <YAxis
-                tick={AXIS_TICK}
-                axisLine={false}
-                tickLine={false}
-                width={52}
-                tickFormatter={(v: number) => (hidden ? "•" : formatEURCompact(v))}
-              />
-              <Tooltip
-                content={
-                  <ChartTooltip
-                    labelFormatter={(l) => formatPeriodKey(l, true)}
-                    valueFormatter={(v) => formatEUR(v, hidden)}
-                  />
-                }
-              />
-              <Area
-                type="monotone"
-                dataKey="invested"
-                name="Capital investido"
-                stroke="var(--color-chart-1)"
-                fill="var(--color-chart-1)"
-                fillOpacity={0.15}
-              />
-              <Area
-                type="monotone"
-                dataKey="dividends"
-                name="Dividendos acumulados"
-                stroke="var(--color-chart-3)"
-                fill="var(--color-chart-3)"
-                fillOpacity={0.15}
-              />
-              <Area
-                type="monotone"
-                dataKey="realized"
-                name="Realizado acumulado"
-                stroke="var(--color-chart-2)"
-                fill="var(--color-chart-2)"
-                fillOpacity={0.15}
-              />
-            </AreaChart>
-          </ChartFrame>
-        </Card>
-
+      {/* 4 · Desempenho */}
+      <div className="space-y-4">
         <div className="grid gap-4 lg:grid-cols-2">
           <PerformanceCard
             title="Melhores desempenhos"
@@ -955,7 +782,7 @@ function DashboardPage() {
             </ul>
           )}
         </Card>
-      </Section>
+      </div>
     </div>
   );
 }
