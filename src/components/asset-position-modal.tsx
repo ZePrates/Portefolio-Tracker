@@ -27,9 +27,17 @@ import {
   totalReceived,
   totalScheduled,
 } from "@/lib/dividends";
-import { formatEUR, formatMoney, parseNumberOr } from "@/lib/format";
+import {
+  formatDatePt,
+  formatEUR,
+  formatMoney,
+  formatNumber,
+  formatPct,
+  formatQuantity,
+  parseNumberOr,
+} from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
-import { Button, Field, Modal, TextInput } from "@/components/ui-bits";
+import { Button, Field, Modal, TextInput, useConfirm } from "@/components/ui-bits";
 import { cn } from "@/lib/utils";
 import { todayLisbon } from "@/lib/dates";
 
@@ -78,6 +86,7 @@ const today = () => todayLisbon();
 export function AssetPositionModal({ asset, onClose }: Props) {
   const { hidden } = usePrivateMode();
   const queryClient = useQueryClient();
+  const askConfirm = useConfirm();
   const positionFn = useServerFn(getPosition);
   const previewFn = useServerFn(previewSale);
   const buyFn = useServerFn(buyAsset);
@@ -326,7 +335,13 @@ export function AssetPositionModal({ asset, onClose }: Props) {
   };
 
   const removeTx = async (t: Tx) => {
-    if (!window.confirm(`Apagar o movimento de ${t.traded_at}?`)) return;
+    const ok = await askConfirm({
+      title: `Apagar o movimento de ${formatDatePt(t.traded_at)}?`,
+      description: "A posição e o custo FIFO são recalculados sem este movimento.",
+      confirmLabel: "Apagar",
+      destructive: true,
+    });
+    if (!ok) return;
     setSaving(true);
     try {
       await deleteTxFn({ data: { id: t.id } });
@@ -343,14 +358,14 @@ export function AssetPositionModal({ asset, onClose }: Props) {
     v > 0 ? "text-success" : v < 0 ? "text-destructive" : "text-muted-foreground";
 
   return (
-    <Modal open={!!asset} onClose={onClose} title={asset.name} className="max-w-3xl">
+    <Modal open={!!asset} onClose={onClose} title={asset.name} size="lg">
       <div className="space-y-5">
         {isLoading || !pos ? (
           <p className="text-sm text-muted-foreground">A carregar posição…</p>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Stat label="Quantidade" value={String(Number(pos.quantity.toFixed(6)))} />
+              <Stat label="Quantidade" value={formatQuantity(pos.quantity)} />
               <Stat label="Custo (FIFO)" value={formatEUR(pos.costBasis, hidden)} />
               <Stat
                 label="P/L não realizado"
@@ -371,7 +386,7 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                   ? ` · atualizado em ${new Date(asset.price_updated_at).toLocaleString("pt-PT")}`
                   : ""}
                 {asset.fx_rate && asset.native_currency !== "EUR"
-                  ? ` · câmbio ${asset.native_currency}→EUR ${asset.fx_rate.toFixed(4)}`
+                  ? ` · câmbio ${asset.native_currency}→EUR ${formatNumber(asset.fx_rate, 4)}`
                   : ""}
               </p>
             )}
@@ -442,7 +457,7 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                   {mode === "buy" ? "Nova compra" : "Nova venda"}
                   {mode === "sell" && (
                     <span className="ml-2 text-xs text-muted-foreground">
-                      disponível: {Number(pos.quantity.toFixed(6))}
+                      disponível: {formatQuantity(pos.quantity)}
                     </span>
                   )}
                 </p>
@@ -508,7 +523,7 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                       {preview.breakdown
                         .map(
                           (b) =>
-                            `${Number(b.quantity.toFixed(4))} @ ${formatEUR(b.unitCost, hidden)} (${b.traded_at})`,
+                            `${formatQuantity(b.quantity, 4)} @ ${formatEUR(b.unitCost, hidden)} (${formatDatePt(b.traded_at)})`,
                         )
                         .join(" · ")}
                     </p>
@@ -601,11 +616,11 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                     <tbody>
                       {pos.lots.map((l, i) => (
                         <tr key={l.id ?? i} className="border-b border-border/60 last:border-0">
-                          <td className="px-3 py-2">{l.traded_at}</td>
+                          <td className="px-3 py-2">{formatDatePt(l.traded_at)}</td>
                           <td className="px-3 py-2 text-right">
-                            {Number(l.originalQuantity.toFixed(6))}
+                            {formatQuantity(l.originalQuantity)}
                           </td>
-                          <td className="px-3 py-2 text-right">{Number(l.quantity.toFixed(6))}</td>
+                          <td className="px-3 py-2 text-right">{formatQuantity(l.quantity)}</td>
                           <td className="px-3 py-2 text-right">{formatEUR(l.unitCost, hidden)}</td>
                         </tr>
                       ))}
@@ -681,10 +696,10 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                           </tr>
                         ) : (
                           <tr key={t.id} className="border-b border-border/60 last:border-0">
-                            <td className="px-3 py-2">{t.traded_at}</td>
+                            <td className="px-3 py-2">{formatDatePt(t.traded_at)}</td>
                             <td className="px-3 py-2">{t.type === "buy" ? "Compra" : "Venda"}</td>
                             <td className="px-3 py-2 text-right">
-                              {Number(Number(t.quantity).toFixed(6))}
+                              {formatQuantity(Number(t.quantity))}
                             </td>
                             <td className="px-3 py-2 text-right">
                               {formatEUR(Number(t.price), hidden)}
@@ -809,8 +824,8 @@ function UnderlyingExposure({ assetId, hidden }: { assetId: string; hidden: bool
       ) : (
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Cobertura conhecida: {d!.coverage.toFixed(1)}%
-            {d!.asOfDate ? ` · dados de ${d!.asOfDate}` : ""}
+            Cobertura conhecida: {formatPct(d!.coverage, 1)}
+            {d!.asOfDate ? ` · dados de ${formatDatePt(d!.asOfDate)}` : ""}
             {d!.source ? ` · fonte ${d!.source}` : ""}
             {d!.history.length > 1 ? ` · histórico: ${d!.history.length} datas` : ""}
           </p>
@@ -824,7 +839,7 @@ function UnderlyingExposure({ assetId, hidden }: { assetId: string; hidden: bool
                 label="Yield"
                 value={
                   d!.profile.dividendYield != null
-                    ? `${d!.profile.dividendYield.toFixed(2)}%`
+                    ? formatPct(d!.profile.dividendYield, 2)
                     : "Não disponível"
                 }
               />
@@ -838,7 +853,7 @@ function UnderlyingExposure({ assetId, hidden }: { assetId: string; hidden: bool
                   <span>
                     {DIM_LABELS[x.dimension] ?? x.dimension}: {x.value}
                   </span>
-                  <span>{x.pct.toFixed(1)}%</span>
+                  <span>{formatPct(x.pct, 1)}</span>
                 </li>
               ))}
             </ul>
@@ -874,7 +889,7 @@ function UnderlyingExposure({ assetId, hidden }: { assetId: string; hidden: bool
                       <td className="hidden px-3 py-2 sm:table-cell">
                         {h.sector ?? "Não disponível"}
                       </td>
-                      <td className="px-3 py-2 text-right">{h.pct.toFixed(2)}%</td>
+                      <td className="px-3 py-2 text-right">{formatPct(h.pct, 2)}</td>
                       <td className="px-3 py-2 text-right">{formatEUR(h.amount, hidden)}</td>
                     </tr>
                   ))}

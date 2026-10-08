@@ -3,15 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Target, Info } from "lucide-react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { listAssets } from "@/lib/portfolio.functions";
 import { assetCurrentValue, type Asset } from "@/lib/portfolio-types";
 import {
@@ -20,9 +12,10 @@ import {
   projectPortfolio,
   goalProjection,
 } from "@/lib/projections";
-import { formatEUR } from "@/lib/format";
+import { formatEUR, formatEURCompact } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
 import { MetricCard, PageHeader } from "@/components/ui-bits";
+import { AXIS_LINE, AXIS_TICK, ChartFrame, ChartTooltip, GRID_PROPS } from "@/components/chart-kit";
 import { cn } from "@/lib/utils";
 import { parseNumberOr } from "@/lib/format";
 
@@ -176,58 +169,63 @@ function ProjecoesPage() {
             <span>Optimista · {returns["optimistic"]}%</span>
           </div>
         </div>
-        <div className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-              <XAxis
-                dataKey="month"
-                tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
-                tickFormatter={(m: number) =>
-                  `${Math.floor(m / 12)}a${m % 12 ? ` ${m % 12}m` : ""}`
-                }
-              />
-              <YAxis
-                tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
-                tickFormatter={(v: number) => (hidden ? "••" : `${Math.round(v / 1000)}k`)}
-              />
-              <Tooltip
-                formatter={(value: number) => [formatEUR(value, hidden), "Valor projetado"]}
-                labelFormatter={(m) => `Mês ${m}`}
-                contentStyle={{
-                  background: "var(--color-popover)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "0.5rem",
-                  fontSize: "0.8rem",
-                }}
-              />
-              <Line
-                type="monotone"
-                dataKey="conservador"
-                stroke="var(--color-chart-3)"
-                strokeWidth={2}
-                dot={false}
-                name="Conservador"
-              />
-              <Line
-                type="monotone"
-                dataKey="base"
-                stroke="var(--color-chart-1)"
-                strokeWidth={3}
-                dot={false}
-                name="Base"
-              />
-              <Line
-                type="monotone"
-                dataKey="optimista"
-                stroke="var(--color-chart-2)"
-                strokeWidth={2}
-                dot={false}
-                name="Optimista"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+        <ChartFrame
+          label="Crescimento projetado da carteira nos cenários conservador, base e optimista"
+          height={320}
+        >
+          <LineChart data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+            <CartesianGrid {...GRID_PROPS} />
+            <XAxis
+              dataKey="month"
+              tick={AXIS_TICK}
+              axisLine={AXIS_LINE}
+              tickLine={false}
+              tickFormatter={(m: number) => `${Math.floor(m / 12)}a${m % 12 ? ` ${m % 12}m` : ""}`}
+            />
+            <YAxis
+              tick={AXIS_TICK}
+              axisLine={false}
+              tickLine={false}
+              width={56}
+              tickFormatter={(v: number) => (hidden ? "•" : formatEURCompact(v))}
+            />
+            <Tooltip
+              content={
+                <ChartTooltip
+                  labelFormatter={(m) => {
+                    const n = Number(m);
+                    return `${Math.floor(n / 12)} anos${n % 12 ? ` e ${n % 12} meses` : ""}`;
+                  }}
+                  valueFormatter={(v) => formatEUR(v, hidden)}
+                />
+              }
+            />
+            <Line
+              type="monotone"
+              dataKey="conservador"
+              stroke="var(--color-chart-3)"
+              strokeWidth={2}
+              dot={false}
+              name="Conservador"
+            />
+            <Line
+              type="monotone"
+              dataKey="base"
+              stroke="var(--color-chart-1)"
+              strokeWidth={3}
+              dot={false}
+              name="Base"
+            />
+            <Line
+              type="monotone"
+              dataKey="optimista"
+              stroke="var(--color-chart-2)"
+              strokeWidth={2}
+              dot={false}
+              name="Optimista"
+            />
+          </LineChart>
+        </ChartFrame>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">

@@ -7,7 +7,7 @@ import { analyzePurchase } from "@/lib/decision";
 import { CLASS_LABELS, type AssetClass, type Asset } from "@/lib/portfolio-types";
 import { PageHeader, MetricCard } from "@/components/ui-bits";
 import { usePrivateMode } from "@/components/private-mode";
-import { formatEUR } from "@/lib/format";
+import { formatEUR, formatNumber, formatPct, formatPp } from "@/lib/format";
 export const Route = createFileRoute("/_authenticated/simulador")({ component: Simulador });
 function Simulador() {
   const fetch = useServerFn(listAssets);
@@ -84,18 +84,18 @@ function Simulador() {
         <div className="grid gap-4 sm:grid-cols-3 lg:col-span-2">
           <MetricCard label="Carteira atual" value={money(result.currentTotal)} />
           <MetricCard label="Após compra" value={money(result.proposedTotal)} />
-          <MetricCard label="Peso da compra" value={`${result.purchasePct.toFixed(1)}%`} />
+          <MetricCard label="Peso da compra" value={formatPct(result.purchasePct, 1)} />
           <MetricCard
             label="Diversificação antes"
-            value={`${result.diversificationScoreBefore.toFixed(0)}/100`}
+            value={`${formatNumber(result.diversificationScoreBefore, 0)}/100`}
           />
           <MetricCard
             label="Diversificação depois"
-            value={`${result.diversificationScoreAfter.toFixed(0)}/100`}
+            value={`${formatNumber(result.diversificationScoreAfter, 0)}/100`}
           />
           <MetricCard
             label="Maior posição depois"
-            value={`${result.largestAssetPctAfter.toFixed(1)}%`}
+            value={formatPct(result.largestAssetPctAfter, 1)}
           />
         </div>
       </div>
@@ -106,11 +106,10 @@ function Simulador() {
             <div key={x.class} className="grid grid-cols-[1fr_auto_auto] gap-4 text-sm">
               <span>{x.label}</span>
               <span>
-                {x.currentPct.toFixed(1)}% → {x.proposedPct.toFixed(1)}%
+                {formatPct(x.currentPct, 1)} → {formatPct(x.proposedPct, 1)}
               </span>
               <span className={x.deltaPct > 0 ? "text-primary" : "text-muted-foreground"}>
-                {x.deltaPct >= 0 ? "+" : ""}
-                {x.deltaPct.toFixed(1)} pp
+                {formatPp(x.deltaPct, 1)}
               </span>
             </div>
           ))}

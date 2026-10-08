@@ -30,7 +30,10 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-ring-offset-background: var(--background);
@@ -40,6 +43,8 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
   --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-chart-8: var(--chart-8);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -51,9 +56,64 @@
   --color-sidebar-active: var(--sidebar-active-bg);
 }
 
-/* Portefólio Tracker — tema escuro permanente com acento dourado */
+/*
+ * Design tokens — Portefólio Tracker
+ *
+ * Os componentes só usam tokens semânticos (bg-card, text-muted-foreground,
+ * text-success, ...). Para mudar o aspeto basta alterar os valores aqui:
+ * `:root` é o tema claro e `.dark` o escuro (o escuro é o predefinido).
+ * Todos os pares texto/fundo cumprem WCAG 2.2 AA (>= 4,5:1 texto, >= 3:1
+ * gráficos e bordas de campos); ver AUDITORIA-DESIGN.md.
+ */
 :root {
+  color-scheme: light;
   --radius: 0.625rem;
+  --background: oklch(0.985 0.003 250);
+  --foreground: oklch(0.2 0.02 260);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.02 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.02 260);
+  --primary: oklch(0.5 0.12 75);
+  --primary-foreground: oklch(0.99 0.005 85);
+  --secondary: oklch(0.96 0.006 260);
+  --secondary-foreground: oklch(0.2 0.02 260);
+  --muted: oklch(0.96 0.006 260);
+  --muted-foreground: oklch(0.46 0.02 260);
+  --accent: oklch(0.94 0.01 260);
+  --accent-foreground: oklch(0.2 0.02 260);
+  --destructive: oklch(0.5 0.19 25);
+  --destructive-foreground: oklch(0.99 0.005 25);
+  --success: oklch(0.48 0.14 160);
+  --success-foreground: oklch(0.99 0.005 160);
+  --warning: oklch(0.5 0.12 70);
+  --info: oklch(0.5 0.13 240);
+  --border: oklch(0 0 0 / 11%);
+  --border-strong: oklch(0 0 0 / 22%);
+  --input: oklch(0.62 0.01 260);
+  --ring: oklch(0.5 0.12 75);
+  /* Gráficos: ordem fixa por classe de ativo (ETF, REIT, Ações Div., Ações Cresc., Metais, P2P) */
+  --chart-1: oklch(0.66 0.15 80);
+  --chart-2: oklch(0.62 0.16 160);
+  --chart-3: oklch(0.55 0.17 250);
+  --chart-4: oklch(0.52 0.2 300);
+  --chart-5: oklch(0.62 0.17 45);
+  --chart-6: oklch(0.58 0.19 350);
+  --chart-7: oklch(0.6 0.12 200);
+  --chart-8: oklch(0.55 0.02 260);
+  --sidebar: oklch(0.97 0.004 250);
+  --sidebar-foreground: oklch(0.2 0.02 260);
+  --sidebar-primary: oklch(0.5 0.12 75);
+  --sidebar-primary-foreground: oklch(0.99 0.005 85);
+  --sidebar-accent: oklch(0 0 0 / 5%);
+  --sidebar-accent-foreground: oklch(0.2 0.02 260);
+  --sidebar-border: oklch(0 0 0 / 9%);
+  --sidebar-ring: oklch(0.5 0.12 75);
+  --sidebar-active-bg: oklch(0.5 0.12 75 / 0.12);
+}
+
+.dark {
+  color-scheme: dark;
   --background: oklch(0.155 0.008 264);
   --foreground: oklch(0.95 0.005 250);
   --card: oklch(0.195 0.009 264);
@@ -65,22 +125,27 @@
   --secondary: oklch(0.25 0.012 264);
   --secondary-foreground: oklch(0.95 0.005 250);
   --muted: oklch(0.25 0.012 264);
-  --muted-foreground: oklch(0.65 0.015 260);
+  --muted-foreground: oklch(0.68 0.015 260);
   --accent: oklch(0.26 0.02 264);
   --accent-foreground: oklch(0.95 0.005 250);
-  --destructive: oklch(0.63 0.21 25);
-  --destructive-foreground: oklch(0.97 0.005 250);
-  --success: oklch(0.72 0.17 160);
+  --destructive: oklch(0.7 0.19 25);
+  --destructive-foreground: oklch(0.17 0.03 25);
+  --success: oklch(0.74 0.17 160);
   --success-foreground: oklch(0.18 0.03 160);
+  --warning: oklch(0.8 0.14 75);
+  --info: oklch(0.74 0.12 240);
   --border: oklch(1 0 0 / 9%);
-  --input: oklch(1 0 0 / 12%);
+  --border-strong: oklch(1 0 0 / 20%);
+  --input: oklch(1 0 0 / 14%);
   --ring: oklch(0.82 0.155 85);
   --chart-1: oklch(0.82 0.155 85);
-  --chart-2: oklch(0.72 0.17 160);
-  --chart-3: oklch(0.68 0.15 220);
-  --chart-4: oklch(0.65 0.2 300);
-  --chart-5: oklch(0.7 0.18 40);
-  --chart-6: oklch(0.66 0.15 190);
+  --chart-2: oklch(0.74 0.17 160);
+  --chart-3: oklch(0.68 0.15 250);
+  --chart-4: oklch(0.7 0.18 300);
+  --chart-5: oklch(0.74 0.17 45);
+  --chart-6: oklch(0.72 0.18 350);
+  --chart-7: oklch(0.78 0.12 200);
+  --chart-8: oklch(0.7 0.02 260);
   --sidebar: oklch(0.155 0.008 264);
   --sidebar-foreground: oklch(0.95 0.005 250);
   --sidebar-primary: oklch(0.82 0.155 85);
@@ -92,43 +157,15 @@
   --sidebar-active-bg: oklch(0.82 0.155 85 / 0.12);
 }
 
-.dark {
-  --background: oklch(0.155 0.008 264);
-  --foreground: oklch(0.95 0.005 250);
-  --card: oklch(0.195 0.009 264);
-  --card-foreground: oklch(0.95 0.005 250);
-  --popover: oklch(0.21 0.01 264);
-  --popover-foreground: oklch(0.95 0.005 250);
-  --primary: oklch(0.82 0.155 85);
-  --primary-foreground: oklch(0.21 0.03 260);
-  --secondary: oklch(0.25 0.012 264);
-  --secondary-foreground: oklch(0.95 0.005 250);
-  --muted: oklch(0.25 0.012 264);
-  --muted-foreground: oklch(0.65 0.015 260);
-  --accent: oklch(0.26 0.02 264);
-  --accent-foreground: oklch(0.95 0.005 250);
-  --destructive: oklch(0.63 0.21 25);
-  --destructive-foreground: oklch(0.97 0.005 250);
-  --success: oklch(0.72 0.17 160);
-  --success-foreground: oklch(0.18 0.03 160);
-  --border: oklch(1 0 0 / 9%);
-  --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.82 0.155 85);
-  --chart-1: oklch(0.82 0.155 85);
-  --chart-2: oklch(0.72 0.17 160);
-  --chart-3: oklch(0.68 0.15 220);
-  --chart-4: oklch(0.65 0.2 300);
-  --chart-5: oklch(0.7 0.18 40);
-  --chart-6: oklch(0.66 0.15 190);
-  --sidebar: oklch(0.155 0.008 264);
-  --sidebar-foreground: oklch(0.95 0.005 250);
-  --sidebar-primary: oklch(0.82 0.155 85);
-  --sidebar-primary-foreground: oklch(0.21 0.03 260);
-  --sidebar-accent: oklch(1 0 0 / 5%);
-  --sidebar-accent-foreground: oklch(0.95 0.005 250);
-  --sidebar-border: oklch(1 0 0 / 6%);
-  --sidebar-ring: oklch(0.82 0.155 85);
-  --sidebar-active-bg: oklch(0.82 0.155 85 / 0.12);
+/* Números alinhados em colunas (tabelas, KPIs). */
+@utility num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Texto mínimo da interface (substitui text-[10px] / text-[11px]). */
+@utility text-micro {
+  font-size: 0.6875rem;
+  line-height: 1rem;
 }
 
 /* Item de navegação da barra lateral: indicador dourado + gradiente no ativo */
@@ -160,10 +197,34 @@
 @layer base {
   * {
     border-color: var(--color-border);
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-strong) transparent;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Foco visível em tudo o que se pode focar com o teclado. */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }

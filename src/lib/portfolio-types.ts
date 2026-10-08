@@ -48,6 +48,8 @@ export interface Dividend {
   ex_date?: string | null;
   record_date?: string | null;
   payment_date?: string | null;
+  /** A data de pagamento é uma estimativa a partir da ex-dividendo (Yahoo). */
+  payment_date_estimated?: boolean | null;
   currency?: string | null;
   per_share_native?: number | null;
   amount_native?: number | null;
