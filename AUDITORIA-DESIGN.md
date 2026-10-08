@@ -234,3 +234,18 @@ Um commit por tema, com `build` + `lint` + `tsc` + testes antes e depois de cada
 - **Lovable:** o `main` sincroniza com o Lovable; trabalho sempre em `audit/design-review`, sem *rebase* nem *force push*.
 - **Privacidade das capturas:** as imagens do "antes/depois" no repositório só com o modo privado ligado.
 - **Backup Lovable `4efe7885-…`:** não tocado.
+
+## 10. Execução e verificação (Fase C)
+
+**Estado:** Fase B implementada em `audit/design-review` (commits pequenos por tema). Lógica financeira, queries e schema **não foram alterados**.
+
+| Verificação | Resultado |
+| --- | --- |
+| `./check.sh` (prettier + tsc + eslint + vitest) | limpo; 273 testes a passar |
+| Verificação manual (localhost, sessão real, modo privado ligado) | Dashboard, ETFs, Dividendos, IRS, Calendário e Objetivos carregam sem overflow horizontal; tema escuro e claro conferidos |
+| Mobile (390 px) | Dashboard sem overflow; barra inferior e cartões nas tabelas |
+| Dependências novas | nenhuma |
+
+**Pendente (decisão D7):** Lighthouse antes/depois nas 4 páginas principais, a correr pelo utilizador no DevTools (as páginas exigem sessão). Registar aqui os valores de Desempenho / Acessibilidade / Boas práticas / SEO.
+
+**Seguimento sugerido:** validação junto ao campo também em `asset-position-modal.tsx` (compra/venda; hoje usa avisos); passagem visual final no Claude Design.
