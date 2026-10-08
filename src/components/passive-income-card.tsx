@@ -93,7 +93,7 @@ export function PassiveIncomeCard({
       action={
         <Link
           to="/dividendos"
-          className="inline-flex min-h-6 items-center text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+          className="inline-flex min-h-11 sm:min-h-6 items-center text-[13px] text-muted-foreground transition-colors hover:text-foreground"
         >
           Dividendos →
         </Link>

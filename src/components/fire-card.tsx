@@ -23,7 +23,7 @@ export function FireCard({ progress, hidden }: { progress: FireProgress | null; 
       action={
         <Link
           to="/objetivos"
-          className="inline-flex min-h-6 items-center text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+          className="inline-flex min-h-11 sm:min-h-6 items-center text-[13px] text-muted-foreground transition-colors hover:text-foreground"
         >
           {progress ? "Objetivos →" : "Definir objetivo →"}
         </Link>

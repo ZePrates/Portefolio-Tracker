@@ -52,7 +52,7 @@ function PerfRows({ rows, hidden }: { rows: AssetPerformance[]; hidden: boolean 
             <div className="min-w-0 flex-1">
               <Link
                 to={CLASS_ROUTES[r.class]}
-                className="block truncate text-[13.5px] hover:underline"
+                className="-my-3 block truncate py-3 text-[13.5px] hover:underline sm:my-0 sm:py-0"
                 title={r.name}
               >
                 {r.name}
@@ -201,7 +201,7 @@ export function ExposureCard({
             </Tabs.Content>
             <Link
               to="/exposicao"
-              className="mt-3 inline-flex min-h-6 items-center text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+              className="mt-3 inline-flex min-h-11 sm:min-h-6 items-center text-[13px] text-muted-foreground transition-colors hover:text-foreground"
             >
               Exposição →
             </Link>

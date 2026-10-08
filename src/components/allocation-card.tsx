@@ -63,7 +63,7 @@ export function AllocationCard({
       action={
         <Link
           to="/objetivos"
-          className="inline-flex min-h-6 items-center text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+          className="inline-flex min-h-11 sm:min-h-6 items-center text-[13px] text-muted-foreground transition-colors hover:text-foreground"
         >
           {hasTargets ? "Objetivos →" : "Definir alvos →"}
         </Link>
@@ -114,7 +114,7 @@ export function AllocationCard({
                   <td className="h-11 py-[9px] pr-2 sm:h-auto">
                     <Link
                       to={CLASS_ROUTES[c.class]}
-                      className="inline-flex min-h-6 min-w-0 items-center gap-2 hover:underline"
+                      className="inline-flex min-h-11 sm:min-h-6 min-w-0 items-center gap-2 hover:underline"
                     >
                       <span
                         aria-hidden

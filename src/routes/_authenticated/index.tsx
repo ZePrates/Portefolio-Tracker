@@ -333,7 +333,7 @@ function DashboardPage() {
       onClick={refreshPrices}
       loading={refreshing}
       title="Obter cotações"
-      className="sm:min-h-[34px] sm:py-1"
+      className="min-h-11 sm:min-h-[34px] sm:py-1"
     >
       {!refreshing && <RefreshCw aria-hidden className="h-[15px] w-[15px]" />}
       Atualizar
