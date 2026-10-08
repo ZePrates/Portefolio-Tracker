@@ -18,6 +18,7 @@ import {
   Target,
   TrendingUp,
 } from "lucide-react";
+import type { AssetClass } from "@/lib/portfolio-types";
 
 export interface NavItem {
   to: string;
@@ -138,3 +139,13 @@ export const ALL_NAV: NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
 export const GO_SHORTCUTS: Record<string, NavItem> = Object.fromEntries(
   ALL_NAV.filter((i) => i.key).map((i) => [i.key as string, i]),
 );
+
+/** Página de cada classe de ativo (ligações a partir de cartões e do menu). */
+export const CLASS_ROUTES: Record<AssetClass, string> = {
+  etf: "/etfs",
+  reit: "/reits",
+  acao_dividendo: "/acoes-dividendos",
+  acao_crescimento: "/acoes-crescimento",
+  metal: "/metais",
+  p2p: "/p2p",
+};

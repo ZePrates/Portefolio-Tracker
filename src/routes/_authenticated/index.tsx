@@ -3,11 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   AlertTriangle,
-  Coins,
-  Flame,
   Globe,
   ChevronRight,
-  PieChart as PieIcon,
   Plus,
   RefreshCw,
   ShieldAlert,
@@ -15,22 +12,25 @@ import {
   TrendingUp,
   TriangleAlert,
 } from "lucide-react";
-import { Pie, PieChart, Cell, Tooltip, XAxis, YAxis, CartesianGrid, BarChart, Bar } from "recharts";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { listPortfolioSnapshots } from "@/lib/snapshots.functions";
 import { getDividendCalendar } from "@/lib/insights.functions";
 import { PassiveIncomeCard } from "@/components/passive-income-card";
+import { AllocationCard } from "@/components/allocation-card";
+import { FireCard } from "@/components/fire-card";
+import { CLASS_ROUTES } from "@/components/nav-config";
+import { getAllocation, getFireProgress } from "@/lib/goals.functions";
 import { DashboardHero, DashboardHeroSkeleton } from "@/components/dashboard-hero";
 import { heroSeries, periodChange } from "@/lib/dashboard-period";
 import { listAssets, listDividends, listTransactions } from "@/lib/portfolio.functions";
 import { getExposure } from "@/lib/exposure.functions";
 import { updateAllPrices } from "@/lib/prices.functions";
-import { getFireProgress } from "@/lib/goals.functions";
+
 import { getDataQualityAlerts } from "@/lib/data-quality.functions";
 import type { DataQualityAlert } from "@/lib/data-quality";
 import { cn } from "@/lib/utils";
-import { type Asset, type AssetClass, CLASS_LABELS, isOpenPosition } from "@/lib/portfolio-types";
+import { type Asset, isOpenPosition } from "@/lib/portfolio-types";
 import type { DividendRecord } from "@/lib/dividends";
 import {
   type PeriodKey,
@@ -46,14 +46,11 @@ import {
 } from "@/lib/dashboard";
 import {
   countryNamePt,
-  formatCompact,
   formatDatePt,
   formatDayLongPt,
   formatEUR,
-  formatNumber,
   formatPct,
   formatPercent,
-  formatPeriodKey,
   formatTimePt,
   sectorNamePt,
 } from "@/lib/format";
@@ -68,15 +65,6 @@ import {
   Modal,
   PageHeader,
 } from "@/components/ui-bits";
-import {
-  AXIS_LINE,
-  AXIS_TICK,
-  CHART_COLORS,
-  CLASS_COLOR,
-  ChartFrame,
-  ChartTooltip,
-  GRID_PROPS,
-} from "@/components/chart-kit";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
@@ -98,15 +86,6 @@ export const Route = createFileRoute("/_authenticated/")({
   }),
   component: DashboardPage,
 });
-
-const CLASS_ROUTES: Record<AssetClass, string> = {
-  etf: "/etfs",
-  reit: "/reits",
-  acao_dividendo: "/acoes-dividendos",
-  acao_crescimento: "/acoes-crescimento",
-  metal: "/metais",
-  p2p: "/p2p",
-};
 
 /** Cotações com mais de 3 dias consideram-se desatualizadas. */
 const STALE_PRICE_DAYS = 3;
@@ -239,6 +218,7 @@ function DashboardPage() {
   const fetchAlerts = useServerFn(getDataQualityAlerts);
   const fetchSnapshots = useServerFn(listPortfolioSnapshots);
   const fetchCalendar = useServerFn(getDividendCalendar);
+  const fetchAllocation = useServerFn(getAllocation);
   const refreshFn = useServerFn(updateAllPrices);
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
@@ -260,6 +240,7 @@ function DashboardPage() {
       await queryClient.invalidateQueries({ queryKey: ["transactions"] });
       await queryClient.invalidateQueries({ queryKey: ["portfolio-snapshots"] });
       await queryClient.invalidateQueries({ queryKey: ["fire"] });
+      await queryClient.invalidateQueries({ queryKey: ["allocation"] });
       await queryClient.invalidateQueries({ queryKey: ["data-quality"] });
       if (res.failed.length > 0) {
         toast.warning(`${res.updated} preços atualizados. Sem cotação: ${res.failed.join(", ")}`, {
@@ -297,6 +278,10 @@ function DashboardPage() {
     queryFn: () => fetchExposure(),
   });
   const { data: fire } = useQuery({ queryKey: ["fire"], queryFn: () => fetchFire() });
+  const { data: allocationData } = useQuery({
+    queryKey: ["allocation", "class", 0],
+    queryFn: () => fetchAllocation({ data: { scope: "class", contribution: 0 } }),
+  });
   const { data: calendar } = useQuery({
     queryKey: ["dividend-calendar", 12],
     queryFn: () => fetchCalendar({ data: { months: 12 } }),
@@ -335,6 +320,11 @@ function DashboardPage() {
   const range = useMemo(() => periodRange(period), [period]);
 
   const allocation = useMemo(() => allocationByClass(assets), [assets]);
+  const drifts = useMemo(() => {
+    const d = allocationData?.drift;
+    if (!d || d.targetSum <= 0) return null;
+    return new Map(d.rows.map((r) => [r.key, r.driftPct] as const));
+  }, [allocationData]);
   const perf = useMemo(() => assetPerformance(assets), [assets]);
   const best = useMemo(() => bestPerformers(perf, 5), [perf]);
   const worst = useMemo(() => worstPerformers(perf, 5), [perf]);
@@ -506,137 +496,14 @@ function DashboardPage() {
         hidden={hidden}
       />
 
-      {/* 2 · Estou no caminho? */}
-      <Section
-        id="sec-caminho"
-        title="Estou no caminho?"
-        hint="Objetivo de independência financeira (FIRE)"
-      >
-        <div className="grid gap-4">
-          <Card
-            headingLevel={3}
-            title="Progresso FIRE"
-            icon={<Flame aria-hidden className="h-4 w-4 text-primary" />}
-            action={
-              <Link to="/objetivos" className="text-primary hover:underline">
-                {fireProgress ? "Ver detalhe" : "Definir objetivo"}
-              </Link>
-            }
-          >
-            {!fireProgress ? (
-              <NoData label="Define as tuas despesas anuais para veres quanto falta para o teu número FIRE." />
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className="num text-3xl font-bold">
-                    {formatPct(fireProgress.progressPct, 1, hidden)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    de {formatEUR(fireProgress.fireNumber, hidden)}
-                  </p>
-                </div>
-                <div
-                  role="progressbar"
-                  aria-label="Progresso FIRE"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={
-                    hidden ? undefined : Math.min(100, Math.round(fireProgress.progressPct))
-                  }
-                  className="h-2.5 overflow-hidden rounded-full bg-secondary"
-                >
-                  <div
-                    className="h-full rounded-full bg-primary"
-                    style={{ width: hidden ? "0%" : `${Math.min(100, fireProgress.progressPct)}%` }}
-                  />
-                </div>
-                <dl className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <dt className="text-xs text-muted-foreground">Falta</dt>
-                    <dd className="num font-medium">{formatEUR(fireProgress.remaining, hidden)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-muted-foreground">
-                      Despesas cobertas por dividendos
-                    </dt>
-                    <dd className="num font-medium">
-                      {formatPct(fireProgress.passiveCoveragePct, 1, hidden)}
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-            )}
-          </Card>
-        </div>
-      </Section>
+      <div className="grid gap-5 lg:grid-cols-[7fr_5fr]">
+        <AllocationCard allocation={allocation} drifts={drifts} hidden={hidden} />
+        <FireCard progress={fireProgress} hidden={hidden} />
+      </div>
 
       {/* 3 · Como estou distribuído? */}
       <Section id="sec-distribuicao" title="Como estou distribuído?">
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card
-            headingLevel={3}
-            title="Alocação por classe"
-            icon={<PieIcon aria-hidden className="h-4 w-4 text-primary" />}
-            action={
-              <Link to="/objetivos" className="text-primary hover:underline">
-                Definir alvos
-              </Link>
-            }
-          >
-            {allocation.length === 0 ? (
-              <NoData />
-            ) : (
-              <div className="flex flex-col items-center gap-4 sm:flex-row">
-                <ChartFrame
-                  label={`Alocação por classe: ${allocation
-                    .map((c) => `${CLASS_LABELS[c.class]} ${formatNumber(c.pct, 1)}%`)
-                    .join(", ")}`}
-                  height={200}
-                  className="w-full shrink-0 sm:w-48"
-                >
-                  <PieChart>
-                    <Pie
-                      data={allocation}
-                      dataKey="value"
-                      nameKey="label"
-                      innerRadius={52}
-                      outerRadius={86}
-                      strokeWidth={0}
-                    >
-                      {allocation.map((c, i) => (
-                        <Cell key={c.class} fill={CLASS_COLOR[c.class] ?? CHART_COLORS[i % 8]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      content={<ChartTooltip valueFormatter={(v) => formatEUR(v, hidden)} />}
-                    />
-                  </PieChart>
-                </ChartFrame>
-                <ul className="w-full min-w-0 space-y-2">
-                  {allocation.map((c) => (
-                    <li key={c.class} className="flex items-center gap-2 text-sm">
-                      <span
-                        aria-hidden
-                        className="h-2.5 w-2.5 shrink-0 rounded-full"
-                        style={{ background: CLASS_COLOR[c.class] }}
-                      />
-                      <Link
-                        to={CLASS_ROUTES[c.class]}
-                        className="min-w-0 flex-1 truncate text-muted-foreground hover:text-foreground"
-                      >
-                        {CLASS_LABELS[c.class]}
-                      </Link>
-                      <span className="num shrink-0 font-medium">{formatEUR(c.value, hidden)}</span>
-                      <span className="num w-14 shrink-0 text-right text-xs text-muted-foreground">
-                        {formatPct(c.pct, 1, hidden)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </Card>
-
+        <div className="grid gap-4">
           <Card
             headingLevel={3}
             title="Exposição consolidada"
