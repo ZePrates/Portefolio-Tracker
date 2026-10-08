@@ -38,6 +38,7 @@ import {
 } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
 import { Button, Field, Modal, TextInput, useConfirm } from "@/components/ui-bits";
+import { validateExpenseAmount, validateTradeForm } from "@/lib/trade-form";
 import { cn } from "@/lib/utils";
 import { todayLisbon } from "@/lib/dates";
 
@@ -115,6 +116,24 @@ export function AssetPositionModal({ asset, onClose }: Props) {
 
   const currency = asset?.native_currency || "EUR";
 
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const touch = (k: string) => () => setTouched((t) => ({ ...t, [k]: true }));
+  const tradeErrors = useMemo(
+    () => validateTradeForm({ quantity, price, fee, date }, today()),
+    [quantity, price, fee, date],
+  );
+  const editErrors = useMemo(
+    () =>
+      validateTradeForm(
+        { quantity: editQuantity, price: editPrice, fee: editFee, date: editDate },
+        today(),
+      ),
+    [editQuantity, editPrice, editFee, editDate],
+  );
+  const expenseError = useMemo(() => validateExpenseAmount(expenseAmount), [expenseAmount]);
+  const tradeErr = (k: "quantity" | "price" | "fee" | "date") =>
+    touched["trade_" + k] ? tradeErrors[k] : undefined;
+
   const { data, isLoading } = useQuery({
     queryKey: ["position", asset?.id],
     queryFn: () => positionFn({ data: { assetId: asset!.id } }),
@@ -164,7 +183,7 @@ export function AssetPositionModal({ asset, onClose }: Props) {
     if (!asset) return;
     setMode("view");
     setQuantity("");
-    setPrice(String(asset.current_price_native ?? asset.current_price ?? ""));
+    setPrice(String(asset.current_price_native ?? asset.current_price ?? "").replace(".", ","));
     setFee("");
     setDate(today());
     setPreview(null);
@@ -233,10 +252,14 @@ export function AssetPositionModal({ asset, onClose }: Props) {
 
   const confirm = async () => {
     const q = num(quantity);
-    if (q <= 0) {
-      toast.error("Indica a quantidade.");
-      return;
-    }
+    setTouched((t) => ({
+      ...t,
+      trade_quantity: true,
+      trade_price: true,
+      trade_fee: true,
+      trade_date: true,
+    }));
+    if (Object.keys(tradeErrors).length > 0) return;
     setSaving(true);
     try {
       const payload = {
@@ -269,10 +292,8 @@ export function AssetPositionModal({ asset, onClose }: Props) {
 
   const saveExpense = async () => {
     const v = num(expenseAmount);
-    if (v <= 0) {
-      toast.error("Indica o valor da despesa.");
-      return;
-    }
+    setTouched((t) => ({ ...t, expense_amount: true }));
+    if (expenseError) return;
     setSaving(true);
     try {
       await createExpenseFn({
@@ -309,10 +330,14 @@ export function AssetPositionModal({ asset, onClose }: Props) {
   const saveTx = async () => {
     if (!editingTx) return;
     const q = num(editQuantity);
-    if (q <= 0) {
-      toast.error("Indica a quantidade.");
-      return;
-    }
+    setTouched((t) => ({
+      ...t,
+      edit_quantity: true,
+      edit_price: true,
+      edit_fee: true,
+      edit_date: true,
+    }));
+    if (Object.keys(editErrors).length > 0) return;
     setSaving(true);
     try {
       await updateTxFn({
@@ -423,11 +448,15 @@ export function AssetPositionModal({ asset, onClose }: Props) {
               <div className="space-y-3 rounded-xl border border-border bg-background/50 p-4">
                 <p className="text-sm font-medium">Novo custo de armazenamento</p>
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Valor (EUR)">
+                  <Field
+                    label="Valor (EUR)"
+                    error={touched["expense_amount"] ? expenseError : undefined}
+                  >
                     <TextInput
                       inputMode="decimal"
                       value={expenseAmount}
                       onChange={(e) => setExpenseAmount(e.target.value)}
+                      onBlur={touch("expense_amount")}
                       placeholder="0,00"
                     />
                   </Field>
@@ -462,32 +491,41 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                   )}
                 </p>
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Quantidade">
+                  <Field label="Quantidade" error={tradeErr("quantity")}>
                     <TextInput
                       inputMode="decimal"
                       value={quantity}
                       onChange={(e) => setQuantity(e.target.value)}
+                      onBlur={touch("trade_quantity")}
                       placeholder="0"
                     />
                   </Field>
-                  <Field label={`Preço por unidade (${currency})`}>
+                  <Field label={`Preço por unidade (${currency})`} error={tradeErr("price")}>
                     <TextInput
                       inputMode="decimal"
                       value={price}
                       onChange={(e) => setPrice(e.target.value)}
+                      onBlur={touch("trade_price")}
                       placeholder="0,00"
                     />
                   </Field>
-                  <Field label={`Comissão (${currency})`}>
+                  <Field label={`Comissão (${currency})`} error={tradeErr("fee")}>
                     <TextInput
                       inputMode="decimal"
                       value={fee}
                       onChange={(e) => setFee(e.target.value)}
+                      onBlur={touch("trade_fee")}
                       placeholder="0,00"
                     />
                   </Field>
-                  <Field label="Data">
-                    <TextInput type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                  <Field label="Data" error={tradeErr("date")}>
+                    <TextInput
+                      type="date"
+                      value={date}
+                      max={today()}
+                      onChange={(e) => setDate(e.target.value)}
+                      onBlur={touch("trade_date")}
+                    />
                   </Field>
                 </div>
 
@@ -658,7 +696,14 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                               <TextInput
                                 type="date"
                                 value={editDate}
-                                onChange={(e) => setEditDate(e.target.value)}
+                                onChange={(e) => {
+                                  setEditDate(e.target.value);
+                                  setTouched((t) => ({ ...t, edit_date: true }));
+                                }}
+                                aria-invalid={
+                                  touched["edit_date"] && editErrors.date ? true : undefined
+                                }
+                                title={touched["edit_date"] ? editErrors.date : undefined}
                               />
                             </td>
                             <td className="px-3 py-2">{t.type === "buy" ? "Compra" : "Venda"}</td>
@@ -666,21 +711,42 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                               <TextInput
                                 inputMode="decimal"
                                 value={editQuantity}
-                                onChange={(e) => setEditQuantity(e.target.value)}
+                                onChange={(e) => {
+                                  setEditQuantity(e.target.value);
+                                  setTouched((t) => ({ ...t, edit_quantity: true }));
+                                }}
+                                aria-invalid={
+                                  touched["edit_quantity"] && editErrors.quantity ? true : undefined
+                                }
+                                title={touched["edit_quantity"] ? editErrors.quantity : undefined}
                               />
                             </td>
                             <td className="px-3 py-2">
                               <TextInput
                                 inputMode="decimal"
                                 value={editPrice}
-                                onChange={(e) => setEditPrice(e.target.value)}
+                                onChange={(e) => {
+                                  setEditPrice(e.target.value);
+                                  setTouched((t) => ({ ...t, edit_price: true }));
+                                }}
+                                aria-invalid={
+                                  touched["edit_price"] && editErrors.price ? true : undefined
+                                }
+                                title={touched["edit_price"] ? editErrors.price : undefined}
                               />
                             </td>
                             <td className="px-3 py-2">
                               <TextInput
                                 inputMode="decimal"
                                 value={editFee}
-                                onChange={(e) => setEditFee(e.target.value)}
+                                onChange={(e) => {
+                                  setEditFee(e.target.value);
+                                  setTouched((t) => ({ ...t, edit_fee: true }));
+                                }}
+                                aria-invalid={
+                                  touched["edit_fee"] && editErrors.fee ? true : undefined
+                                }
+                                title={touched["edit_fee"] ? editErrors.fee : undefined}
                               />
                             </td>
                             <td className="px-3 py-2">
