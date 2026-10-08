@@ -6,13 +6,14 @@ import {
   Coins,
   Flame,
   Globe,
-  Info,
+  ChevronRight,
   PieChart as PieIcon,
   Plus,
   RefreshCw,
   ShieldAlert,
   TrendingDown,
   TrendingUp,
+  TriangleAlert,
 } from "lucide-react";
 import {
   Pie,
@@ -56,12 +57,14 @@ import {
   countryNamePt,
   formatCompact,
   formatDatePt,
+  formatDayLongPt,
   formatEUR,
   formatEURCompact,
   formatNumber,
   formatPct,
   formatPercent,
   formatPeriodKey,
+  formatTimePt,
   sectorNamePt,
 } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
@@ -74,6 +77,7 @@ import {
   ErrorState,
   KpiGridSkeleton,
   MetricCard,
+  Modal,
   PageHeader,
 } from "@/components/ui-bits";
 import {
@@ -158,6 +162,90 @@ function Section({
   );
 }
 
+function AlertList({ alerts }: { alerts: DataQualityAlert[] }) {
+  return (
+    <ul className="divide-y divide-border">
+      {alerts.map((a, i) => (
+        <li key={`${a.code}-${a.assetId ?? i}`} className="flex items-start gap-3 py-2.5">
+          <Badge
+            tone={a.severity === "error" ? "loss" : a.severity === "warning" ? "warn" : "info"}
+            className="mt-0.5 shrink-0"
+          >
+            <ShieldAlert aria-hidden className="h-3 w-3" />
+            {a.severity === "error" ? "Erro" : a.severity === "warning" ? "Aviso" : "Info"}
+          </Badge>
+          <p className="min-w-0 text-sm">{a.message}</p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Faixa de avisos no topo: resumo numa linha; "Rever" abre a lista completa. */
+function AlertsStrip({
+  alerts,
+  expanded,
+  onToggle,
+  modalOpen,
+  onModalOpenChange,
+}: {
+  alerts: DataQualityAlert[];
+  expanded: boolean;
+  onToggle: () => void;
+  modalOpen: boolean;
+  onModalOpenChange: (open: boolean) => void;
+}) {
+  const n = alerts.length;
+  const title = `${n} ${n === 1 ? "aviso" : "avisos"} nos teus dados`;
+  const preview = alerts.slice(0, 2).map((a) => a.message);
+  const extra = n - preview.length;
+  const panelId = "alerts-strip-panel";
+  return (
+    <section aria-label="Avisos aos dados" className="space-y-2">
+      <div className="flex items-center gap-3 rounded-[10px] border border-warning/20 bg-warning/[0.08] px-3.5 py-2.5">
+        <TriangleAlert aria-hidden className="h-4 w-4 shrink-0 text-warning" />
+        {/* Desktop: resumo + botão Rever */}
+        <p className="hidden min-w-0 flex-1 truncate text-[13.5px] md:block">
+          <strong className="font-semibold">{title}.</strong>{" "}
+          <span className="text-muted-foreground">
+            {preview.join(" · ")}
+            {extra > 0 && ` · +${extra}`}
+          </span>
+        </p>
+        <button
+          type="button"
+          aria-expanded={expanded}
+          aria-controls={panelId}
+          onClick={onToggle}
+          className="hidden shrink-0 rounded-md bg-foreground/[0.06] px-2.5 py-1 text-[13px] font-medium transition-colors hover:bg-foreground/10 md:inline-flex"
+        >
+          {expanded ? "Fechar" : "Rever"}
+        </button>
+        {/* Mobile: toda a linha abre uma folha com a lista */}
+        <button
+          type="button"
+          onClick={() => onModalOpenChange(true)}
+          className="-my-2.5 flex min-h-11 min-w-0 flex-1 items-center justify-between gap-2 text-left text-[13.5px] font-semibold md:hidden"
+        >
+          {title}
+          <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </button>
+      </div>
+      {expanded && (
+        <div
+          id={panelId}
+          className="hidden rounded-xl border border-border bg-card px-4 py-2 md:block"
+        >
+          <AlertList alerts={alerts} />
+        </div>
+      )}
+      <Modal open={modalOpen} onClose={() => onModalOpenChange(false)} title={title}>
+        <AlertList alerts={alerts} />
+      </Modal>
+    </section>
+  );
+}
+
 function DashboardPage() {
   const { hidden } = usePrivateMode();
   const fetchAssets = useServerFn(listAssets);
@@ -171,6 +259,7 @@ function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [period, setPeriod] = useState<PeriodKey>("ytd");
   const [showAllAlerts, setShowAllAlerts] = useState(false);
+  const [alertsModalOpen, setAlertsModalOpen] = useState(false);
 
   const refreshPrices = async () => {
     if (refreshing) return;
@@ -291,11 +380,27 @@ function DashboardPage() {
   const year = new Date().getFullYear();
 
   const refreshButton = (
-    <Button variant="outline" onClick={refreshPrices} loading={refreshing} title="Obter cotações">
-      {!refreshing && <RefreshCw aria-hidden className="h-4 w-4" />}
-      Atualizar preços
+    <Button
+      variant="outline"
+      onClick={refreshPrices}
+      loading={refreshing}
+      title="Obter cotações"
+      className="sm:min-h-[34px] sm:py-1"
+    >
+      {!refreshing && <RefreshCw aria-hidden className="h-[15px] w-[15px]" />}
+      Atualizar
     </Button>
   );
+
+  const pricesLabel = (() => {
+    if (!freshness.latest) return "Sem cotações registadas";
+    const sameDay = formatDatePt(freshness.latest) === formatDatePt(new Date().toISOString());
+    return sameDay
+      ? `Cotações de hoje, ${formatTimePt(freshness.latest)}`
+      : `Cotações de ${formatDatePt(freshness.latest)}`;
+  })();
+  // A faixa só aparece quando há algo a tratar (avisos ou cotações em atraso).
+  const showAlertsStrip = alerts.length > 0;
 
   if (isError) {
     return (
@@ -345,29 +450,42 @@ function DashboardPage() {
     <div className="space-y-8">
       <PageHeader
         title="Dashboard"
-        subtitle="Visão consolidada — o detalhe está nas páginas de posições, exposição e dividendos."
-        actions={refreshButton}
+        meta={formatDayLongPt()}
+        actions={
+          <>
+            <span className="inline-flex items-center gap-1.5 text-[12.5px] text-muted-foreground">
+              <span
+                aria-hidden
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  freshness.latest ? "bg-success" : "bg-muted-foreground",
+                )}
+              />
+              {pricesLabel}
+            </span>
+            {freshness.stale > 0 && (
+              <Badge tone="warn">
+                <AlertTriangle aria-hidden className="h-3 w-3" />
+                {freshness.stale} {freshness.stale === 1 ? "desatualizada" : "desatualizadas"}
+              </Badge>
+            )}
+            {refreshButton}
+          </>
+        }
       />
 
+      {showAlertsStrip && (
+        <AlertsStrip
+          alerts={alerts}
+          expanded={showAllAlerts}
+          onToggle={() => setShowAllAlerts((v) => !v)}
+          modalOpen={alertsModalOpen}
+          onModalOpenChange={setAlertsModalOpen}
+        />
+      )}
+
       {/* 1 · Quanto tenho */}
-      <Section
-        id="sec-valor"
-        title="Quanto tenho"
-        hint={
-          freshness.latest
-            ? `Cotações de ${formatDatePt(freshness.latest)}`
-            : "Sem cotações registadas"
-        }
-        action={
-          freshness.stale > 0 ? (
-            <Badge tone="warn">
-              <AlertTriangle aria-hidden className="h-3 w-3" />
-              {freshness.stale} {freshness.stale === 1 ? "ativo" : "ativos"} com cotação
-              desatualizada
-            </Badge>
-          ) : undefined
-        }
-      >
+      <Section id="sec-valor" title="Quanto tenho">
         <div className="grid gap-3 md:gap-4 lg:grid-cols-3">
           <div className="min-w-0 rounded-xl border border-border bg-card p-5 lg:col-span-2 md:p-6">
             <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -835,58 +953,6 @@ function DashboardPage() {
                 </li>
               ))}
             </ul>
-          )}
-        </Card>
-      </Section>
-
-      {/* 5 · O que preciso de tratar? */}
-      <Section
-        id="sec-tratar"
-        title="O que preciso de tratar?"
-        hint="Verificações automáticas aos teus dados"
-      >
-        <Card headingLevel={3}>
-          {alertsData === undefined ? (
-            <NoData label="A verificar os dados…" />
-          ) : alerts.length === 0 ? (
-            <p className="flex items-center gap-2 py-2 text-sm text-success">
-              <Info aria-hidden className="h-4 w-4" />
-              Está tudo em ordem: não há avisos nos teus dados.
-            </p>
-          ) : (
-            <>
-              <ul className="divide-y divide-border">
-                {(showAllAlerts ? alerts : alerts.slice(0, 4)).map((a, i) => (
-                  <li key={`${a.code}-${a.assetId ?? i}`} className="flex items-start gap-3 py-2.5">
-                    <Badge
-                      tone={
-                        a.severity === "error" ? "loss" : a.severity === "warning" ? "warn" : "info"
-                      }
-                      className="mt-0.5 shrink-0"
-                    >
-                      <ShieldAlert aria-hidden className="h-3 w-3" />
-                      {a.severity === "error"
-                        ? "Erro"
-                        : a.severity === "warning"
-                          ? "Aviso"
-                          : "Info"}
-                    </Badge>
-                    <p className="min-w-0 text-sm">{a.message}</p>
-                  </li>
-                ))}
-              </ul>
-              {alerts.length > 4 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="mt-2"
-                  aria-expanded={showAllAlerts}
-                  onClick={() => setShowAllAlerts((v) => !v)}
-                >
-                  {showAllAlerts ? "Mostrar menos" : `Ver os outros ${alerts.length - 4} avisos`}
-                </Button>
-              )}
-            </>
           )}
         </Card>
       </Section>

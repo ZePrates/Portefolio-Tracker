@@ -228,6 +228,32 @@ export function formatDatePt(iso: string | null | undefined): string {
   return dateFormatter.format(d);
 }
 
+const dayLongFormatter = new Intl.DateTimeFormat("pt-PT", {
+  timeZone: APP_TIME_ZONE,
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+});
+
+/** Dia por extenso, ex.: "quarta-feira, 8 de outubro". */
+export function formatDayLongPt(date: Date = new Date()): string {
+  return dayLongFormatter.format(date);
+}
+
+const timeFormatter = new Intl.DateTimeFormat("pt-PT", {
+  timeZone: APP_TIME_ZONE,
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+/** Hora em HH:MM no fuso da aplicação. */
+export function formatTimePt(iso: string | null | undefined): string {
+  if (!iso) return EMPTY;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return EMPTY;
+  return timeFormatter.format(d);
+}
+
 /**
  * Lê um número escrito à portuguesa ou à inglesa:
  * "1234,56", "1.234,56", "1 234,56", "1234.56", "1,234.56", "1.234.567".
