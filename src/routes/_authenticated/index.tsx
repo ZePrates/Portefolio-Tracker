@@ -3,13 +3,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   AlertTriangle,
-  Globe,
   ChevronRight,
   Plus,
   RefreshCw,
   ShieldAlert,
-  TrendingDown,
-  TrendingUp,
   TriangleAlert,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -19,7 +16,7 @@ import { getDividendCalendar } from "@/lib/insights.functions";
 import { PassiveIncomeCard } from "@/components/passive-income-card";
 import { AllocationCard } from "@/components/allocation-card";
 import { FireCard } from "@/components/fire-card";
-import { CLASS_ROUTES } from "@/components/nav-config";
+import { ExposureCard, PerformanceCard } from "@/components/performance-exposure-cards";
 import { getAllocation, getFireProgress } from "@/lib/goals.functions";
 import { DashboardHero, DashboardHeroSkeleton } from "@/components/dashboard-hero";
 import { heroSeries, periodChange } from "@/lib/dashboard-period";
@@ -49,22 +46,11 @@ import {
   formatDatePt,
   formatDayLongPt,
   formatEUR,
-  formatPct,
-  formatPercent,
   formatTimePt,
   sectorNamePt,
 } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
-import {
-  Badge,
-  Button,
-  Card,
-  Delta,
-  EmptyState,
-  ErrorState,
-  Modal,
-  PageHeader,
-} from "@/components/ui-bits";
+import { Badge, Button, EmptyState, ErrorState, Modal, PageHeader } from "@/components/ui-bits";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
@@ -89,40 +75,6 @@ export const Route = createFileRoute("/_authenticated/")({
 
 /** Cotações com mais de 3 dias consideram-se desatualizadas. */
 const STALE_PRICE_DAYS = 3;
-
-function NoData({ label = "Dados não disponíveis" }: { label?: string }) {
-  return <p className="py-8 text-center text-sm text-muted-foreground">{label}</p>;
-}
-
-/** Secção do dashboard: uma pergunta do investidor e as respostas. */
-function Section({
-  id,
-  title,
-  hint,
-  action,
-  children,
-}: {
-  id: string;
-  title: string;
-  hint?: string;
-  action?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <section aria-labelledby={id} className="space-y-3">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h2 id={id} className="text-base font-semibold">
-            {title}
-          </h2>
-          {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-        </div>
-        {action}
-      </div>
-      {children}
-    </section>
-  );
-}
 
 function AlertList({ alerts }: { alerts: DataQualityAlert[] }) {
   return (
@@ -439,7 +391,7 @@ function DashboardPage() {
   const fireProgress = fire?.progress ?? null;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 md:space-y-5">
       <PageHeader
         title="Dashboard"
         meta={formatDayLongPt()}
@@ -496,150 +448,26 @@ function DashboardPage() {
         hidden={hidden}
       />
 
-      <div className="grid gap-5 lg:grid-cols-[7fr_5fr]">
+      <div className="grid gap-4 md:gap-5 lg:grid-cols-[7fr_5fr]">
         <AllocationCard allocation={allocation} drifts={drifts} hidden={hidden} />
         <FireCard progress={fireProgress} hidden={hidden} />
       </div>
 
-      {/* 3 · Como estou distribuído? */}
-      <Section id="sec-distribuicao" title="Como estou distribuído?">
-        <div className="grid gap-4">
-          <Card
-            headingLevel={3}
-            title="Exposição consolidada"
-            icon={<Globe aria-hidden className="h-4 w-4 text-primary" />}
-            action={
-              <Link to="/exposicao" className="text-primary hover:underline">
-                Ver detalhe
-              </Link>
-            }
-          >
-            {!exposure || exposure.report.country.length === 0 ? (
-              <NoData label="Sem dados — atualiza a composição em Exposição." />
-            ) : (
-              <div className="grid gap-5 sm:grid-cols-3">
-                {(
-                  [
-                    [
-                      "Países",
-                      exposure.report.country
-                        .slice(0, 4)
-                        .map((s) => ({ label: countryNamePt(s.value), pct: s.pct })),
-                    ],
-                    [
-                      "Setores",
-                      exposure.report.sector
-                        .slice(0, 4)
-                        .map((s) => ({ label: sectorNamePt(s.value), pct: s.pct })),
-                    ],
-                    [
-                      "Empresas",
-                      exposure.report.companies
-                        .slice(0, 4)
-                        .map((s) => ({ label: s.name, pct: s.pct })),
-                    ],
-                  ] as Array<[string, Array<{ label: string; pct: number }>]>
-                ).map(([title, rows]) => (
-                  <div key={title} className="min-w-0">
-                    <h4 className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      {title}
-                    </h4>
-                    <ul className="space-y-1.5">
-                      {rows.length === 0 ? (
-                        <li className="text-xs text-muted-foreground">Sem dados</li>
-                      ) : (
-                        rows.map((r) => (
-                          <li key={r.label} className="flex justify-between gap-2 text-xs">
-                            <span
-                              className="min-w-0 truncate text-muted-foreground"
-                              title={r.label}
-                            >
-                              {r.label}
-                            </span>
-                            <span className="num shrink-0 font-medium">
-                              {formatPct(r.pct, 1, hidden)}
-                            </span>
-                          </li>
-                        ))
-                      )}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-        </div>
-      </Section>
-
-      {/* 4 · Desempenho */}
-      <div className="space-y-4">
-        <div className="grid gap-4 lg:grid-cols-2">
-          <PerformanceCard
-            title="Melhores desempenhos"
-            icon={<TrendingUp aria-hidden className="h-4 w-4 text-success" />}
-            rows={best}
-            hidden={hidden}
-          />
-          <PerformanceCard
-            title="Piores desempenhos"
-            icon={<TrendingDown aria-hidden className="h-4 w-4 text-destructive" />}
-            rows={worst}
-            hidden={hidden}
-          />
-        </div>
+      <div className="grid gap-4 md:gap-5 lg:grid-cols-2">
+        <PerformanceCard best={best} worst={worst} hidden={hidden} />
+        <ExposureCard
+          countries={exposure?.report.country
+            .map((s) => ({ label: countryNamePt(s.value), pct: s.pct }))
+            .slice(0, 5)}
+          sectors={exposure?.report.sector
+            .map((s) => ({ label: sectorNamePt(s.value), pct: s.pct }))
+            .slice(0, 5)}
+          companies={exposure?.report.companies
+            .map((s) => ({ label: s.name, pct: s.pct }))
+            .slice(0, 5)}
+          hidden={hidden}
+        />
       </div>
     </div>
-  );
-}
-
-function PerformanceCard({
-  title,
-  icon,
-  rows,
-  hidden,
-}: {
-  title: string;
-  icon: React.ReactNode;
-  rows: ReturnType<typeof bestPerformers>;
-  hidden: boolean;
-}) {
-  return (
-    <Card headingLevel={3} title={title} icon={icon}>
-      {rows.length === 0 ? (
-        <NoData />
-      ) : (
-        <ul className="space-y-2.5">
-          {rows.map((r) => (
-            <li key={r.id} className="flex items-center gap-3 text-sm">
-              <div className="min-w-0 flex-1">
-                <Link
-                  to={CLASS_ROUTES[r.class]}
-                  className="block truncate hover:underline"
-                  title={r.name}
-                >
-                  {r.name}
-                </Link>
-                <p className="num text-xs text-muted-foreground">
-                  {formatPct(r.weight, 1, hidden)} da carteira
-                </p>
-              </div>
-              <div className="shrink-0 text-right">
-                <Delta value={r.unrealized} className="justify-end">
-                  {formatEUR(r.unrealized, hidden)}
-                </Delta>
-                <p
-                  className={cn(
-                    "num text-xs",
-                    r.unrealized < 0 ? "text-destructive" : "text-success",
-                  )}
-                >
-                  {formatPercent(r.unrealizedPct ?? 0, hidden)}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Card>
   );
 }
