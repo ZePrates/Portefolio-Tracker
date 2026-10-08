@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Plus } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { listAssets } from "@/lib/portfolio.functions";
 import {
   type Asset,
@@ -12,9 +12,10 @@ import {
   assetInvested,
   assetPL,
 } from "@/lib/portfolio-types";
-import { formatEUR, formatPct, formatPercent } from "@/lib/format";
+import { formatEUR, formatEURCompact, formatPct, formatPercent } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
 import { PageHeader, EmptyState, Button, MetricCard } from "@/components/ui-bits";
+import { AXIS_LINE, AXIS_TICK, ChartFrame, ChartTooltip, GRID_PROPS } from "@/components/chart-kit";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/analise")({
@@ -102,42 +103,51 @@ function AnalisePage() {
         <MetricCard label="Nº de posições" value={String(assets.length)} />
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-5">
+      <div className="min-w-0 rounded-xl border border-border bg-card p-5">
         <h2 className="mb-4 text-sm font-semibold">Investido vs. valor atual por classe</h2>
-        <div className="h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={byClass} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-              <XAxis
-                dataKey="label"
-                tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={(v: number) => (hidden ? "••" : `${Math.round(v / 1000)}k`)}
-              />
-              <Tooltip
-                formatter={(v: number, name: string) => [
-                  formatEUR(v, hidden),
-                  name === "invested" ? "Investido" : "Valor atual",
-                ]}
-                contentStyle={{
-                  background: "var(--color-popover)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "0.5rem",
-                  color: "var(--color-foreground)",
-                  fontSize: "0.8rem",
-                }}
-              />
-              <Bar dataKey="invested" fill="var(--color-chart-3)" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="current" fill="var(--color-chart-1)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        <ChartFrame
+          label="Comparação, por classe de ativo, entre o valor investido e o valor atual"
+          height={288}
+          empty={byClass.length === 0}
+        >
+          <BarChart data={byClass} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+            <CartesianGrid {...GRID_PROPS} />
+            <XAxis dataKey="label" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
+            <YAxis
+              tick={AXIS_TICK}
+              axisLine={false}
+              tickLine={false}
+              width={52}
+              tickFormatter={(v: number) => (hidden ? "•" : formatEURCompact(v))}
+            />
+            <Tooltip
+              cursor={{ fill: "var(--color-accent)", opacity: 0.4 }}
+              content={<ChartTooltip valueFormatter={(v) => formatEUR(v, hidden)} />}
+            />
+            <Bar
+              dataKey="invested"
+              name="Investido"
+              fill="var(--color-chart-3)"
+              radius={[4, 4, 0, 0]}
+            />
+            <Bar
+              dataKey="current"
+              name="Valor atual"
+              fill="var(--color-chart-1)"
+              radius={[4, 4, 0, 0]}
+            />
+          </BarChart>
+        </ChartFrame>
+        <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <li className="flex items-center gap-1.5">
+            <span aria-hidden className="h-2.5 w-2.5 rounded-sm bg-[var(--color-chart-3)]" />
+            Investido
+          </li>
+          <li className="flex items-center gap-1.5">
+            <span aria-hidden className="h-2.5 w-2.5 rounded-sm bg-[var(--color-chart-1)]" />
+            Valor atual
+          </li>
+        </ul>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

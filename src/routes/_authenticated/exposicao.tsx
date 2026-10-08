@@ -8,7 +8,16 @@ import { getExposure, syncAllAssetExposure } from "@/lib/exposure.functions";
 import type { Slice } from "@/lib/exposure-types";
 import { countryNamePt, formatEUR, formatPct, sectorNamePt } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
-import { Button, EmptyState, MetricCard, PageHeader } from "@/components/ui-bits";
+import {
+  Badge,
+  Button,
+  EmptyState,
+  ErrorState,
+  KpiGridSkeleton,
+  MetricCard,
+  PageHeader,
+} from "@/components/ui-bits";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/exposicao")({
@@ -117,23 +126,9 @@ function sourceLabel(source: string | null): string {
 }
 
 function CoverageBadge({ coverage }: { coverage: number }) {
-  if (coverage >= 99.5)
-    return (
-      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-        Completa
-      </span>
-    );
-  if (coverage > 0)
-    return (
-      <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
-        Parcial
-      </span>
-    );
-  return (
-    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-      Indisponível
-    </span>
-  );
+  if (coverage >= 99.5) return <Badge tone="gain">Completa</Badge>;
+  if (coverage > 0) return <Badge tone="warn">Parcial</Badge>;
+  return <Badge>Indisponível</Badge>;
 }
 
 function ExposicaoPage() {
@@ -142,7 +137,7 @@ function ExposicaoPage() {
   const fetchExposure = useServerFn(getExposure);
   const syncFn = useServerFn(syncAllAssetExposure);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["exposure"],
     queryFn: () => fetchExposure(),
   });
@@ -160,8 +155,8 @@ function ExposicaoPage() {
   const meta = data?.meta ?? [];
 
   const actions = (
-    <Button onClick={() => sync.mutate()} disabled={sync.isPending}>
-      <RefreshCw className={cn("h-4 w-4", sync.isPending && "animate-spin")} />
+    <Button onClick={() => sync.mutate()} loading={sync.isPending}>
+      {!sync.isPending && <RefreshCw aria-hidden className="h-4 w-4" />}
       Atualizar composição
     </Button>
   );
@@ -190,7 +185,14 @@ function ExposicaoPage() {
           subtitle="Exposição económica real da carteira."
           actions={actions}
         />
-        <p className="text-sm text-muted-foreground">A calcular…</p>
+        {isError ? (
+          <ErrorState onRetry={() => void refetch()} />
+        ) : (
+          <div aria-busy="true" aria-label="A calcular a exposição" className="space-y-4">
+            <KpiGridSkeleton count={4} />
+            <Skeleton className="h-64 w-full" />
+          </div>
+        )}
       </div>
     );
   }

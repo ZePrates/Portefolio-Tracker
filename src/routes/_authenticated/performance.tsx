@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Activity } from "lucide-react";
 import {
-  ResponsiveContainer,
   AreaChart,
   Area,
   LineChart,
@@ -30,9 +29,10 @@ import {
 } from "@/lib/performance";
 import type { Asset } from "@/lib/portfolio-types";
 import type { DividendRecord } from "@/lib/dividends";
-import { formatEUR, formatPct } from "@/lib/format";
+import { formatEUR, formatEURCompact, formatPct, formatPeriodKey } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
-import { Button, EmptyState, MetricCard, PageHeader } from "@/components/ui-bits";
+import { Button, Card as UiCard, EmptyState, MetricCard, PageHeader } from "@/components/ui-bits";
+import { AXIS_LINE, AXIS_TICK, ChartFrame, ChartTooltip, GRID_PROPS } from "@/components/chart-kit";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/performance")({
@@ -58,14 +58,7 @@ export const Route = createFileRoute("/_authenticated/performance")({
 
 const PERIODS: PeriodKey[] = ["today", "month", "ytd", "1y", "all"];
 
-const TOOLTIP_STYLE = {
-  background: "var(--color-popover)",
-  border: "1px solid var(--color-border)",
-  borderRadius: "0.5rem",
-  color: "var(--color-foreground)",
-  fontSize: "0.8rem",
-};
-
+/** Cartão da página: título, nota e ações, sobre o Card do design system. */
 function Card({
   title,
   note,
@@ -78,14 +71,9 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4 md:p-5">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold">{title}</h2>
-        {actions}
-      </div>
-      {note && <p className="mt-1 text-xs text-muted-foreground">{note}</p>}
-      <div className="mt-4">{children}</div>
-    </div>
+    <UiCard title={title} description={note} action={actions}>
+      {children}
+    </UiCard>
   );
 }
 
@@ -252,45 +240,60 @@ function PerformancePage() {
         title="Evolução do capital"
         note="Derivada do ledger real (compras, vendas e dividendos). Não existem snapshots diários de valor de mercado, pelo que o valor histórico da carteira não é estimado."
       >
-        {chart.length < 2 ? (
-          <p className="text-sm text-muted-foreground">Dados não disponíveis para este período.</p>
-        ) : (
-          <div className="h-72 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chart}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 11 }}
-                  stroke="var(--color-muted-foreground)"
+        <ChartFrame
+          label="Evolução do capital investido, resultado realizado e dividendos acumulados"
+          height={288}
+          empty={chart.length < 2}
+          emptyLabel="Dados não disponíveis para este período."
+        >
+          <AreaChart data={chart}>
+            <CartesianGrid {...GRID_PROPS} />
+            <XAxis
+              dataKey="date"
+              tick={AXIS_TICK}
+              axisLine={AXIS_LINE}
+              tickLine={false}
+              tickFormatter={(k: string) => formatPeriodKey(k)}
+              minTickGap={24}
+            />
+            <YAxis
+              tick={AXIS_TICK}
+              axisLine={false}
+              tickLine={false}
+              width={52}
+              tickFormatter={(v: number) => (hidden ? "•" : formatEURCompact(v))}
+            />
+            <Tooltip
+              content={
+                <ChartTooltip
+                  labelFormatter={(l) => formatPeriodKey(l, true)}
+                  valueFormatter={(v) => formatEUR(v, hidden)}
                 />
-                <YAxis tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
-                <Tooltip contentStyle={TOOLTIP_STYLE} />
-                <Area
-                  type="monotone"
-                  dataKey="Capital investido"
-                  stroke="var(--color-chart-1)"
-                  fill="var(--color-chart-1)"
-                  fillOpacity={0.15}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="Realizado acumulado"
-                  stroke="var(--color-chart-2)"
-                  fill="var(--color-chart-2)"
-                  fillOpacity={0.15}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="Dividendos acumulados"
-                  stroke="var(--color-chart-3)"
-                  fill="var(--color-chart-3)"
-                  fillOpacity={0.15}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+              }
+            />
+            <Area
+              type="monotone"
+              dataKey="Capital investido"
+              stroke="var(--color-chart-1)"
+              fill="var(--color-chart-1)"
+              fillOpacity={0.15}
+            />
+            <Area
+              type="monotone"
+              dataKey="Realizado acumulado"
+              stroke="var(--color-chart-2)"
+              fill="var(--color-chart-2)"
+              fillOpacity={0.15}
+            />
+            <Area
+              type="monotone"
+              dataKey="Dividendos acumulados"
+              stroke="var(--color-chart-3)"
+              fill="var(--color-chart-3)"
+              fillOpacity={0.15}
+            />
+          </AreaChart>
+        </ChartFrame>
       </Card>
 
       <Card
@@ -323,40 +326,63 @@ function PerformancePage() {
             }
           />
         ) : (
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={snapSeries}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatEUR(v, hidden)} />
-                <Tooltip formatter={(v: number) => formatEUR(v, hidden)} />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="invested"
-                  name="Capital investido"
-                  stroke="#64748b"
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="marketValue"
-                  name="Valor de mercado"
-                  stroke="#2563eb"
-                  dot={false}
-                  connectNulls
-                />
-                <Line
-                  type="monotone"
-                  dataKey="unrealized"
-                  name="Lucro não realizado"
-                  stroke="#16a34a"
-                  dot={false}
-                  connectNulls
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          <ChartFrame
+            label="Valor de mercado, capital investido e lucro não realizado ao longo do tempo"
+            height={288}
+          >
+            <LineChart data={snapSeries}>
+              <CartesianGrid {...GRID_PROPS} />
+              <XAxis
+                dataKey="date"
+                tick={AXIS_TICK}
+                axisLine={AXIS_LINE}
+                tickLine={false}
+                tickFormatter={(k: string) => formatPeriodKey(k)}
+                minTickGap={24}
+              />
+              <YAxis
+                tick={AXIS_TICK}
+                axisLine={false}
+                tickLine={false}
+                width={52}
+                tickFormatter={(v: number) => (hidden ? "•" : formatEURCompact(v))}
+              />
+              <Tooltip
+                content={
+                  <ChartTooltip
+                    labelFormatter={(l) => formatPeriodKey(l, true)}
+                    valueFormatter={(v) => formatEUR(v, hidden)}
+                  />
+                }
+              />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Line
+                type="monotone"
+                dataKey="invested"
+                name="Capital investido"
+                stroke="var(--color-chart-8)"
+                strokeDasharray="4 3"
+                dot={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="marketValue"
+                name="Valor de mercado"
+                stroke="var(--color-chart-3)"
+                strokeWidth={2}
+                dot={false}
+                connectNulls
+              />
+              <Line
+                type="monotone"
+                dataKey="unrealized"
+                name="Lucro não realizado"
+                stroke="var(--color-chart-2)"
+                dot={false}
+                connectNulls
+              />
+            </LineChart>
+          </ChartFrame>
         )}
       </Card>
 
