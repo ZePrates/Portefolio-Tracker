@@ -11,7 +11,13 @@ import {
   totalQuantity,
   type LedgerEntry,
 } from "@/lib/fifo";
-import { currentRateOf, needsHistoricalRate, resolveTradeFx, type TradeFx } from "@/lib/fx";
+import {
+  currentRateOf,
+  nativeAverageCost,
+  needsHistoricalRate,
+  resolveTradeFx,
+  type TradeFx,
+} from "@/lib/fx";
 import { dbError } from "@/lib/errors";
 import { stripLedgerFields } from "@/lib/asset-class";
 import { currencyCode, isinCode, isoDate, tradeDate } from "@/lib/validation";
@@ -291,7 +297,7 @@ async function tradeFx(
  * Única fonte de verdade para `assets.quantity/invested_amount/realized_pl`.
  */
 export async function recomputeAsset(supabase: SupabaseLike, assetId: string) {
-  const { asset, entries } = await loadPosition(supabase, assetId);
+  const { asset, txs, entries } = await loadPosition(supabase, assetId);
   const replay = replayLedger(entries);
 
   // Só atualiza as vendas (normalmente poucas); em paralelo, não uma a uma.
@@ -315,6 +321,12 @@ export async function recomputeAsset(supabase: SupabaseLike, assetId: string) {
   const cost = totalCost(replay.lots);
   const closed = quantity <= 1e-9;
   const rate = currentRateOf(asset);
+  const nativeAvg = closed
+    ? null
+    : nativeAverageCost(
+        replay.lots,
+        new Map(txs.map((t) => [t.id, Number(t.fx_rate)] as [string, number])),
+      );
   const { error } = await supabase
     .from("assets")
     .update({
@@ -323,7 +335,8 @@ export async function recomputeAsset(supabase: SupabaseLike, assetId: string) {
       average_price: closed ? asset.average_price : cost / quantity,
       current_value: closed ? 0 : quantity * Number(asset.current_price ?? 0),
       purchase_price_native:
-        !closed && rate && rate > 0 ? cost / quantity / rate : asset.purchase_price_native,
+        nativeAvg ??
+        (!closed && rate && rate > 0 ? cost / quantity / rate : asset.purchase_price_native),
       realized_pl: replay.realizedPL,
       total_fees: replay.fees,
       status: closed ? "closed" : "open",

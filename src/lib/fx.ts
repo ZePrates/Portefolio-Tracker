@@ -68,3 +68,24 @@ export function currentRateOf(asset: {
   }
   return null;
 }
+
+/**
+ * Preço médio de compra na moeda do ativo, a partir dos lotes abertos: cada lote
+ * é convertido com o câmbio do seu próprio movimento (não o de hoje), por isso
+ * um ativo comprado a 201,36 USD continua a mostrar 201,36 USD.
+ * Devolve `null` se algum lote não tiver câmbio conhecido.
+ */
+export function nativeAverageCost(
+  lots: { id?: string; quantity: number; unitCost: number }[],
+  rateByLotId: Map<string, number>,
+): number | null {
+  let qty = 0;
+  let cost = 0;
+  for (const l of lots) {
+    const rate = l.id ? rateByLotId.get(l.id) : undefined;
+    if (!rate || !(rate > 0)) return null;
+    qty += l.quantity;
+    cost += (l.quantity * l.unitCost) / rate;
+  }
+  return qty > 0 ? cost / qty : null;
+}
