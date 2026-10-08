@@ -7,6 +7,8 @@ import {
   stripLedgerFields,
 } from "./asset-class";
 import type { Asset } from "./portfolio-types";
+import { CLASS_LABELS, CLASS_ORDER } from "./portfolio-types";
+import { ASSETS_NAV } from "@/components/nav-config";
 
 describe("regras por classe", () => {
   it("classifica títulos, ativos por quantidade e pagadores de dividendos", () => {
