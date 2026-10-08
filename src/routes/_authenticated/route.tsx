@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppSidebar } from "@/components/app-sidebar";
 import { PrivateModeProvider } from "@/components/private-mode";
 import { ConfirmProvider } from "@/components/ui-bits";
+import { AppShellProvider } from "@/components/app-shell";
 import { ensureDailySnapshot } from "@/lib/snapshots.functions";
 
 /** Uma tentativa de fotografia diária por sessão do browser. */
@@ -42,20 +43,22 @@ function AuthenticatedLayout() {
   return (
     <PrivateModeProvider>
       <ConfirmProvider>
-        <a
-          href="#conteudo"
-          className="sr-only z-[70] rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
-        >
-          Saltar para o conteúdo
-        </a>
-        <div className="min-h-screen bg-background">
-          <AppSidebar />
-          <main id="conteudo" tabIndex={-1} className="outline-none lg:pl-60">
-            <div className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8">
-              <Outlet />
-            </div>
-          </main>
-        </div>
+        <AppShellProvider>
+          <a
+            href="#conteudo"
+            className="sr-only z-[70] rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+          >
+            Saltar para o conteúdo
+          </a>
+          <div className="min-h-screen bg-background">
+            <AppSidebar />
+            <main id="conteudo" tabIndex={-1} className="outline-none lg:pl-60">
+              <div className="mx-auto max-w-6xl px-4 pb-28 pt-6 md:px-8 md:py-8 lg:pb-8">
+                <Outlet />
+              </div>
+            </main>
+          </div>
+        </AppShellProvider>
       </ConfirmProvider>
     </PrivateModeProvider>
   );
