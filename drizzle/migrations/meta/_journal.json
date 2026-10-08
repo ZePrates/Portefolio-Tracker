@@ -15,6 +15,13 @@
       "when": 1791502868883,
       "tag": "0001_sync_missing_schema_and_tighten_security_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791502889394,
+      "tag": "0002_sync_portfolio_snapshots",
+      "breakpoints": true
     }
   ]
 }
