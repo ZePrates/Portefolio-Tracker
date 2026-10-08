@@ -15,10 +15,13 @@ import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedAcoesCrescimentoRouteImport } from './routes/_authenticated/acoes-crescimento'
 import { Route as AuthenticatedAcoesDividendosRouteImport } from './routes/_authenticated/acoes-dividendos'
 import { Route as AuthenticatedAnaliseRouteImport } from './routes/_authenticated/analise'
+import { Route as AuthenticatedCalendarioRouteImport } from './routes/_authenticated/calendario'
 import { Route as AuthenticatedDividendosRouteImport } from './routes/_authenticated/dividendos'
 import { Route as AuthenticatedEtfsRouteImport } from './routes/_authenticated/etfs'
 import { Route as AuthenticatedExposicaoRouteImport } from './routes/_authenticated/exposicao'
+import { Route as AuthenticatedImportarRouteImport } from './routes/_authenticated/importar'
 import { Route as AuthenticatedInteligenciaRouteImport } from './routes/_authenticated/inteligencia'
+import { Route as AuthenticatedIrsRouteImport } from './routes/_authenticated/irs'
 import { Route as AuthenticatedMetaisRouteImport } from './routes/_authenticated/metais'
 import { Route as AuthenticatedObjetivosRouteImport } from './routes/_authenticated/objetivos'
 import { Route as AuthenticatedP2pRouteImport } from './routes/_authenticated/p2p'
@@ -58,6 +61,11 @@ const AuthenticatedAnaliseRoute = AuthenticatedAnaliseRouteImport.update({
   path: '/analise',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCalendarioRoute = AuthenticatedCalendarioRouteImport.update({
+  id: '/calendario',
+  path: '/calendario',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDividendosRoute = AuthenticatedDividendosRouteImport.update({
   id: '/dividendos',
   path: '/dividendos',
@@ -73,12 +81,22 @@ const AuthenticatedExposicaoRoute = AuthenticatedExposicaoRouteImport.update({
   path: '/exposicao',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedImportarRoute = AuthenticatedImportarRouteImport.update({
+  id: '/importar',
+  path: '/importar',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedInteligenciaRoute =
   AuthenticatedInteligenciaRouteImport.update({
     id: '/inteligencia',
     path: '/inteligencia',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedIrsRoute = AuthenticatedIrsRouteImport.update({
+  id: '/irs',
+  path: '/irs',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedMetaisRoute = AuthenticatedMetaisRouteImport.update({
   id: '/metais',
   path: '/metais',
@@ -122,10 +140,13 @@ export interface FileRoutesByFullPath {
   '/acoes-crescimento': typeof AuthenticatedAcoesCrescimentoRoute
   '/acoes-dividendos': typeof AuthenticatedAcoesDividendosRoute
   '/analise': typeof AuthenticatedAnaliseRoute
+  '/calendario': typeof AuthenticatedCalendarioRoute
   '/dividendos': typeof AuthenticatedDividendosRoute
   '/etfs': typeof AuthenticatedEtfsRoute
   '/exposicao': typeof AuthenticatedExposicaoRoute
+  '/importar': typeof AuthenticatedImportarRoute
   '/inteligencia': typeof AuthenticatedInteligenciaRoute
+  '/irs': typeof AuthenticatedIrsRoute
   '/metais': typeof AuthenticatedMetaisRoute
   '/objetivos': typeof AuthenticatedObjetivosRoute
   '/p2p': typeof AuthenticatedP2pRoute
@@ -139,10 +160,13 @@ export interface FileRoutesByTo {
   '/acoes-crescimento': typeof AuthenticatedAcoesCrescimentoRoute
   '/acoes-dividendos': typeof AuthenticatedAcoesDividendosRoute
   '/analise': typeof AuthenticatedAnaliseRoute
+  '/calendario': typeof AuthenticatedCalendarioRoute
   '/dividendos': typeof AuthenticatedDividendosRoute
   '/etfs': typeof AuthenticatedEtfsRoute
   '/exposicao': typeof AuthenticatedExposicaoRoute
+  '/importar': typeof AuthenticatedImportarRoute
   '/inteligencia': typeof AuthenticatedInteligenciaRoute
+  '/irs': typeof AuthenticatedIrsRoute
   '/metais': typeof AuthenticatedMetaisRoute
   '/objetivos': typeof AuthenticatedObjetivosRoute
   '/p2p': typeof AuthenticatedP2pRoute
@@ -159,10 +183,13 @@ export interface FileRoutesById {
   '/_authenticated/acoes-crescimento': typeof AuthenticatedAcoesCrescimentoRoute
   '/_authenticated/acoes-dividendos': typeof AuthenticatedAcoesDividendosRoute
   '/_authenticated/analise': typeof AuthenticatedAnaliseRoute
+  '/_authenticated/calendario': typeof AuthenticatedCalendarioRoute
   '/_authenticated/dividendos': typeof AuthenticatedDividendosRoute
   '/_authenticated/etfs': typeof AuthenticatedEtfsRoute
   '/_authenticated/exposicao': typeof AuthenticatedExposicaoRoute
+  '/_authenticated/importar': typeof AuthenticatedImportarRoute
   '/_authenticated/inteligencia': typeof AuthenticatedInteligenciaRoute
+  '/_authenticated/irs': typeof AuthenticatedIrsRoute
   '/_authenticated/metais': typeof AuthenticatedMetaisRoute
   '/_authenticated/objetivos': typeof AuthenticatedObjetivosRoute
   '/_authenticated/p2p': typeof AuthenticatedP2pRoute
@@ -180,10 +207,13 @@ export interface FileRouteTypes {
     | '/acoes-crescimento'
     | '/acoes-dividendos'
     | '/analise'
+    | '/calendario'
     | '/dividendos'
     | '/etfs'
     | '/exposicao'
+    | '/importar'
     | '/inteligencia'
+    | '/irs'
     | '/metais'
     | '/objetivos'
     | '/p2p'
@@ -197,10 +227,13 @@ export interface FileRouteTypes {
     | '/acoes-crescimento'
     | '/acoes-dividendos'
     | '/analise'
+    | '/calendario'
     | '/dividendos'
     | '/etfs'
     | '/exposicao'
+    | '/importar'
     | '/inteligencia'
+    | '/irs'
     | '/metais'
     | '/objetivos'
     | '/p2p'
@@ -216,10 +249,13 @@ export interface FileRouteTypes {
     | '/_authenticated/acoes-crescimento'
     | '/_authenticated/acoes-dividendos'
     | '/_authenticated/analise'
+    | '/_authenticated/calendario'
     | '/_authenticated/dividendos'
     | '/_authenticated/etfs'
     | '/_authenticated/exposicao'
+    | '/_authenticated/importar'
     | '/_authenticated/inteligencia'
+    | '/_authenticated/irs'
     | '/_authenticated/metais'
     | '/_authenticated/objetivos'
     | '/_authenticated/p2p'
@@ -279,6 +315,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAnaliseRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/calendario': {
+      id: '/_authenticated/calendario'
+      path: '/calendario'
+      fullPath: '/calendario'
+      preLoaderRoute: typeof AuthenticatedCalendarioRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dividendos': {
       id: '/_authenticated/dividendos'
       path: '/dividendos'
@@ -300,11 +343,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedExposicaoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/importar': {
+      id: '/_authenticated/importar'
+      path: '/importar'
+      fullPath: '/importar'
+      preLoaderRoute: typeof AuthenticatedImportarRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/inteligencia': {
       id: '/_authenticated/inteligencia'
       path: '/inteligencia'
       fullPath: '/inteligencia'
       preLoaderRoute: typeof AuthenticatedInteligenciaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/irs': {
+      id: '/_authenticated/irs'
+      path: '/irs'
+      fullPath: '/irs'
+      preLoaderRoute: typeof AuthenticatedIrsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/metais': {
@@ -363,10 +420,13 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAcoesCrescimentoRoute: typeof AuthenticatedAcoesCrescimentoRoute
   AuthenticatedAcoesDividendosRoute: typeof AuthenticatedAcoesDividendosRoute
   AuthenticatedAnaliseRoute: typeof AuthenticatedAnaliseRoute
+  AuthenticatedCalendarioRoute: typeof AuthenticatedCalendarioRoute
   AuthenticatedDividendosRoute: typeof AuthenticatedDividendosRoute
   AuthenticatedEtfsRoute: typeof AuthenticatedEtfsRoute
   AuthenticatedExposicaoRoute: typeof AuthenticatedExposicaoRoute
+  AuthenticatedImportarRoute: typeof AuthenticatedImportarRoute
   AuthenticatedInteligenciaRoute: typeof AuthenticatedInteligenciaRoute
+  AuthenticatedIrsRoute: typeof AuthenticatedIrsRoute
   AuthenticatedMetaisRoute: typeof AuthenticatedMetaisRoute
   AuthenticatedObjetivosRoute: typeof AuthenticatedObjetivosRoute
   AuthenticatedP2pRoute: typeof AuthenticatedP2pRoute
@@ -381,10 +441,13 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAcoesCrescimentoRoute: AuthenticatedAcoesCrescimentoRoute,
   AuthenticatedAcoesDividendosRoute: AuthenticatedAcoesDividendosRoute,
   AuthenticatedAnaliseRoute: AuthenticatedAnaliseRoute,
+  AuthenticatedCalendarioRoute: AuthenticatedCalendarioRoute,
   AuthenticatedDividendosRoute: AuthenticatedDividendosRoute,
   AuthenticatedEtfsRoute: AuthenticatedEtfsRoute,
   AuthenticatedExposicaoRoute: AuthenticatedExposicaoRoute,
+  AuthenticatedImportarRoute: AuthenticatedImportarRoute,
   AuthenticatedInteligenciaRoute: AuthenticatedInteligenciaRoute,
+  AuthenticatedIrsRoute: AuthenticatedIrsRoute,
   AuthenticatedMetaisRoute: AuthenticatedMetaisRoute,
   AuthenticatedObjetivosRoute: AuthenticatedObjetivosRoute,
   AuthenticatedP2pRoute: AuthenticatedP2pRoute,

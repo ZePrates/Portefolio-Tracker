@@ -22,7 +22,13 @@ import { usePrivateMode } from "@/components/private-mode";
 import { useTheme, type ThemeChoice } from "@/components/theme";
 import { useAppShell } from "@/components/app-shell";
 import { Modal } from "@/components/ui-bits";
-import { ANALYSIS_NAV, ASSETS_NAV, DASHBOARD_NAV, type NavItem } from "@/components/nav-config";
+import {
+  ANALYSIS_NAV,
+  ASSETS_NAV,
+  DASHBOARD_NAV,
+  TOOLS_NAV,
+  type NavItem,
+} from "@/components/nav-config";
 import { cn } from "@/lib/utils";
 
 const THEMES: Array<{ value: ThemeChoice; label: string; icon: typeof Sun }> = [
@@ -147,6 +153,11 @@ function DesktopSidebar() {
           Análise
         </p>
         <NavLinks items={ANALYSIS_NAV} />
+
+        <p className="px-3 pb-2 pt-6 text-micro font-bold uppercase tracking-[0.15em] text-muted-foreground">
+          Ferramentas
+        </p>
+        <NavLinks items={TOOLS_NAV} />
       </nav>
 
       <div className="space-y-1 border-t border-sidebar-border px-3 py-3">
@@ -312,7 +323,8 @@ function MobileBottomNav() {
       </Modal>
       <Modal open={sheet === "mais"} onClose={close} title="Mais">
         <div className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
+          <SheetLinks items={TOOLS_NAV} onNavigate={close} />
+          <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
             <span className="text-sm font-medium">Tema</span>
             <ThemeToggle />
           </div>

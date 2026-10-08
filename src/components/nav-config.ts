@@ -1,9 +1,11 @@
 import {
   Activity,
   Building2,
+  CalendarDays,
   Calculator,
   Coins,
   DollarSign,
+  FileUp,
   Gem,
   Globe,
   Goal,
@@ -12,6 +14,7 @@ import {
   LayoutDashboard,
   Lightbulb,
   PieChart,
+  Receipt,
   Target,
   TrendingUp,
 } from "lucide-react";
@@ -98,10 +101,35 @@ export const ANALYSIS_NAV: NavItem[] = [
   },
 ];
 
+export const TOOLS_NAV: NavItem[] = [
+  {
+    to: "/calendario",
+    label: "Calendário de dividendos",
+    icon: CalendarDays,
+    key: "k",
+    keywords: "próximos pagamentos projeção",
+  },
+  {
+    to: "/irs",
+    label: "Resumo fiscal (IRS)",
+    icon: Receipt,
+    key: "t",
+    keywords: "impostos mais-valias anexo g j e",
+  },
+  {
+    to: "/importar",
+    label: "Importar extrato XTB",
+    icon: FileUp,
+    key: "u",
+    keywords: "csv broker conciliar",
+  },
+];
+
 export const NAV_GROUPS: NavGroup[] = [
   { id: "inicio", label: "Início", items: DASHBOARD_NAV },
   { id: "ativos", label: "Ativos", items: ASSETS_NAV },
   { id: "analise", label: "Análise", items: ANALYSIS_NAV },
+  { id: "ferramentas", label: "Ferramentas", items: TOOLS_NAV },
 ];
 
 export const ALL_NAV: NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
