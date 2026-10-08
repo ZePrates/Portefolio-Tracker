@@ -48,6 +48,13 @@ export const DASHBOARD_NAV: NavItem[] = [
 
 export const ASSETS_NAV: NavItem[] = [
   { to: "/etfs", label: "ETFs", icon: Layers, key: "e", keywords: "fundos índice carteira" },
+  {
+    to: "/acoes-crescimento",
+    label: "Ações Crescimento",
+    icon: TrendingUp,
+    key: "c",
+    keywords: "ações growth",
+  },
   { to: "/reits", label: "REITs", icon: Building2, key: "r", keywords: "imobiliário" },
   {
     to: "/acoes-dividendos",
@@ -55,13 +62,6 @@ export const ASSETS_NAV: NavItem[] = [
     icon: DollarSign,
     key: "a",
     keywords: "ações dividendo",
-  },
-  {
-    to: "/acoes-crescimento",
-    label: "Ações Crescimento",
-    icon: TrendingUp,
-    key: "c",
-    keywords: "ações growth",
   },
   { to: "/metais", label: "Metais Preciosos", icon: Gem, key: "m", keywords: "ouro prata" },
   { to: "/p2p", label: "P2P", icon: Handshake, key: "p", keywords: "crowdlending empréstimos" },
