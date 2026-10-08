@@ -19,6 +19,8 @@ import { Pie, PieChart, Cell, Tooltip, XAxis, YAxis, CartesianGrid, BarChart, Ba
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { listPortfolioSnapshots } from "@/lib/snapshots.functions";
+import { getDividendCalendar } from "@/lib/insights.functions";
+import { PassiveIncomeCard } from "@/components/passive-income-card";
 import { DashboardHero, DashboardHeroSkeleton } from "@/components/dashboard-hero";
 import { heroSeries, periodChange } from "@/lib/dashboard-period";
 import { listAssets, listDividends, listTransactions } from "@/lib/portfolio.functions";
@@ -236,6 +238,7 @@ function DashboardPage() {
   const fetchFire = useServerFn(getFireProgress);
   const fetchAlerts = useServerFn(getDataQualityAlerts);
   const fetchSnapshots = useServerFn(listPortfolioSnapshots);
+  const fetchCalendar = useServerFn(getDividendCalendar);
   const refreshFn = useServerFn(updateAllPrices);
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
@@ -294,6 +297,10 @@ function DashboardPage() {
     queryFn: () => fetchExposure(),
   });
   const { data: fire } = useQuery({ queryKey: ["fire"], queryFn: () => fetchFire() });
+  const { data: calendar } = useQuery({
+    queryKey: ["dividend-calendar", 12],
+    queryFn: () => fetchCalendar({ data: { months: 12 } }),
+  });
   const { data: snapshotsRaw } = useQuery({
     queryKey: ["portfolio-snapshots"],
     queryFn: () => fetchSnapshots(),
@@ -332,6 +339,7 @@ function DashboardPage() {
   const best = useMemo(() => bestPerformers(perf, 5), [perf]);
   const worst = useMemo(() => worstPerformers(perf, 5), [perf]);
   const divs = useMemo(() => dividendSummary(dividends, range), [dividends, range]);
+  const last12 = useMemo(() => dividendSummary(dividends, periodRange("1y")).period, [dividends]);
   const realizedPeriod = useMemo(() => realizedInRange(transactions, range), [transactions, range]);
   const snapshots = useMemo(() => snapshotsRaw ?? [], [snapshotsRaw]);
   const change = useMemo(
@@ -489,13 +497,22 @@ function DashboardPage() {
         hidden={hidden}
       />
 
+      <PassiveIncomeCard
+        byMonth={divs.byMonth}
+        last12={last12}
+        yieldOnCost={summary.yieldOnCost}
+        sinceStart={divs.total}
+        upcoming={calendar?.events}
+        hidden={hidden}
+      />
+
       {/* 2 · Estou no caminho? */}
       <Section
         id="sec-caminho"
         title="Estou no caminho?"
         hint="Objetivo de independência financeira (FIRE)"
       >
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-4">
           <Card
             headingLevel={3}
             title="Progresso FIRE"
@@ -549,58 +566,6 @@ function DashboardPage() {
                 </dl>
               </div>
             )}
-          </Card>
-
-          <Card
-            headingLevel={3}
-            title="Dividendos por mês"
-            icon={<Coins aria-hidden className="h-4 w-4 text-primary" />}
-            action={
-              <Link to="/dividendos" className="text-primary hover:underline">
-                Ver detalhe
-              </Link>
-            }
-          >
-            <ChartFrame
-              label={`Dividendos recebidos por mês, últimos ${Math.min(18, divs.byMonth.length)} meses`}
-              height={208}
-              empty={divs.byMonth.length === 0}
-              emptyLabel="Ainda não há dividendos recebidos."
-            >
-              <BarChart data={divs.byMonth.slice(-18)}>
-                <CartesianGrid {...GRID_PROPS} />
-                <XAxis
-                  dataKey="key"
-                  tick={AXIS_TICK}
-                  axisLine={AXIS_LINE}
-                  tickLine={false}
-                  tickFormatter={(k: string) => formatPeriodKey(k)}
-                  minTickGap={16}
-                />
-                <YAxis
-                  tick={AXIS_TICK}
-                  axisLine={false}
-                  tickLine={false}
-                  width={44}
-                  tickFormatter={(v: number) => (hidden ? "•" : formatCompact(v))}
-                />
-                <Tooltip
-                  cursor={{ fill: "var(--color-accent)", opacity: 0.4 }}
-                  content={
-                    <ChartTooltip
-                      labelFormatter={(l) => formatPeriodKey(l, true)}
-                      valueFormatter={(v) => formatEUR(v, hidden)}
-                    />
-                  }
-                />
-                <Bar
-                  dataKey="amount"
-                  name="Dividendos"
-                  fill="var(--color-chart-2)"
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ChartFrame>
           </Card>
         </div>
       </Section>
@@ -755,33 +720,6 @@ function DashboardPage() {
             hidden={hidden}
           />
         </div>
-
-        <Card
-          headingLevel={3}
-          title="Dividendos por ativo"
-          icon={<Coins aria-hidden className="h-4 w-4 text-primary" />}
-        >
-          {divs.byAsset.length === 0 ? (
-            <NoData label="Ainda não há dividendos recebidos." />
-          ) : (
-            <ul className="space-y-2">
-              {divs.byAsset.slice(0, 8).map((r) => (
-                <li
-                  key={r.assetId ?? r.assetName}
-                  className="flex items-center justify-between gap-3 text-sm"
-                >
-                  <span className="min-w-0 flex-1 truncate">{r.assetName}</span>
-                  <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
-                    {r.count} {r.count === 1 ? "pagamento" : "pagamentos"}
-                  </span>
-                  <span className="num w-24 shrink-0 text-right font-medium">
-                    {formatEUR(r.total, hidden)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
       </div>
     </div>
   );
