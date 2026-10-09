@@ -129,4 +129,14 @@ describe("dataQualityAlerts", () => {
     );
     expect(out.map((a) => a.severity)).toEqual(["error", "warning"]);
   });
+
+  it("P2P importado há mais de 40 dias pede nova importação", () => {
+    const p2p = asset({ id: "s", class: "p2p", quantity: 0, current_price: 0, ticker: null });
+    const at = (last: string) =>
+      codes(base({ assets: [p2p], p2pLastMovement: new Map([["s", last]]) }));
+    expect(at("2026-08-20")).toEqual(["p2p_stale_import"]);
+    expect(at("2026-10-05")).toEqual([]);
+    // P2P manual (sem movimentos importados) não é avisado.
+    expect(codes(base({ assets: [p2p] }))).toEqual([]);
+  });
 });

@@ -113,7 +113,7 @@ export const getFireProgress = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const sb = context.supabase;
-    const [settingsRes, assetsRes, divRes] = await Promise.all([
+    const [settingsRes, assetsRes, divRes, p2pRes] = await Promise.all([
       sb.from("fire_settings").select("*").maybeSingle(),
       sb.from("assets").select("*"),
       sb
@@ -121,8 +121,13 @@ export const getFireProgress = createServerFn({ method: "GET" })
         .select(
           "asset_id, asset_name, amount, gross_amount, net_amount, paid_at, payment_date, status",
         ),
+      // Juros P2P (Scramble) também são rendimento passivo.
+      sb
+        .from("p2p_cash_movements")
+        .select("asset_id, occurred_on, amount")
+        .in("type", ["interest", "interest_increased"]),
     ]);
-    for (const r of [settingsRes, assetsRes, divRes]) if (r.error) throw dbError(r.error);
+    for (const r of [settingsRes, assetsRes, divRes, p2pRes]) if (r.error) throw dbError(r.error);
     const row = settingsRes.data;
     if (!row) return { settings: null, progress: null };
 
@@ -136,7 +141,19 @@ export const getFireProgress = createServerFn({ method: "GET" })
     const assets = (assetsRes.data ?? []) as Asset[];
     const value = assets.filter(isOpenPosition).reduce((s, a) => s + assetCurrentValue(a), 0);
     const today = todayLisbon();
-    const passive = receivedLast12Months((divRes.data ?? []) as DividendRecord[], today, "net");
+    const p2pIncome: DividendRecord[] = (p2pRes.data ?? []).map((m) => ({
+      asset_id: m.asset_id,
+      asset_name: "P2P",
+      amount: Number(m.amount),
+      paid_at: m.occurred_on,
+      payment_date: m.occurred_on,
+      status: "received",
+    }));
+    const passive = receivedLast12Months(
+      [...((divRes.data ?? []) as DividendRecord[]), ...p2pIncome],
+      today,
+      "net",
+    );
     return { settings, progress: fireProgress(settings, value, passive, today) };
   });
 

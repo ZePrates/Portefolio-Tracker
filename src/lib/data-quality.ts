@@ -21,7 +21,8 @@ export type AlertCode =
   | "dividend_without_tax"
   | "unknown_withholding"
   | "estimated_payment_dates"
-  | "fx_unconfirmed";
+  | "fx_unconfirmed"
+  | "p2p_stale_import";
 
 export interface DataQualityAlert {
   code: AlertCode;
@@ -70,7 +71,12 @@ export interface DqInput {
   today: string;
   /** Dias até um preço ser considerado desatualizado. */
   stalePriceDays?: number;
+  /** P2P importado (Scramble): data do último movimento por ativo. */
+  p2pLastMovement?: Map<string, string>;
 }
+
+/** Sem importar há mais de um mês, o calendário e os juros ficam desatualizados. */
+const P2P_STALE_DAYS = 40;
 
 const SEVERITY_ORDER: Record<AlertSeverity, number> = { error: 0, warning: 1, info: 2 };
 
@@ -115,6 +121,18 @@ export function dataQualityAlerts(input: DqInput): DataQualityAlert[] {
           message: e instanceof Error ? e.message : "Livro de movimentos inválido.",
         });
       }
+    }
+
+    // P2P não tem quantidade: conta como aberto enquanto não estiver fechado.
+    const p2pLast =
+      a.class === "p2p" && a.status !== "closed" ? input.p2pLastMovement?.get(a.id) : undefined;
+    if (p2pLast && p2pLast < addDaysISO(today, -P2P_STALE_DAYS)) {
+      out.push({
+        ...ref,
+        code: "p2p_stale_import",
+        severity: "warning",
+        message: `Último movimento importado a ${p2pLast}: importa os relatórios mais recentes da plataforma.`,
+      });
     }
 
     if (!open) continue;

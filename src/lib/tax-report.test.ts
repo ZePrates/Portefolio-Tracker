@@ -200,3 +200,94 @@ describe("annualTaxReport — dividendos", () => {
     expect(r.aggregated).toEqual({ marginalRate: 0.37, total: 29.4 });
   });
 });
+
+describe("annualTaxReport — juros P2P", () => {
+  const interest = [
+    {
+      assetId: "s",
+      assetName: "Scramble",
+      date: "2026-10-05",
+      amount: 5.8,
+      country: "EE",
+      kind: "interest" as const,
+    },
+    {
+      assetId: "s",
+      assetName: "Scramble",
+      date: "2026-10-05",
+      amount: 0.22,
+      country: "EE",
+      kind: "interest" as const,
+    },
+    {
+      assetId: "s",
+      assetName: "Scramble",
+      date: "2026-09-17",
+      amount: 1.2,
+      country: "EE",
+      kind: "bonus" as const,
+    },
+    {
+      assetId: "s",
+      assetName: "Scramble",
+      date: "2025-12-05",
+      amount: 3,
+      country: "EE",
+      kind: "interest" as const,
+    },
+  ];
+
+  it("agrega no Anexo J, quadro 8A, código E21, pelo ano do pagamento", () => {
+    const r = annualTaxReport({
+      year: 2026,
+      assets: [],
+      transactions: [],
+      dividends: [],
+      interest,
+      today: "2026-12-31",
+    });
+    expect(r.interest).toEqual([
+      {
+        assetId: "s",
+        assetName: "Scramble",
+        country: "EE",
+        annex: "J",
+        code: "E21",
+        gross: 6.02,
+        taxWithheld: 0,
+        net: 6.02,
+        count: 2,
+      },
+    ]);
+    expect(r.totals.interestGross).toBe(6.02);
+    expect(r.autonomous.interestTaxDue).toBeCloseTo(6.02 * 0.28, 2);
+    expect(r.autonomous.total).toBeCloseTo(6.02 * 0.28, 2);
+  });
+
+  it("separa os bónus e avisa para confirmar o enquadramento", () => {
+    const r = annualTaxReport({
+      year: 2026,
+      assets: [],
+      transactions: [],
+      dividends: [],
+      interest,
+      today: "2026-12-31",
+    });
+    expect(r.bonuses).toEqual([{ assetId: "s", assetName: "Scramble", amount: 1.2 }]);
+    expect(r.totals.bonuses).toBe(1.2);
+    expect(r.warnings.join(" ")).toMatch(/bónus/);
+  });
+
+  it("englobamento: juros contam 100%", () => {
+    const r = annualTaxReport({
+      year: 2025,
+      assets: [],
+      transactions: [],
+      dividends: [],
+      interest,
+      today: "2026-01-10",
+      marginalRate: 0.37,
+    });
+    expect(r.aggregated).toEqual({ marginalRate: 0.37, total: 1.11 });
+  });
+});

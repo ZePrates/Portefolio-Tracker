@@ -164,5 +164,20 @@ export function taxReportCsv(report: TaxReport): string {
     ],
     { bom: false },
   );
-  return `${gains}\r\nDividendos ${report.year}\r\n${divs}`;
+  const base = `${gains}\r\nDividendos ${report.year}\r\n${divs}`;
+  if (report.interest.length === 0) return base;
+  const interest = toCsvPt(
+    report.interest,
+    [
+      { header: "Anexo", value: (r) => r.annex },
+      { header: "Código", value: (r) => r.code },
+      { header: "País", value: (r) => r.country ?? "" },
+      { header: "Ativo", value: (r) => r.assetName },
+      { header: "Bruto (EUR)", value: (r) => r.gross, type: "money" },
+      { header: "Imposto retido (EUR)", value: (r) => r.taxWithheld, type: "money" },
+      { header: "Líquido (EUR)", value: (r) => r.net, type: "money" },
+    ],
+    { bom: false },
+  );
+  return `${base}\r\nJuros P2P ${report.year}\r\n${interest}`;
 }

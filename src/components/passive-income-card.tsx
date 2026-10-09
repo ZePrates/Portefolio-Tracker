@@ -112,10 +112,10 @@ export function PassiveIncomeCard({
 
         <div className="hidden min-w-0 md:block">
           <ChartFrame
-            label={`Dividendos recebidos por mês, últimos ${MONTHS_SHOWN} meses`}
+            label={`Dividendos e juros recebidos por mês, últimos ${MONTHS_SHOWN} meses`}
             height={150}
             empty={!hasHistory}
-            emptyLabel="Ainda não há dividendos recebidos."
+            emptyLabel="Ainda não há dividendos nem juros recebidos."
           >
             <BarChart data={months} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
               <XAxis
@@ -137,7 +137,7 @@ export function PassiveIncomeCard({
               />
               <Bar
                 dataKey="amount"
-                name="Dividendos"
+                name="Rendimento"
                 radius={[4, 4, 0, 0]}
                 isAnimationActive={false}
               >
@@ -155,7 +155,7 @@ export function PassiveIncomeCard({
 
         <div className="min-w-0">
           <h3 className="mb-2 text-[13px] font-medium text-muted-foreground">
-            Próximos dividendos <span className="font-normal">(estimativa)</span>
+            Próximos rendimentos <span className="font-normal">(estimativa)</span>
           </h3>
           {upcoming === undefined ? (
             <p className="py-3 text-[13px] text-muted-foreground">A carregar…</p>

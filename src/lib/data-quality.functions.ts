@@ -10,7 +10,7 @@ export const getDataQualityAlerts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const sb = context.supabase;
-    const [assetsRes, txRes, divRes, holdRes, profRes, dismissedRes] = await Promise.all([
+    const [assetsRes, txRes, divRes, holdRes, profRes, dismissedRes, p2pRes] = await Promise.all([
       sb
         .from("assets")
         .select(
@@ -27,8 +27,13 @@ export const getDataQualityAlerts = createServerFn({ method: "GET" })
       sb.from("etf_holdings").select("asset_id, weight"),
       sb.from("asset_profiles").select("asset_id, domicile_country"),
       sb.from("dismissed_alerts").select("alert_key"),
+      sb
+        .from("p2p_cash_movements")
+        .select("asset_id, occurred_on")
+        .order("occurred_on", { ascending: false })
+        .limit(1000),
     ]);
-    for (const r of [assetsRes, txRes, divRes, holdRes, profRes, dismissedRes])
+    for (const r of [assetsRes, txRes, divRes, holdRes, profRes, dismissedRes, p2pRes])
       if (r.error) throw dbError(r.error);
 
     const coverage = new Map<string, number>();
@@ -40,6 +45,11 @@ export const getDataQualityAlerts = createServerFn({ method: "GET" })
         .filter((p) => p.domicile_country)
         .map((p) => [p.asset_id, p.domicile_country]),
     );
+
+    const p2pLastMovement = new Map<string, string>();
+    for (const m of p2pRes.data ?? []) {
+      if (!p2pLastMovement.has(m.asset_id)) p2pLastMovement.set(m.asset_id, m.occurred_on);
+    }
 
     const dismissed = new Set((dismissedRes.data ?? []).map((d) => d.alert_key));
     const alerts = dataQualityAlerts({
@@ -57,6 +67,7 @@ export const getDataQualityAlerts = createServerFn({ method: "GET" })
       })),
       dividends: divRes.data ?? [],
       holdingsCoverage: coverage,
+      p2pLastMovement,
       today: todayLisbon(),
     }).filter((a) => !dismissed.has(alertKey(a)));
     return { alerts, checkedAt: new Date().toISOString() };
