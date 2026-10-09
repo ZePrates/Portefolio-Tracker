@@ -94,6 +94,21 @@ export const CLASS_LABELS: Record<AssetClass, string> = {
   p2p: "P2P",
 };
 
+/**
+ * Ordem canónica das classes de ativo em toda a app:
+ * ETFs → Ações Crescimento → REITs → Ações Dividendos → Metais Preciosos → P2P.
+ * É a mesma ordem da barra lateral (nav-config). Selectores, gráficos e
+ * tabelas agregadas usam esta lista, nunca Object.keys(CLASS_LABELS).
+ */
+export const CLASS_ORDER: AssetClass[] = [
+  "etf",
+  "acao_crescimento",
+  "reit",
+  "acao_dividendo",
+  "metal",
+  "p2p",
+];
+
 /** Uma posição está aberta quando ainda há algo detido. */
 export function isOpenPosition(a: Asset): boolean {
   if (a.status === "closed") return false;

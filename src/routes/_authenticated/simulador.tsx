@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { listAssets } from "@/lib/portfolio.functions";
 import { analyzePurchase } from "@/lib/decision";
-import { CLASS_LABELS, type AssetClass, type Asset } from "@/lib/portfolio-types";
+import { CLASS_LABELS, CLASS_ORDER, type AssetClass, type Asset } from "@/lib/portfolio-types";
 import { PageHeader, MetricCard } from "@/components/ui-bits";
 import { usePrivateMode } from "@/components/private-mode";
 import { formatEUR, formatNumber, formatPct, formatPp } from "@/lib/format";
@@ -61,7 +61,7 @@ function Simulador() {
               onChange={(e) => setCls(e.target.value as AssetClass)}
               className="mt-2 w-full rounded-lg border bg-background px-3 py-2"
             >
-              {(Object.keys(CLASS_LABELS) as AssetClass[]).map((c) => (
+              {CLASS_ORDER.map((c) => (
                 <option key={c} value={c}>
                   {CLASS_LABELS[c]}
                 </option>

@@ -6,8 +6,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { listAssets } from "@/lib/portfolio.functions";
 import {
   type Asset,
-  type AssetClass,
   CLASS_LABELS,
+  CLASS_ORDER,
   assetCurrentValue,
   assetInvested,
   assetPL,
@@ -68,7 +68,7 @@ function AnalisePage() {
 
   const total = assets.reduce((s, a) => s + assetCurrentValue(a), 0);
 
-  const byClass = (Object.keys(CLASS_LABELS) as AssetClass[]).map((c) => {
+  const byClass = CLASS_ORDER.map((c) => {
     const rows = assets.filter((a) => a.class === c);
     const invested = rows.reduce((s, a) => s + assetInvested(a), 0);
     const current = rows.reduce((s, a) => s + assetCurrentValue(a), 0);

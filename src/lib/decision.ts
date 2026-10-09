@@ -1,6 +1,7 @@
 import {
   assetCurrentValue,
   CLASS_LABELS,
+  CLASS_ORDER,
   isOpenPosition,
   type Asset,
   type AssetClass,
@@ -40,7 +41,7 @@ export function analyzePurchase(assets: Asset[], proposal: PurchaseProposal): Pu
   const currentTotal = open.reduce((s, a) => s + assetCurrentValue(a), 0);
   const amount = Math.max(0, Number(proposal.amount) || 0);
   const proposedTotal = currentTotal + amount;
-  const classes = Object.keys(CLASS_LABELS) as AssetClass[];
+  const classes = CLASS_ORDER;
   const allocation = classes
     .map((c) => {
       const currentValue = open
