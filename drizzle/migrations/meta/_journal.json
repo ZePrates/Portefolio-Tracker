@@ -22,6 +22,13 @@
       "when": 1791502889394,
       "tag": "0002_sync_portfolio_snapshots",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791576092371,
+      "tag": "0003_sync_dismissed_alerts_and_p2p_movements",
+      "breakpoints": true
     }
   ]
 }
