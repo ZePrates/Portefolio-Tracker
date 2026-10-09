@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware-external";
-import { dataQualityAlerts } from "@/lib/data-quality";
+import { alertKey, dataQualityAlerts } from "@/lib/data-quality";
 import { todayLisbon } from "@/lib/dates";
 import { dbError } from "@/lib/errors";
 
@@ -9,7 +10,7 @@ export const getDataQualityAlerts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const sb = context.supabase;
-    const [assetsRes, txRes, divRes, holdRes, profRes] = await Promise.all([
+    const [assetsRes, txRes, divRes, holdRes, profRes, dismissedRes] = await Promise.all([
       sb
         .from("assets")
         .select(
@@ -25,8 +26,9 @@ export const getDataQualityAlerts = createServerFn({ method: "GET" })
         .select("asset_id, amount, gross_amount, tax_amount, status, payment_date_estimated"),
       sb.from("etf_holdings").select("asset_id, weight"),
       sb.from("asset_profiles").select("asset_id, domicile_country"),
+      sb.from("dismissed_alerts").select("alert_key"),
     ]);
-    for (const r of [assetsRes, txRes, divRes, holdRes, profRes])
+    for (const r of [assetsRes, txRes, divRes, holdRes, profRes, dismissedRes])
       if (r.error) throw dbError(r.error);
 
     const coverage = new Map<string, number>();
@@ -39,6 +41,7 @@ export const getDataQualityAlerts = createServerFn({ method: "GET" })
         .map((p) => [p.asset_id, p.domicile_country]),
     );
 
+    const dismissed = new Set((dismissedRes.data ?? []).map((d) => d.alert_key));
     const alerts = dataQualityAlerts({
       assets: (assetsRes.data ?? []).map((a) => ({
         ...a,
@@ -55,6 +58,23 @@ export const getDataQualityAlerts = createServerFn({ method: "GET" })
       dividends: divRes.data ?? [],
       holdingsCoverage: coverage,
       today: todayLisbon(),
-    });
+    }).filter((a) => !dismissed.has(alertKey(a)));
     return { alerts, checkedAt: new Date().toISOString() };
+  });
+
+/** Dispensa avisos (por chave); ficam guardados na conta, em todos os dispositivos. */
+export const dismissDataQualityAlerts = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ keys: z.array(z.string().min(1).max(500)).min(1).max(200) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("dismissed_alerts")
+      .upsert(
+        data.keys.map((alert_key) => ({ user_id: context.userId, alert_key })),
+        { onConflict: "user_id,alert_key" },
+      );
+    if (error) throw dbError(error);
+    return { ok: true };
   });

@@ -510,6 +510,24 @@ export type Database = {
         };
         Relationships: [];
       };
+      dismissed_alerts: {
+        Row: {
+          alert_key: string;
+          dismissed_at: string;
+          user_id: string;
+        };
+        Insert: {
+          alert_key: string;
+          dismissed_at?: string;
+          user_id: string;
+        };
+        Update: {
+          alert_key?: string;
+          dismissed_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       portfolio_snapshots: {
         Row: {
           created_at: string;

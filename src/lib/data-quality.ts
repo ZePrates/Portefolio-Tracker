@@ -33,6 +33,9 @@ export interface DataQualityAlert {
   count?: number;
 }
 
+/** Identifica um aviso; se a mensagem mudar (ex.: nova contagem), volta a aparecer. */
+export const alertKey = (a: DataQualityAlert) => `${a.code}|${a.assetId ?? ""}|${a.message}`;
+
 export interface DqAsset extends TaxableAsset {
   id: string;
   name: string;
