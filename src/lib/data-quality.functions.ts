@@ -69,12 +69,10 @@ export const dismissDataQualityAlerts = createServerFn({ method: "POST" })
     z.object({ keys: z.array(z.string().min(1).max(500)).min(1).max(200) }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
-      .from("dismissed_alerts")
-      .upsert(
-        data.keys.map((alert_key) => ({ user_id: context.userId, alert_key })),
-        { onConflict: "user_id,alert_key" },
-      );
+    const { error } = await context.supabase.from("dismissed_alerts").upsert(
+      data.keys.map((alert_key) => ({ user_id: context.userId, alert_key })),
+      { onConflict: "user_id,alert_key" },
+    );
     if (error) throw dbError(error);
     return { ok: true };
   });
