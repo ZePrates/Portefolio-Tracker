@@ -8,6 +8,7 @@ import {
   RefreshCw,
   ShieldAlert,
   TriangleAlert,
+  X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -24,8 +25,8 @@ import { listAssets, listDividends, listTransactions } from "@/lib/portfolio.fun
 import { getExposure } from "@/lib/exposure.functions";
 import { updateAllPrices } from "@/lib/prices.functions";
 
-import { getDataQualityAlerts } from "@/lib/data-quality.functions";
-import type { DataQualityAlert } from "@/lib/data-quality";
+import { dismissDataQualityAlerts, getDataQualityAlerts } from "@/lib/data-quality.functions";
+import { alertKey, type DataQualityAlert } from "@/lib/data-quality";
 import { cn } from "@/lib/utils";
 import { type Asset, isOpenPosition } from "@/lib/portfolio-types";
 import type { DividendRecord } from "@/lib/dividends";
@@ -76,7 +77,13 @@ export const Route = createFileRoute("/_authenticated/")({
 /** Cotações com mais de 3 dias consideram-se desatualizadas. */
 const STALE_PRICE_DAYS = 3;
 
-function AlertList({ alerts }: { alerts: DataQualityAlert[] }) {
+function AlertList({
+  alerts,
+  onDismiss,
+}: {
+  alerts: DataQualityAlert[];
+  onDismiss: (a: DataQualityAlert) => void;
+}) {
   return (
     <ul className="divide-y divide-border">
       {alerts.map((a, i) => (
@@ -88,7 +95,16 @@ function AlertList({ alerts }: { alerts: DataQualityAlert[] }) {
             <ShieldAlert aria-hidden className="h-3 w-3" />
             {a.severity === "error" ? "Erro" : a.severity === "warning" ? "Aviso" : "Info"}
           </Badge>
-          <p className="min-w-0 text-sm">{a.message}</p>
+          <p className="min-w-0 flex-1 text-sm">{a.message}</p>
+          <button
+            type="button"
+            onClick={() => onDismiss(a)}
+            aria-label="Dispensar aviso"
+            title="Dispensar aviso"
+            className="-m-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
+          >
+            <X aria-hidden className="h-4 w-4" />
+          </button>
         </li>
       ))}
     </ul>
@@ -102,8 +118,12 @@ function AlertsStrip({
   onToggle,
   modalOpen,
   onModalOpenChange,
+  onDismiss,
+  onDismissAll,
 }: {
   alerts: DataQualityAlert[];
+  onDismiss: (a: DataQualityAlert) => void;
+  onDismissAll: () => void;
   expanded: boolean;
   onToggle: () => void;
   modalOpen: boolean;
@@ -135,6 +155,13 @@ function AlertsStrip({
         >
           {expanded ? "Fechar" : "Rever"}
         </button>
+        <button
+          type="button"
+          onClick={onDismissAll}
+          className="hidden shrink-0 rounded-md px-2.5 py-1 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground md:inline-flex"
+        >
+          Limpar
+        </button>
         {/* Mobile: toda a linha abre uma folha com a lista */}
         <button
           type="button"
@@ -150,11 +177,23 @@ function AlertsStrip({
           id={panelId}
           className="hidden rounded-xl border border-border bg-card px-4 py-2 md:block"
         >
-          <AlertList alerts={alerts} />
+          <AlertList alerts={alerts} onDismiss={onDismiss} />
         </div>
       )}
       <Modal open={modalOpen} onClose={() => onModalOpenChange(false)} title={title}>
-        <AlertList alerts={alerts} />
+        <div className="flex justify-end pb-1">
+          <button
+            type="button"
+            onClick={() => {
+              onDismissAll();
+              onModalOpenChange(false);
+            }}
+            className="min-h-11 rounded-md px-2.5 text-[13px] font-medium text-muted-foreground hover:text-foreground"
+          >
+            Limpar todos
+          </button>
+        </div>
+        <AlertList alerts={alerts} onDismiss={onDismiss} />
       </Modal>
     </section>
   );
@@ -177,6 +216,20 @@ function DashboardPage() {
   const [period, setPeriod] = useState<PeriodKey>("ytd");
   const [showAllAlerts, setShowAllAlerts] = useState(false);
   const [alertsModalOpen, setAlertsModalOpen] = useState(false);
+  const dismissFn = useServerFn(dismissDataQualityAlerts);
+  const dismissAlerts = async (list: DataQualityAlert[]) => {
+    if (list.length === 0) return;
+    // Otimista: esconde já; a query volta a ser lida do servidor a seguir.
+    queryClient.setQueryData(["data-quality"], (old: { alerts: DataQualityAlert[] } | undefined) =>
+      old ? { ...old, alerts: old.alerts.filter((a) => !list.includes(a)) } : old,
+    );
+    try {
+      await dismissFn({ data: { keys: list.map(alertKey) } });
+    } catch {
+      toast.error("Não foi possível dispensar o aviso.");
+    }
+    await queryClient.invalidateQueries({ queryKey: ["data-quality"] });
+  };
 
   const refreshPrices = async () => {
     if (refreshing) return;
@@ -425,6 +478,8 @@ function DashboardPage() {
           onToggle={() => setShowAllAlerts((v) => !v)}
           modalOpen={alertsModalOpen}
           onModalOpenChange={setAlertsModalOpen}
+          onDismiss={(a) => void dismissAlerts([a])}
+          onDismissAll={() => void dismissAlerts(alerts)}
         />
       )}
 
