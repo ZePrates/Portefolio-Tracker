@@ -35,15 +35,12 @@ const STATUS: Record<RoundStatus, { label: string; tone: "info" | "neutral" | "l
   late: { label: "Em atraso", tone: "loss" },
 };
 
-const monthFormatter = new Intl.DateTimeFormat("pt-PT", {
-  month: "long",
-  year: "numeric",
-  timeZone: "UTC",
-});
+const monthFormatter = new Intl.DateTimeFormat("pt-PT", { month: "long", timeZone: "UTC" });
 
-/** "2026-05" → "maio de 2026". */
+/** "2026-05" → "Maio 2026". */
 function roundLabel(key: string): string {
-  return monthFormatter.format(new Date(`${key}-01T00:00:00Z`));
+  const month = monthFormatter.format(new Date(`${key}-01T00:00:00Z`));
+  return `${month.charAt(0).toUpperCase()}${month.slice(1)} ${key.slice(0, 4)}`;
 }
 
 interface PendingFile {
@@ -249,7 +246,7 @@ export function ScramblePanel() {
       sortValue: (r) => r.roundKey,
       cell: (r) => (
         <div>
-          <p className="font-medium capitalize">{roundLabel(r.roundKey)}</p>
+          <p className="font-medium">{roundLabel(r.roundKey)}</p>
           <p className="text-xs text-muted-foreground">Grupo {r.group}</p>
         </div>
       ),
@@ -311,7 +308,7 @@ export function ScramblePanel() {
     <div className="space-y-2">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-medium capitalize">{roundLabel(r.roundKey)}</p>
+          <p className="font-medium">{roundLabel(r.roundKey)}</p>
           <p className="text-xs text-muted-foreground">
             Grupo {r.group} · vence a {formatDatePt(r.maturityDate)}
           </p>
