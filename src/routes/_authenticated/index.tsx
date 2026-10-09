@@ -23,6 +23,8 @@ import { DashboardHero, DashboardHeroSkeleton } from "@/components/dashboard-her
 import { heroSeries, periodChange } from "@/lib/dashboard-period";
 import { listAssets, listDividends, listTransactions } from "@/lib/portfolio.functions";
 import { getExposure } from "@/lib/exposure.functions";
+import { getScramble } from "@/lib/scramble.functions";
+import { scramblePassiveIncome } from "@/lib/scramble";
 import { updateAllPrices } from "@/lib/prices.functions";
 
 import { dismissDataQualityAlerts, getDataQualityAlerts } from "@/lib/data-quality.functions";
@@ -210,6 +212,7 @@ function DashboardPage() {
   const fetchSnapshots = useServerFn(listPortfolioSnapshots);
   const fetchCalendar = useServerFn(getDividendCalendar);
   const fetchAllocation = useServerFn(getAllocation);
+  const fetchScramble = useServerFn(getScramble);
   const refreshFn = useServerFn(updateAllPrices);
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
@@ -291,6 +294,10 @@ function DashboardPage() {
     queryKey: ["dividend-calendar", 12],
     queryFn: () => fetchCalendar({ data: { months: 12 } }),
   });
+  const { data: scramble } = useQuery({
+    queryKey: ["scramble"],
+    queryFn: () => fetchScramble(),
+  });
   const { data: snapshotsRaw } = useQuery({
     queryKey: ["portfolio-snapshots"],
     queryFn: () => fetchSnapshots(),
@@ -333,8 +340,16 @@ function DashboardPage() {
   const perf = useMemo(() => assetPerformance(assets), [assets]);
   const best = useMemo(() => bestPerformers(perf, 5), [perf]);
   const worst = useMemo(() => worstPerformers(perf, 5), [perf]);
-  const divs = useMemo(() => dividendSummary(dividends, range), [dividends, range]);
-  const last12 = useMemo(() => dividendSummary(dividends, periodRange("1y")).period, [dividends]);
+  // Rendimento passivo = dividendos + juros P2P (só no cartão: o resultado da
+  // carteira já inclui os juros P2P no valor atual da conta Scramble).
+  const p2pIncome = useMemo(() => scramblePassiveIncome(scramble ?? null, todayISO()), [scramble]);
+  const passive = useMemo(() => [...dividends, ...p2pIncome.records], [dividends, p2pIncome]);
+  const upcomingIncome = useMemo(
+    () => (calendar ? [...calendar.events, ...p2pIncome.upcoming] : undefined),
+    [calendar, p2pIncome],
+  );
+  const divs = useMemo(() => dividendSummary(passive, range), [passive, range]);
+  const last12 = useMemo(() => dividendSummary(passive, periodRange("1y")).period, [passive]);
   const realizedPeriod = useMemo(() => realizedInRange(transactions, range), [transactions, range]);
   const snapshots = useMemo(() => snapshotsRaw ?? [], [snapshotsRaw]);
   const change = useMemo(
@@ -499,7 +514,7 @@ function DashboardPage() {
         last12={last12}
         yieldOnCost={summary.yieldOnCost}
         sinceStart={divs.total}
-        upcoming={calendar?.events}
+        upcoming={upcomingIncome}
         hidden={hidden}
       />
 

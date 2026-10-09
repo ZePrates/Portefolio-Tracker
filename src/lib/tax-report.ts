@@ -106,10 +106,40 @@ export interface DividendTaxLine {
   hasEstimatedDates: boolean;
 }
 
+/** Juros e bónus de plataformas estrangeiras (P2P), já em EUR. */
+export interface InterestRecord {
+  assetId: string | null;
+  assetName: string;
+  /** Data do pagamento (YYYY-MM-DD). */
+  date: string;
+  amount: number;
+  /** ISO-2 do país da fonte (para a Scramble, EE — Estónia). */
+  country: string | null;
+  kind: "interest" | "bonus";
+  taxWithheld?: number;
+}
+
+export interface InterestTaxLine {
+  assetId: string | null;
+  assetName: string;
+  country: string | null;
+  /** J = estrangeiro (quadro 8A, código E21 — juros sem retenção em PT). */
+  annex: Annex;
+  code: "E21";
+  gross: number;
+  taxWithheld: number;
+  net: number;
+  count: number;
+}
+
 export interface TaxReport {
   year: number;
   capitalGains: CapitalGainLine[];
   dividends: DividendTaxLine[];
+  /** Juros P2P recebidos no ano (Anexo J, quadro 8A, código E21). */
+  interest: InterestTaxLine[];
+  /** Bónus recebidos no ano: enquadramento fiscal a confirmar. */
+  bonuses: Array<{ assetId: string | null; assetName: string; amount: number }>;
   totals: {
     realizationValue: number;
     acquisitionValue: number;
@@ -120,6 +150,8 @@ export interface TaxReport {
     dividendsGross: number;
     dividendsTaxWithheld: number;
     dividendsNet: number;
+    interestGross: number;
+    bonuses: number;
   };
   /** Estimativa com tributação autónoma a 28% (com crédito de imposto estrangeiro). */
   autonomous: {
@@ -127,6 +159,8 @@ export interface TaxReport {
     dividendsTaxPt: number;
     foreignTaxCredit: number;
     dividendsTaxDue: number;
+    /** Juros estrangeiros a 28% (menos o imposto retido lá fora, se houver). */
+    interestTaxDue: number;
     total: number;
   };
   /** Estimativa com englobamento, se for indicada a taxa marginal. */
@@ -145,6 +179,8 @@ export function annualTaxReport(input: {
   assets: TaxReportAsset[];
   transactions: TaxReportTransaction[];
   dividends: TaxReportDividend[];
+  /** Juros e bónus P2P (opcional). */
+  interest?: InterestRecord[];
   today: string;
   /** Taxa marginal de IRS (0..1) para simular o englobamento. */
   marginalRate?: number | null;
@@ -264,6 +300,53 @@ export function annualTaxReport(input: {
     warnings.push("Há dividendos de ativos com país desconhecido.");
   }
 
+  /* ---------------- Juros P2P (pela data de pagamento) ---------------- */
+  const interestMap = new Map<string, InterestTaxLine>();
+  const bonusMap = new Map<string, { assetId: string | null; assetName: string; amount: number }>();
+  for (const r of input.interest ?? []) {
+    if (!r.date.startsWith(y) || r.date > today) continue;
+    const key = r.assetId ?? `name:${r.assetName}`;
+    if (r.kind === "bonus") {
+      const b = bonusMap.get(key) ?? { assetId: r.assetId, assetName: r.assetName, amount: 0 };
+      b.amount += r.amount;
+      bonusMap.set(key, b);
+      continue;
+    }
+    const line = interestMap.get(key) ?? {
+      assetId: r.assetId,
+      assetName: r.assetName,
+      country: r.country,
+      annex: "J" as Annex,
+      code: "E21" as const,
+      gross: 0,
+      taxWithheld: 0,
+      net: 0,
+      count: 0,
+    };
+    line.gross += r.amount;
+    line.taxWithheld += r.taxWithheld ?? 0;
+    line.net += r.amount - (r.taxWithheld ?? 0);
+    line.count += 1;
+    interestMap.set(key, line);
+  }
+  const interestLines = [...interestMap.values()]
+    .map((l) => ({
+      ...l,
+      gross: round2(l.gross),
+      taxWithheld: round2(l.taxWithheld),
+      net: round2(l.net),
+    }))
+    .filter((l) => l.gross > 0)
+    .sort((a, b) => b.gross - a.gross);
+  const bonusLines = [...bonusMap.values()]
+    .map((b) => ({ ...b, amount: round2(b.amount) }))
+    .filter((b) => b.amount > 0);
+  if (bonusLines.length > 0) {
+    warnings.push(
+      "Recebeste bónus de plataformas P2P, que a plataforma não trata como juros: confirma o enquadramento no Portal das Finanças antes de os declarar.",
+    );
+  }
+
   /* ---------------- Totais e estimativas ---------------- */
   const sum = <T>(rows: T[], f: (r: T) => number) => round2(rows.reduce((s, r) => s + f(r), 0));
   const netGains = sum(capitalGains, (l) => l.gain);
@@ -279,6 +362,8 @@ export function annualTaxReport(input: {
     dividendsGross: sum(dividendLines, (l) => l.gross),
     dividendsTaxWithheld: sum(dividendLines, (l) => l.taxWithheld),
     dividendsNet: sum(dividendLines, (l) => l.net),
+    interestGross: sum(interestLines, (l) => l.gross),
+    bonuses: sum(bonusLines, (b) => b.amount),
   };
 
   // Dividendos estrangeiros: 28% em PT, com crédito do imposto pago lá fora
@@ -290,6 +375,14 @@ export function annualTaxReport(input: {
   );
   const capitalGainsTax = round2(Math.max(0, netGains) * PT_AUTONOMOUS_RATE);
   const dividendsTaxDue = round2(dividendsTaxPt - foreignTaxCredit);
+  // Juros sem retenção em Portugal: 28%, com crédito do imposto retido lá fora.
+  const interestTaxDue = round2(
+    interestLines.reduce(
+      (s, l) =>
+        s + l.gross * PT_AUTONOMOUS_RATE - Math.min(l.taxWithheld, l.gross * PT_AUTONOMOUS_RATE),
+      0,
+    ),
+  );
 
   let aggregated: TaxReport["aggregated"] = null;
   const mr = input.marginalRate;
@@ -299,8 +392,12 @@ export function annualTaxReport(input: {
       (s, l) => s + l.gross * (l.country && EU_EEA.has(l.country) ? 0.5 : 1),
       0,
     );
-    const allCredit = dividendLines.reduce((s, l) => s + l.taxWithheld, 0);
-    const total = Math.max(0, (Math.max(0, netGains) + divBase) * mr - allCredit);
+    // Juros contam a 100%.
+    const interestBase = interestLines.reduce((s, l) => s + l.gross, 0);
+    const allCredit =
+      dividendLines.reduce((s, l) => s + l.taxWithheld, 0) +
+      interestLines.reduce((s, l) => s + l.taxWithheld, 0);
+    const total = Math.max(0, (Math.max(0, netGains) + divBase + interestBase) * mr - allCredit);
     aggregated = { marginalRate: mr, total: round2(total) };
   }
 
@@ -308,13 +405,16 @@ export function annualTaxReport(input: {
     year,
     capitalGains,
     dividends: dividendLines,
+    interest: interestLines,
+    bonuses: bonusLines,
     totals,
     autonomous: {
       capitalGainsTax,
       dividendsTaxPt,
       foreignTaxCredit,
       dividendsTaxDue,
-      total: round2(capitalGainsTax + dividendsTaxDue),
+      interestTaxDue,
+      total: round2(capitalGainsTax + dividendsTaxDue + interestTaxDue),
     },
     aggregated,
     warnings,

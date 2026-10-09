@@ -534,6 +534,109 @@ export type Database = {
         }
         Relationships: []
       }
+      p2p_cash_movements: {
+        Row: {
+          amount: number
+          asset_id: string
+          balance: number | null
+          created_at: string
+          description: string
+          id: string
+          label: string
+          occurred_on: string
+          seq: number
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          asset_id: string
+          balance?: number | null
+          created_at?: string
+          description?: string
+          id?: string
+          label?: string
+          occurred_on: string
+          seq?: number
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          asset_id?: string
+          balance?: number | null
+          created_at?: string
+          description?: string
+          id?: string
+          label?: string
+          occurred_on?: string
+          seq?: number
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "p2p_cash_movements_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      p2p_round_movements: {
+        Row: {
+          asset_id: string
+          closing_principal: number
+          created_at: string
+          id: string
+          interest_received: number
+          invested: number
+          occurred_on: string
+          opening_principal: number
+          principal_repaid: number
+          round_key: string
+          seq: number
+          user_id: string
+        }
+        Insert: {
+          asset_id: string
+          closing_principal?: number
+          created_at?: string
+          id?: string
+          interest_received?: number
+          invested?: number
+          occurred_on: string
+          opening_principal?: number
+          principal_repaid?: number
+          round_key: string
+          seq?: number
+          user_id: string
+        }
+        Update: {
+          asset_id?: string
+          closing_principal?: number
+          created_at?: string
+          id?: string
+          interest_received?: number
+          invested?: number
+          occurred_on?: string
+          opening_principal?: number
+          principal_repaid?: number
+          round_key?: string
+          seq?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "p2p_round_movements_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portfolio_snapshots: {
         Row: {
           created_at: string

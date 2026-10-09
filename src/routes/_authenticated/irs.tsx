@@ -380,6 +380,51 @@ function IrsPage() {
             )}
           </section>
 
+          {(data.interest.length > 0 || data.bonuses.length > 0) && (
+            <section aria-labelledby="irs-p2p" className="space-y-3">
+              <h2 id="irs-p2p" className="text-base font-semibold">
+                Juros P2P {year}
+              </h2>
+              <ul className="divide-y divide-border rounded-xl border border-border bg-card">
+                {data.interest.map((l) => (
+                  <li
+                    key={`${l.assetId ?? l.assetName}-${l.code}`}
+                    className="flex items-start justify-between gap-3 px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium leading-snug">{l.assetName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {ANNEX_LABEL[l.annex]} · quadro 8A · {l.code} (juros sem retenção em
+                        Portugal){l.country ? ` · ${l.country}` : ""} · {l.count}{" "}
+                        {l.count === 1 ? "pagamento" : "pagamentos"}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="num font-semibold">{formatEUR(l.gross, hidden)}</p>
+                      <p className="num text-xs text-muted-foreground">
+                        imposto a 28 % {formatEUR(l.gross * 0.28, hidden)}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+                {data.bonuses.map((b) => (
+                  <li
+                    key={`bonus-${b.assetId ?? b.assetName}`}
+                    className="flex items-start justify-between gap-3 px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium leading-snug">{b.assetName} · bónus</p>
+                      <p className="text-xs text-muted-foreground">
+                        Fora do total de juros: confirma o enquadramento antes de declarar.
+                      </p>
+                    </div>
+                    <p className="num shrink-0 font-semibold">{formatEUR(b.amount, hidden)}</p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           <p className="text-xs text-muted-foreground">
             Estimativa informativa calculada com os dados registados nesta app (câmbio da data de
             cada operação, método FIFO). Não substitui a declaração oficial nem aconselhamento
