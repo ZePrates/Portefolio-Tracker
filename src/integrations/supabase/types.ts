@@ -329,6 +329,24 @@ export type Database = {
         }
         Relationships: []
       }
+      dismissed_alerts: {
+        Row: {
+          alert_key: string
+          dismissed_at: string
+          user_id: string
+        }
+        Insert: {
+          alert_key: string
+          dismissed_at?: string
+          user_id: string
+        }
+        Update: {
+          alert_key?: string
+          dismissed_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       dividends: {
         Row: {
           amount: number
@@ -512,24 +530,6 @@ export type Database = {
           monthly_contribution?: number
           safe_withdrawal_rate?: number
           updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      dismissed_alerts: {
-        Row: {
-          alert_key: string
-          dismissed_at: string
-          user_id: string
-        }
-        Insert: {
-          alert_key: string
-          dismissed_at?: string
-          user_id: string
-        }
-        Update: {
-          alert_key?: string
-          dismissed_at?: string
           user_id?: string
         }
         Relationships: []
