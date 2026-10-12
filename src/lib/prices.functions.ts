@@ -59,11 +59,12 @@ export const updateAllPrices = createServerFn({ method: "POST" })
     const { yahooSymbolFor, fetchYahoo, normalize, getRateToEUR } =
       await import("@/lib/yahoo.server");
     const { fetchMetalSpot } = await import("@/lib/metals.server");
+    const { buybackDiscountOf } = await import("@/lib/metals");
 
     let query = context.supabase
       .from("assets")
       .select(
-        "id, name, class, ticker, price_source, metal_type, quantity, current_price, current_price_native, native_currency, status",
+        "id, name, class, ticker, price_source, metal_type, buyback_discount, quantity, current_price, current_price_native, native_currency, status",
       )
       .neq("status", "closed");
     if (data.class) query = query.eq("class", data.class);
@@ -95,7 +96,13 @@ export const updateAllPrices = createServerFn({ method: "POST" })
       async (asset): Promise<Quote | null> => {
         const row = byId.get(asset.id);
         if (!row) return null;
-        if (row.class === "metal") return fetchMetalSpot(row.metal_type, row.ticker);
+        if (row.class === "metal")
+          return fetchMetalSpot(
+            row.metal_type,
+            row.ticker,
+            buybackDiscountOf(row.buyback_discount),
+            rateCache,
+          );
         const symbol = yahooSymbolFor(row);
         if (!symbol) return null;
         // 5 anos para ter histórico de dividendos suficiente para o yield estimado.

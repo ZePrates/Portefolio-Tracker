@@ -53,6 +53,12 @@ import { cn } from "@/lib/utils";
 import { todayLisbon } from "@/lib/dates";
 import { validateAssetForm, type AssetFormValues } from "@/lib/asset-form";
 import {
+  buybackDiscountOf,
+  buybackPrice,
+  DEFAULT_BUYBACK_DISCOUNT,
+  spotFromBuyback,
+} from "@/lib/metals";
+import {
   assetSortValue,
   isQuantityClass,
   isSecurityClass,
@@ -81,6 +87,11 @@ interface FormState {
   annual_yield: string;
   currency: string;
   frequency: string;
+  /** Metais em custódia. Desconto de recompra em %. */
+  custodian: string;
+  vault_ref: string;
+  plan_name: string;
+  buyback_discount: string;
 }
 
 const CURRENCIES = ["USD", "EUR", "GBP", "CHF", "CAD"];
@@ -90,7 +101,7 @@ const LEDGER_HINT =
 const today = () => todayLisbon();
 
 function defaultCurrency(c: AssetClass) {
-  return c === "etf" ? "EUR" : "USD";
+  return c === "etf" || c === "metal" ? "EUR" : "USD";
 }
 
 function emptyForm(c: AssetClass): FormState {
@@ -109,6 +120,10 @@ function emptyForm(c: AssetClass): FormState {
     annual_yield: "",
     currency: defaultCurrency(c),
     frequency: "",
+    custodian: "",
+    vault_ref: "",
+    plan_name: "",
+    buyback_discount: formatNumber(DEFAULT_BUYBACK_DISCOUNT * 100, 2),
   };
 }
 
@@ -222,7 +237,16 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
       quantity: a.quantity ? String(a.quantity) : "",
       purchase_price: String(a.purchase_price_native ?? a.average_price ?? "") || "",
       purchase_date: today(),
-      current_price: String(a.current_price_native ?? a.current_price ?? "") || "",
+      // Metal: o formulário mostra o spot; `current_price` guarda a recompra.
+      current_price:
+        a.class === "metal"
+          ? String(
+              spotFromBuyback(
+                a.current_price_native ?? a.current_price ?? 0,
+                buybackDiscountOf(a.buyback_discount),
+              ) || "",
+            )
+          : String(a.current_price_native ?? a.current_price ?? "") || "",
       invested_amount: a.invested_amount ? String(a.invested_amount) : "",
       current_value: a.current_value ? String(a.current_value) : "",
       metal_type: a.metal_type ?? "Ouro",
@@ -230,6 +254,10 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
       annual_yield: a.annual_yield != null ? String(a.annual_yield) : "",
       currency: cur,
       frequency: a.dividend_frequency ?? "",
+      custodian: a.custodian ?? "",
+      vault_ref: a.vault_ref ?? "",
+      plan_name: a.plan_name ?? "",
+      buyback_discount: formatNumber(buybackDiscountOf(a.buyback_discount) * 100, 2),
     });
     setDialogOpen(true);
   };
@@ -302,7 +330,12 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
       const quantity = num(form.quantity);
       const rate = isQuantityAsset(assetClass) ? await rateFor(form.currency) : 1;
       const purchaseNative = num(form.purchase_price);
-      const currentNative = num(form.current_price);
+      const isMetal = assetClass === "metal";
+      const discount = isMetal ? num(form.buyback_discount) / 100 : 0;
+      // Metal: o utilizador indica o spot; guarda-se o preço de recompra.
+      const currentNative = isMetal
+        ? buybackPrice(num(form.current_price), discount)
+        : num(form.current_price);
       const purchaseEur = purchaseNative * rate;
       const currentEur = currentNative * rate;
       const invested = isQuantityAsset(assetClass)
@@ -324,7 +357,11 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         purchase_price_native: isQuantityAsset(assetClass) ? purchaseNative : null,
         current_price_native: isQuantityAsset(assetClass) ? currentNative : null,
         dividend_frequency: form.frequency.trim() || null,
-        metal_type: assetClass === "metal" ? form.metal_type : null,
+        metal_type: isMetal ? form.metal_type : null,
+        custodian: isMetal ? form.custodian.trim() || null : null,
+        vault_ref: isMetal ? form.vault_ref.trim() || null : null,
+        plan_name: isMetal ? form.plan_name.trim() || null : null,
+        buyback_discount: isMetal ? discount : null,
         p2p_group: assetClass === "p2p" ? form.p2p_group : null,
         annual_yield: form.annual_yield ? num(form.annual_yield) : null,
       };
@@ -952,12 +989,51 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
           </Field>
 
           {assetClass === "metal" && (
-            <Field label="Metal">
-              <SelectInput value={form.metal_type} onChange={set("metal_type")}>
-                <option value="Ouro">Ouro</option>
-                <option value="Prata">Prata</option>
-              </SelectInput>
-            </Field>
+            <>
+              <Field label="Metal">
+                <SelectInput value={form.metal_type} onChange={set("metal_type")}>
+                  <option value="Ouro">Ouro</option>
+                  <option value="Prata">Prata</option>
+                </SelectInput>
+              </Field>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Custódia">
+                  <TextInput
+                    value={form.custodian}
+                    onChange={set("custodian")}
+                    autoComplete="off"
+                    placeholder="Ex.: Elementum"
+                  />
+                </Field>
+                <Field label="Plano">
+                  <TextInput
+                    value={form.plan_name}
+                    onChange={set("plan_name")}
+                    autoComplete="off"
+                    placeholder="Ex.: Argentum Premium"
+                  />
+                </Field>
+                <Field label="Depósito / cofre">
+                  <TextInput
+                    value={form.vault_ref}
+                    onChange={set("vault_ref")}
+                    autoComplete="off"
+                    placeholder="Ex.: 1057-CH408"
+                  />
+                </Field>
+                <Field
+                  label="Desconto de recompra (%)"
+                  hint="Spot − este desconto = o que recebes ao vender"
+                >
+                  <TextInput
+                    inputMode="decimal"
+                    value={form.buyback_discount}
+                    onChange={set("buyback_discount")}
+                    placeholder="3"
+                  />
+                </Field>
+              </div>
+            </>
           )}
 
           {assetClass === "p2p" && (
@@ -1024,7 +1100,19 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                     placeholder="0,00"
                   />
                 </Field>
-                <Field label={`Preço atual (${form.currency})`} error={err("current_price")}>
+                <Field
+                  label={
+                    assetClass === "metal"
+                      ? `Spot por grama (${form.currency})`
+                      : `Preço atual (${form.currency})`
+                  }
+                  hint={
+                    assetClass === "metal"
+                      ? "Atualizado automaticamente (Yahoo). O valor usa a recompra."
+                      : undefined
+                  }
+                  error={err("current_price")}
+                >
                   <TextInput
                     inputMode="decimal"
                     autoComplete="off"

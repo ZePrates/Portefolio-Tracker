@@ -4,6 +4,11 @@ import { formatDatePt } from "@/lib/format";
 export interface LedgerEntry {
   /** Id da transação (a compra é o lote). */
   id?: string;
+  /**
+   * "buy" | "sell" | "storage". "storage" = taxa paga em espécie (gramas de
+   * metal): retira quantidade a todos os lotes na proporção, sem venda e sem
+   * mexer no custo total (o custo fica nos gramas restantes).
+   */
   type: string;
   quantity: number;
   /** Preço por unidade em EUR. */
@@ -76,9 +81,31 @@ export function buildOpenLots(entries: LedgerEntry[]): FifoLot[] {
       });
     } else if (e.type === "sell") {
       consume(lots, qty);
+    } else if (e.type === "storage") {
+      deductInKind(lots, qty, e.traded_at);
     }
   }
   return lots;
+}
+
+/**
+ * Taxa paga em espécie: retira `quantity` aos lotes abertos na proporção de
+ * cada um (custódia coletiva), mantendo o custo de cada lote. Muta `lots`.
+ */
+function deductInKind(lots: FifoLot[], quantity: number, date: string): void {
+  const held = totalQuantity(lots);
+  if (quantity > held + 1e-9) {
+    throw new Error(
+      `Taxa inválida: ${Number(quantity.toFixed(6))} unidades deduzidas a ${formatDatePt(date)}, mas nessa data só detinhas ${Number(held.toFixed(6))}.`,
+    );
+  }
+  const keep = held > 0 ? Math.max(0, (held - quantity) / held) : 0;
+  for (const lot of lots) {
+    const cost = lot.quantity * lot.unitCost;
+    lot.quantity *= keep;
+    if (lot.quantity > 1e-9) lot.unitCost = cost / lot.quantity;
+  }
+  for (let i = lots.length - 1; i >= 0; i--) if (lots[i]!.quantity <= 1e-9) lots.splice(i, 1);
 }
 
 function consume(lots: FifoLot[], quantity: number): LotConsumption[] {
@@ -156,6 +183,8 @@ export interface LedgerReplay {
   fees: number;
   /** Data da última venda (para `closed_at`). */
   lastSellDate: string | null;
+  /** Quantidade deduzida por taxas pagas em espécie. */
+  deductedInKind: number;
 }
 
 /**
@@ -171,6 +200,7 @@ export function replayLedger(entries: LedgerEntry[]): LedgerReplay {
   let realizedPL = 0;
   let fees = 0;
   let lastSellDate: string | null = null;
+  let deductedInKind = 0;
 
   for (const e of sortLedger(entries)) {
     const qty = Number(e.quantity) || 0;
@@ -207,9 +237,13 @@ export function replayLedger(entries: LedgerEntry[]): LedgerReplay {
         realizedPL: res.realizedPL,
         breakdown: res.breakdown,
       });
+    } else if (e.type === "storage") {
+      lots = lots.map((l) => ({ ...l }));
+      deductInKind(lots, qty, e.traded_at);
+      deductedInKind += qty;
     }
   }
-  return { lots, sales, realizedPL, fees, lastSellDate };
+  return { lots, sales, realizedPL, fees, lastSellDate, deductedInKind };
 }
 
 /** Lotes abertos imediatamente após o fim do dia `date` (inclusive). */

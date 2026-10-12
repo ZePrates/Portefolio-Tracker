@@ -30,6 +30,12 @@ export interface Asset {
   price_updated_at?: string | null;
   fx_rate?: number | null;
   fx_updated_at?: string | null;
+  /** Metais em custódia. */
+  custodian?: string | null;
+  vault_ref?: string | null;
+  plan_name?: string | null;
+  /** Desconto de recompra (fração); `current_price` de um metal já o inclui. */
+  buyback_discount?: number | null;
   created_at: string;
   updated_at: string;
 }
