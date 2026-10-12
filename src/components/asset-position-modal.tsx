@@ -13,7 +13,9 @@ import {
   updateTransaction,
   deleteTransaction,
 } from "@/lib/portfolio.functions";
-import { createExpense, listExpenses } from "@/lib/expenses.functions";
+import { createExpense, deleteExpense, listExpenses } from "@/lib/expenses.functions";
+import { splitMetalPurchase, type MetalSummary } from "@/lib/metals";
+import { MetalPositionPanel, type MetalExpenseRow } from "@/components/metal-position-panel";
 import {
   getAssetExposure,
   syncAssetExposure,
@@ -94,12 +96,18 @@ export function AssetPositionModal({ asset, onClose }: Props) {
   const sellFn = useServerFn(sellAsset);
   const expensesFn = useServerFn(listExpenses);
   const createExpenseFn = useServerFn(createExpense);
+  const deleteExpenseFn = useServerFn(deleteExpense);
   const updateTxFn = useServerFn(updateTransaction);
   const deleteTxFn = useServerFn(deleteTransaction);
 
   const [mode, setMode] = useState<"view" | "buy" | "sell" | "expense">("view");
   const [expenseAmount, setExpenseAmount] = useState("");
   const [expenseNotes, setExpenseNotes] = useState("");
+  // Metais: taxa paga em gramas e compra introduzida como no extrato da custódia.
+  const [expenseGrams, setExpenseGrams] = useState("");
+  const [expensePerGram, setExpensePerGram] = useState("");
+  const [metalPaid, setMetalPaid] = useState("");
+  const [metalPremium, setMetalPremium] = useState("");
 
   const [quantity, setQuantity] = useState("");
   const [price, setPrice] = useState("");
@@ -146,13 +154,7 @@ export function AssetPositionModal({ asset, onClose }: Props) {
     queryFn: () => expensesFn({ data: { assetId: asset!.id } }),
     enabled: !!asset && isMetal,
   });
-  const expenses = (expenseRows ?? []) as {
-    id: string;
-    amount: number;
-    incurred_at: string;
-    notes: string | null;
-  }[];
-  const expensesTotal = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+  const expenses = (expenseRows ?? []) as MetalExpenseRow[];
 
   const dividendsFn = useServerFn(listDividends);
   const { data: allDividends } = useQuery({
@@ -240,8 +242,12 @@ export function AssetPositionModal({ asset, onClose }: Props) {
         unrealizedPL: number;
         realizedPL: number;
         totalPL: number;
+        metal: MetalSummary | null;
       }
     | undefined;
+  const metal = pos?.metal ?? null;
+  // Ágio sugerido = o da última compra (o escalão raramente muda).
+  const lastPremium = metal?.lots.at(-1)?.premiumRate ?? null;
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ["assets"] });
@@ -250,7 +256,51 @@ export function AssetPositionModal({ asset, onClose }: Props) {
     await queryClient.invalidateQueries({ queryKey: ["position", asset.id] });
   };
 
+  /** Compra de metal tal como aparece no extrato: valor pago, gramas e ágio. */
+  const metalSplit = (() => {
+    try {
+      return splitMetalPurchase(num(metalPaid), num(quantity), num(metalPremium) / 100);
+    } catch (e) {
+      return e instanceof Error ? e.message : "Dados inválidos.";
+    }
+  })();
+
+  const confirmMetalBuy = async () => {
+    if (typeof metalSplit === "string") {
+      toast.error(metalSplit);
+      return;
+    }
+    if (!date || date > today()) {
+      toast.error("Data inválida.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await buyFn({
+        data: {
+          assetId: asset.id,
+          quantity: num(quantity),
+          price_native: metalSplit.spot,
+          fee_native: metalSplit.premium,
+          premium_rate: num(metalPremium) / 100,
+          traded_at: date,
+          notes: null,
+        },
+      });
+      toast.success("Compra registada.");
+      setMode("view");
+      setQuantity("");
+      setMetalPaid("");
+      await refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Operação falhou.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const confirm = async () => {
+    if (isMetal && mode === "buy") return confirmMetalBuy();
     const q = num(quantity);
     setTouched((t) => ({
       ...t,
@@ -292,8 +342,14 @@ export function AssetPositionModal({ asset, onClose }: Props) {
 
   const saveExpense = async () => {
     const v = num(expenseAmount);
+    const g = num(expenseGrams);
+    const ppg = num(expensePerGram);
     setTouched((t) => ({ ...t, expense_amount: true }));
     if (expenseError) return;
+    if (g < 0) {
+      toast.error("Os gramas não podem ser negativos.");
+      return;
+    }
     setSaving(true);
     try {
       await createExpenseFn({
@@ -305,15 +361,44 @@ export function AssetPositionModal({ asset, onClose }: Props) {
           fx_rate: 1,
           incurred_at: date,
           notes: expenseNotes || null,
+          grams_deducted: g,
+          price_per_gram: g > 0 ? (ppg > 0 ? ppg : v / g) : null,
         },
       });
-      toast.success("Despesa registada.");
+      toast.success(g > 0 ? "Taxa registada e gramas deduzidos." : "Despesa registada.");
       setExpenseAmount("");
       setExpenseNotes("");
+      setExpenseGrams("");
+      setExpensePerGram("");
       setMode("view");
       await queryClient.invalidateQueries({ queryKey: ["expenses", asset.id] });
+      if (g > 0) await refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Não foi possível registar a despesa.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeExpense = async (e: MetalExpenseRow) => {
+    const ok = await askConfirm({
+      title: `Apagar a taxa de ${formatDatePt(e.incurred_at)}?`,
+      description:
+        Number(e.grams_deducted) > 0
+          ? "Os gramas deduzidos voltam à posição e o custo por grama é recalculado."
+          : "A despesa deixa de contar nos custos.",
+      confirmLabel: "Apagar",
+      destructive: true,
+    });
+    if (!ok) return;
+    setSaving(true);
+    try {
+      await deleteExpenseFn({ data: { id: e.id } });
+      toast.success("Taxa apagada.");
+      await queryClient.invalidateQueries({ queryKey: ["expenses", asset.id] });
+      await refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível apagar a taxa.");
     } finally {
       setSaving(false);
     }
@@ -389,20 +474,39 @@ export function AssetPositionModal({ asset, onClose }: Props) {
           <p className="text-sm text-muted-foreground">A carregar posição…</p>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Stat label="Quantidade" value={formatQuantity(pos.quantity)} />
-              <Stat label="Custo (FIFO)" value={formatEUR(pos.costBasis, hidden)} />
-              <Stat
-                label="P/L não realizado"
-                value={formatEUR(pos.unrealizedPL, hidden)}
-                className={tone(pos.unrealizedPL)}
+            {metal ? (
+              <MetalPositionPanel
+                summary={metal}
+                expenses={expenses}
+                custody={{
+                  custodian: asset.custodian ?? null,
+                  vault_ref: asset.vault_ref ?? null,
+                  plan_name: asset.plan_name ?? null,
+                }}
+                hidden={hidden}
+                onDeleteExpense={removeExpense}
               />
-              <Stat
-                label="P/L realizado"
-                value={formatEUR(pos.realizedPL, hidden)}
-                className={tone(pos.realizedPL)}
-              />
-            </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <Stat label="Quantidade" value={formatQuantity(pos.quantity)} />
+                <Stat label="Custo (FIFO)" value={formatEUR(pos.costBasis, hidden)} />
+                <Stat
+                  label="P/L não realizado"
+                  value={formatEUR(pos.unrealizedPL, hidden)}
+                  className={tone(pos.unrealizedPL)}
+                />
+                <Stat
+                  label="P/L realizado"
+                  value={formatEUR(pos.realizedPL, hidden)}
+                  className={tone(pos.realizedPL)}
+                />
+              </div>
+            )}
+            {metal && pos.realizedPL !== 0 && (
+              <p className="text-xs text-muted-foreground">
+                P/L realizado em vendas: {formatEUR(pos.realizedPL, hidden)}
+              </p>
+            )}
 
             {(asset.price_source || asset.price_updated_at) && (
               <p className="text-xs text-muted-foreground">
@@ -416,21 +520,17 @@ export function AssetPositionModal({ asset, onClose }: Props) {
               </p>
             )}
 
-            {isMetal && (
-              <div className="rounded-xl border border-border bg-background/50 p-3 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Custos de armazenamento</span>
-                  <span className="font-medium">{formatEUR(expensesTotal, hidden)}</span>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Registados como despesa — não alteram a quantidade de metal detida.
-                </p>
-              </div>
-            )}
-
             {mode === "view" ? (
               <div className="flex flex-wrap gap-2">
-                <Button onClick={() => setMode("buy")}>Comprar</Button>
+                <Button
+                  onClick={() => {
+                    if (isMetal && lastPremium != null && metalPremium === "")
+                      setMetalPremium(formatNumber(lastPremium * 100, 2));
+                    setMode("buy");
+                  }}
+                >
+                  Comprar
+                </Button>
                 <Button
                   variant="outline"
                   onClick={() => setMode("sell")}
@@ -440,16 +540,36 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                 </Button>
                 {isMetal && (
                   <Button variant="outline" onClick={() => setMode("expense")}>
-                    Custo de armazenamento
+                    Taxa de armazenamento
                   </Button>
                 )}
               </div>
             ) : mode === "expense" ? (
               <div className="space-y-3 rounded-xl border border-border bg-background/50 p-4">
-                <p className="text-sm font-medium">Novo custo de armazenamento</p>
+                <p className="text-sm font-medium">Nova taxa de armazenamento</p>
+                <p className="text-xs text-muted-foreground">
+                  Se a custódia cobra em metal (ex.: Elementum), indica os gramas deduzidos: saem do
+                  cofre sem contar como venda. Paga em dinheiro: deixa os gramas a 0.
+                </p>
                 <div className="grid grid-cols-2 gap-3">
+                  <Field label="Gramas deduzidos">
+                    <TextInput
+                      inputMode="decimal"
+                      value={expenseGrams}
+                      onChange={(e) => setExpenseGrams(e.target.value)}
+                      placeholder="0,00"
+                    />
+                  </Field>
+                  <Field label="Preço por grama (EUR)" hint="Do extrato; opcional">
+                    <TextInput
+                      inputMode="decimal"
+                      value={expensePerGram}
+                      onChange={(e) => setExpensePerGram(e.target.value)}
+                      placeholder="0,0000"
+                    />
+                  </Field>
                   <Field
-                    label="Valor (EUR)"
+                    label="Valor faturado (EUR)"
                     error={touched["expense_amount"] ? expenseError : undefined}
                   >
                     <TextInput
@@ -473,7 +593,7 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                 </div>
                 <div className="flex gap-2">
                   <Button onClick={saveExpense} disabled={saving}>
-                    Registar despesa
+                    Registar taxa
                   </Button>
                   <Button variant="outline" onClick={() => setMode("view")}>
                     Cancelar
@@ -490,44 +610,97 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                     </span>
                   )}
                 </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Quantidade" error={tradeErr("quantity")}>
-                    <TextInput
-                      inputMode="decimal"
-                      value={quantity}
-                      onChange={(e) => setQuantity(e.target.value)}
-                      onBlur={touch("trade_quantity")}
-                      placeholder="0"
-                    />
-                  </Field>
-                  <Field label={`Preço por unidade (${currency})`} error={tradeErr("price")}>
-                    <TextInput
-                      inputMode="decimal"
-                      value={price}
-                      onChange={(e) => setPrice(e.target.value)}
-                      onBlur={touch("trade_price")}
-                      placeholder="0,00"
-                    />
-                  </Field>
-                  <Field label={`Comissão (${currency})`} error={tradeErr("fee")}>
-                    <TextInput
-                      inputMode="decimal"
-                      value={fee}
-                      onChange={(e) => setFee(e.target.value)}
-                      onBlur={touch("trade_fee")}
-                      placeholder="0,00"
-                    />
-                  </Field>
-                  <Field label="Data" error={tradeErr("date")}>
-                    <TextInput
-                      type="date"
-                      value={date}
-                      max={today()}
-                      onChange={(e) => setDate(e.target.value)}
-                      onBlur={touch("trade_date")}
-                    />
-                  </Field>
-                </div>
+                {isMetal && mode === "buy" ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Valor pago (EUR)">
+                        <TextInput
+                          inputMode="decimal"
+                          value={metalPaid}
+                          onChange={(e) => setMetalPaid(e.target.value)}
+                          placeholder="0,00"
+                        />
+                      </Field>
+                      <Field label="Gramas recebidos">
+                        <TextInput
+                          inputMode="decimal"
+                          value={quantity}
+                          onChange={(e) => setQuantity(e.target.value)}
+                          placeholder="0,00"
+                        />
+                      </Field>
+                      <Field label="Ágio (%)" hint="Prémio sobre o spot, do extrato">
+                        <TextInput
+                          inputMode="decimal"
+                          value={metalPremium}
+                          onChange={(e) => setMetalPremium(e.target.value)}
+                          placeholder="8,75"
+                        />
+                      </Field>
+                      <Field label="Data">
+                        <TextInput
+                          type="date"
+                          value={date}
+                          max={today()}
+                          onChange={(e) => setDate(e.target.value)}
+                        />
+                      </Field>
+                    </div>
+                    {typeof metalSplit !== "string" && (
+                      <p className="text-xs text-muted-foreground">
+                        {formatNumber(metalSplit.paidPerGram, 4)} €/g pago = spot{" "}
+                        {formatNumber(metalSplit.spot, 4)} €/g + ágio{" "}
+                        {formatEUR(metalSplit.premium, hidden)}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label={isMetal ? "Gramas" : "Quantidade"} error={tradeErr("quantity")}>
+                      <TextInput
+                        inputMode="decimal"
+                        value={quantity}
+                        onChange={(e) => setQuantity(e.target.value)}
+                        onBlur={touch("trade_quantity")}
+                        placeholder="0"
+                      />
+                    </Field>
+                    <Field
+                      label={
+                        isMetal
+                          ? "Preço de recompra por grama (EUR)"
+                          : `Preço por unidade (${currency})`
+                      }
+                      error={tradeErr("price")}
+                    >
+                      <TextInput
+                        inputMode="decimal"
+                        value={price}
+                        onChange={(e) => setPrice(e.target.value)}
+                        onBlur={touch("trade_price")}
+                        placeholder="0,00"
+                      />
+                    </Field>
+                    <Field label={`Comissão (${currency})`} error={tradeErr("fee")}>
+                      <TextInput
+                        inputMode="decimal"
+                        value={fee}
+                        onChange={(e) => setFee(e.target.value)}
+                        onBlur={touch("trade_fee")}
+                        placeholder="0,00"
+                      />
+                    </Field>
+                    <Field label="Data" error={tradeErr("date")}>
+                      <TextInput
+                        type="date"
+                        value={date}
+                        max={today()}
+                        onChange={(e) => setDate(e.target.value)}
+                        onBlur={touch("trade_date")}
+                      />
+                    </Field>
+                  </div>
+                )}
 
                 {mode === "sell" && previewError && (
                   <p className="text-sm text-destructive">{previewError}</p>
@@ -583,90 +756,96 @@ export function AssetPositionModal({ asset, onClose }: Props) {
               </div>
             )}
 
-            <UnderlyingExposure assetId={asset.id} hidden={hidden} />
+            {!isMetal && (
+              <>
+                <UnderlyingExposure assetId={asset.id} hidden={hidden} />
 
-            <section>
-              <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Dividendos
-              </h3>
-              <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-                <div className="rounded-lg border border-border p-3">
-                  <div className="text-xs text-muted-foreground">Recebidos</div>
-                  <div className="font-medium text-success">
-                    {formatEUR(divStats.received, hidden)}
+                <section>
+                  <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Dividendos
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+                    <div className="rounded-lg border border-border p-3">
+                      <div className="text-xs text-muted-foreground">Recebidos</div>
+                      <div className="font-medium text-success">
+                        {formatEUR(divStats.received, hidden)}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-border p-3">
+                      <div className="text-xs text-muted-foreground">Previstos</div>
+                      <div className="font-medium">{formatEUR(divStats.scheduled, hidden)}</div>
+                    </div>
+                    <div className="rounded-lg border border-border p-3">
+                      <div className="text-xs text-muted-foreground">Último</div>
+                      <div className="font-medium">
+                        {divStats.last
+                          ? `${formatEUR(grossOf(divStats.last), hidden)} · ${divStats.last.payment_date ?? divStats.last.paid_at}`
+                          : "—"}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-border p-3">
+                      <div className="text-xs text-muted-foreground">Próximo</div>
+                      <div className="font-medium">
+                        {divStats.next
+                          ? `${formatEUR(grossOf(divStats.next), hidden)} · ${divStats.next.payment_date ?? divStats.next.paid_at}`
+                          : "—"}
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="rounded-lg border border-border p-3">
-                  <div className="text-xs text-muted-foreground">Previstos</div>
-                  <div className="font-medium">{formatEUR(divStats.scheduled, hidden)}</div>
-                </div>
-                <div className="rounded-lg border border-border p-3">
-                  <div className="text-xs text-muted-foreground">Último</div>
-                  <div className="font-medium">
-                    {divStats.last
-                      ? `${formatEUR(grossOf(divStats.last), hidden)} · ${divStats.last.payment_date ?? divStats.last.paid_at}`
-                      : "—"}
-                  </div>
-                </div>
-                <div className="rounded-lg border border-border p-3">
-                  <div className="text-xs text-muted-foreground">Próximo</div>
-                  <div className="font-medium">
-                    {divStats.next
-                      ? `${formatEUR(grossOf(divStats.next), hidden)} · ${divStats.next.payment_date ?? divStats.next.paid_at}`
-                      : "—"}
-                  </div>
-                </div>
-              </div>
-              {assetDividends.length > 0 && (
-                <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto text-xs text-muted-foreground">
-                  {assetDividends.map((d) => (
-                    <li key={d.id} className="flex justify-between">
-                      <span>{d.payment_date ?? d.paid_at}</span>
-                      <span>
-                        {formatEUR(grossOf(d as never), hidden)}{" "}
-                        {isReceived(d as never) ? "" : "(previsto)"}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-
-            <section>
-              <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Lotes abertos
-              </h3>
-              {pos.lots.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Sem lotes abertos — posição fechada.
-                </p>
-              ) : (
-                <div className="overflow-x-auto rounded-lg border border-border">
-                  <table className="w-full text-sm">
-                    <thead className="text-xs uppercase text-muted-foreground">
-                      <tr className="border-b border-border text-left">
-                        <th className="px-3 py-2 font-medium">Data</th>
-                        <th className="px-3 py-2 text-right font-medium">Original</th>
-                        <th className="px-3 py-2 text-right font-medium">Restante</th>
-                        <th className="px-3 py-2 text-right font-medium">Custo/un.</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pos.lots.map((l, i) => (
-                        <tr key={l.id ?? i} className="border-b border-border/60 last:border-0">
-                          <td className="px-3 py-2">{formatDatePt(l.traded_at)}</td>
-                          <td className="px-3 py-2 text-right">
-                            {formatQuantity(l.originalQuantity)}
-                          </td>
-                          <td className="px-3 py-2 text-right">{formatQuantity(l.quantity)}</td>
-                          <td className="px-3 py-2 text-right">{formatEUR(l.unitCost, hidden)}</td>
-                        </tr>
+                  {assetDividends.length > 0 && (
+                    <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto text-xs text-muted-foreground">
+                      {assetDividends.map((d) => (
+                        <li key={d.id} className="flex justify-between">
+                          <span>{d.payment_date ?? d.paid_at}</span>
+                          <span>
+                            {formatEUR(grossOf(d as never), hidden)}{" "}
+                            {isReceived(d as never) ? "" : "(previsto)"}
+                          </span>
+                        </li>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
+                    </ul>
+                  )}
+                </section>
+
+                <section>
+                  <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Lotes abertos
+                  </h3>
+                  {pos.lots.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Sem lotes abertos — posição fechada.
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto rounded-lg border border-border">
+                      <table className="w-full text-sm">
+                        <thead className="text-xs uppercase text-muted-foreground">
+                          <tr className="border-b border-border text-left">
+                            <th className="px-3 py-2 font-medium">Data</th>
+                            <th className="px-3 py-2 text-right font-medium">Original</th>
+                            <th className="px-3 py-2 text-right font-medium">Restante</th>
+                            <th className="px-3 py-2 text-right font-medium">Custo/un.</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pos.lots.map((l, i) => (
+                            <tr key={l.id ?? i} className="border-b border-border/60 last:border-0">
+                              <td className="px-3 py-2">{formatDatePt(l.traded_at)}</td>
+                              <td className="px-3 py-2 text-right">
+                                {formatQuantity(l.originalQuantity)}
+                              </td>
+                              <td className="px-3 py-2 text-right">{formatQuantity(l.quantity)}</td>
+                              <td className="px-3 py-2 text-right">
+                                {formatEUR(l.unitCost, hidden)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </section>
+              </>
+            )}
 
             <section>
               <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -682,8 +861,12 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                         <th className="px-3 py-2 font-medium">Data</th>
                         <th className="px-3 py-2 font-medium">Tipo</th>
                         <th className="px-3 py-2 text-right font-medium">Qtd.</th>
-                        <th className="px-3 py-2 text-right font-medium">Preço</th>
-                        <th className="px-3 py-2 text-right font-medium">Comissão</th>
+                        <th className="px-3 py-2 text-right font-medium">
+                          {isMetal ? "Spot/g" : "Preço"}
+                        </th>
+                        <th className="px-3 py-2 text-right font-medium">
+                          {isMetal ? "Ágio" : "Comissão"}
+                        </th>
                         <th className="px-3 py-2 text-right font-medium">Realizado</th>
                         <th className="px-3 py-2 text-right font-medium">Ações</th>
                       </tr>

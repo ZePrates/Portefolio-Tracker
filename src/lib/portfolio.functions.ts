@@ -21,6 +21,13 @@ import {
 import { dbError } from "@/lib/errors";
 import { stripLedgerFields } from "@/lib/asset-class";
 import { currencyCode, isinCode, isoDate, tradeDate } from "@/lib/validation";
+import {
+  buybackDiscountOf,
+  buybackPrice,
+  spotFromBuyback,
+  summarizeMetal,
+  type MetalStorageFee,
+} from "@/lib/metals";
 
 type AssetUpdate = Database["public"]["Tables"]["assets"]["Update"];
 type AssetRow = Database["public"]["Tables"]["assets"]["Row"];
@@ -58,6 +65,12 @@ const assetInputSchema = z.object({
   dividend_frequency: z.string().nullable().default(null),
   /** Retenção na fonte dos dividendos (fração 0..1); null = por omissão do domicílio. */
   withholding_rate: z.number().min(0).lt(1).nullable().default(null),
+  /** Metais em custódia: entidade, cofre/depósito e plano. */
+  custodian: z.string().trim().max(100).nullable().default(null),
+  vault_ref: z.string().trim().max(100).nullable().default(null),
+  plan_name: z.string().trim().max(100).nullable().default(null),
+  /** Desconto de recompra sobre o spot (fração 0..1); null = 3 %. */
+  buyback_discount: z.number().min(0).lt(1).nullable().default(null),
 });
 
 export const listAssets = createServerFn({ method: "GET" })
@@ -103,6 +116,25 @@ export const updateAsset = createServerFn({ method: "POST" })
     if (countError) throw dbError(countError);
     const hasLedger = (count ?? 0) > 0;
     if (hasLedger) patch = stripLedgerFields(patch) as AssetUpdate;
+
+    // Metal: `current_price` é o preço de recompra. Se só o desconto mudar,
+    // reajusta-o ao mesmo spot para o valor não ficar desatualizado até à
+    // próxima atualização de preços.
+    if (patch.buyback_discount !== undefined && patch.current_price === undefined) {
+      const { data: cur } = await context.supabase
+        .from("assets")
+        .select("class, current_price, buyback_discount")
+        .eq("id", data.id)
+        .single();
+      if (cur?.class === "metal") {
+        const spot = spotFromBuyback(
+          Number(cur.current_price),
+          buybackDiscountOf(cur.buyback_discount),
+        );
+        patch.current_price = buybackPrice(spot, buybackDiscountOf(patch.buyback_discount));
+        patch.current_price_native = patch.current_price;
+      }
+    }
 
     const { data: row, error } = await context.supabase
       .from("assets")
@@ -229,6 +261,8 @@ const tradeSchema = z.object({
   /** Câmbio do extrato do broker (1 unidade nativa = x EUR). Opcional. */
   fx_rate: z.number().positive().nullable().default(null),
   notes: z.string().max(500).nullable().default(null),
+  /** Metais: ágio da compra (fração). O preço é o spot e o ágio em EUR vai na comissão. */
+  premium_rate: z.number().min(0).lt(1).nullable().default(null),
 });
 
 type TxRow = Database["public"]["Tables"]["transactions"]["Row"];
@@ -247,12 +281,21 @@ function toLedgerEntry(
   };
 }
 
-/** Carrega o ativo e o livro de movimentos completo. */
-async function loadPosition(
+/**
+ * Carrega o ativo e o livro de movimentos completo. As taxas pagas em espécie
+ * (`asset_expenses.grams_deducted` > 0, ex.: armazenamento de metais) entram
+ * no livro como "storage": reduzem a quantidade sem gerar vendas.
+ */
+export async function loadPosition(
   supabase: SupabaseLike,
   assetId: string,
-): Promise<{ asset: AssetRow; txs: TxRow[]; entries: LedgerEntry[] }> {
-  const [assetRes, txRes] = await Promise.all([
+): Promise<{
+  asset: AssetRow;
+  txs: TxRow[];
+  entries: LedgerEntry[];
+  inKindFees: MetalStorageFee[];
+}> {
+  const [assetRes, txRes, feeRes] = await Promise.all([
     supabase.from("assets").select("*").eq("id", assetId).single(),
     supabase
       .from("transactions")
@@ -260,11 +303,39 @@ async function loadPosition(
       .eq("asset_id", assetId)
       .order("traded_at", { ascending: false })
       .order("created_at", { ascending: false }),
+    supabase
+      .from("asset_expenses")
+      .select("id, incurred_at, grams_deducted, amount, price_per_gram, created_at")
+      .eq("asset_id", assetId)
+      .gt("grams_deducted", 0),
   ]);
   if (assetRes.error || !assetRes.data) throw dbError(assetRes.error, "Ativo não encontrado.");
   if (txRes.error) throw dbError(txRes.error);
+  if (feeRes.error) throw dbError(feeRes.error);
   const txs = txRes.data ?? [];
-  return { asset: assetRes.data, txs, entries: txs.map(toLedgerEntry) };
+  const fees = feeRes.data ?? [];
+  const inKindFees: MetalStorageFee[] = fees.map((f) => ({
+    id: f.id,
+    incurred_at: f.incurred_at,
+    grams: Number(f.grams_deducted),
+    amount: Number(f.amount),
+    price_per_gram: f.price_per_gram == null ? null : Number(f.price_per_gram),
+  }));
+  const feeEntries: LedgerEntry[] = fees.map((f) => ({
+    id: f.id,
+    type: "storage",
+    quantity: Number(f.grams_deducted),
+    price: Number(f.price_per_gram ?? 0),
+    fee: 0,
+    traded_at: f.incurred_at,
+    created_at: f.created_at,
+  }));
+  return {
+    asset: assetRes.data,
+    txs,
+    entries: [...txs.map(toLedgerEntry), ...feeEntries],
+    inKindFees,
+  };
 }
 
 /**
@@ -390,6 +461,7 @@ async function insertTrade(
       fx_source: fx.source,
       source: "manual",
       notes: data.notes,
+      premium_rate: data.premium_rate,
     })
     .select("id")
     .single();
@@ -446,13 +518,34 @@ export const getPosition = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ assetId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { asset, txs, entries } = await loadPosition(context.supabase, data.assetId);
+    const { asset, txs, entries, inKindFees } = await loadPosition(context.supabase, data.assetId);
     const lots = buildOpenLots(entries);
     const quantity = totalQuantity(lots);
     const costBasis = totalCost(lots);
     const currentValue = quantity * Number(asset.current_price ?? 0);
     const realized = txs.reduce((s, t) => s + Number(t.realized_pl ?? 0), 0);
+    const metal =
+      asset.class === "metal"
+        ? summarizeMetal({
+            buys: txs
+              .filter((t) => t.type === "buy")
+              .map((t) => ({
+                id: t.id,
+                traded_at: t.traded_at,
+                quantity: Number(t.quantity),
+                price: Number(t.price),
+                fee: Number(t.fee ?? 0),
+                premium_rate: t.premium_rate == null ? null : Number(t.premium_rate),
+              })),
+            storage: inKindFees,
+            lots,
+            hasSales: txs.some((t) => t.type === "sell"),
+            currentPrice: Number(asset.current_price ?? 0),
+            discount: buybackDiscountOf(asset.buyback_discount),
+          })
+        : null;
     return {
+      metal,
       asset,
       lots,
       transactions: txs,
