@@ -89,7 +89,7 @@ const sectors: Record<string, string> = {
   futures: "Liquidez e derivados",
   fx: "Liquidez e derivados",
   derivatives: "Liquidez e derivados",
-  liquidezedерivados: "Liquidez e derivados",
+  liquidezed erivados: "Liquidez e derivados",
   moneymarket: "Liquidez e derivados",
 };
 export function exposureSector(raw: string): string {
