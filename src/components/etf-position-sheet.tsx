@@ -13,7 +13,7 @@ import {
   readableCompanyName,
 } from "@/lib/exposure-display";
 import { countryFlag, countryLabel, sectorColor } from "@/lib/exposure-visuals";
-import { detailSlices, equityHolding, managerName } from "@/lib/etf-sheet";
+import { canCompareEtfs, detailSlices, equityHolding, managerName } from "@/lib/etf-sheet";
 import { holdingIndex } from "@/lib/holding-identity";
 import { etfOverlap } from "@/lib/overlap";
 import { syncManagerHoldings, syncSummaryText } from "@/lib/holdings-sync";
@@ -161,7 +161,7 @@ export function EtfSheetContent({
   const overlaps = useMemo(() => {
     if (d.holdingsStatus !== "full" || !portfolio) return [];
     const complete = new Set(
-      portfolio.meta.filter((m) => m.holdingsStatus === "full").map((m) => m.assetId),
+      portfolio.meta.filter((m) => canCompareEtfs(d.holdingsStatus, m.holdingsStatus)).map((m) => m.assetId),
     );
     const current = {
       assetId: asset.id,

@@ -4,8 +4,9 @@ import { countryLabel } from "./exposure-visuals";
 import { exposureSector } from "./exposure-display";
 export const equityHolding = (h: { assetClass?: string | null; asset_class?: string | null }) => {
   const value = h.assetClass ?? h.asset_class;
-  return !value || value.toLowerCase() === "equity";
+  return !value || value.trim().toLowerCase() === "equity";
 };
+export const canCompareEtfs = (a: string | null, b: string | null) => a === "full" && b === "full";
 export function detailSlices(
   detail: AssetExposureDetail,
   dimension: "country" | "sector",
