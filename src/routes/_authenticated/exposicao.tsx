@@ -1,134 +1,68 @@
-import { useState } from "react";
+import { useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { RefreshCw } from "lucide-react";
+import { CircleAlert, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { getExposure, syncAllAssetExposure } from "@/lib/exposure.functions";
-import type { Slice } from "@/lib/exposure-types";
-import { countryNamePt, formatEUR, formatPct, sectorNamePt } from "@/lib/format";
+import type { CompanyExposure, Slice } from "@/lib/exposure-types";
+import { exposureCountry, exposureEUR, exposurePct, exposureSector, mergeDisplaySlices } from "@/lib/exposure-display";
+import { syncManagerHoldings, syncSummaryText } from "@/lib/holdings-sync";
 import { usePrivateMode } from "@/components/private-mode";
-import {
-  Badge,
-  Button,
-  EmptyState,
-  ErrorState,
-  KpiGridSkeleton,
-  MetricCard,
-  PageHeader,
-} from "@/components/ui-bits";
+import { Button, EmptyState, ErrorState, KpiGridSkeleton, MetricCard, PageHeader } from "@/components/ui-bits";
+import { ExposureTable } from "@/components/exposure-table";
+import { EtfCoverageTable } from "@/components/etf-coverage";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/exposicao")({
-  head: () => ({
-    meta: [
-      { title: "Exposição — Portefólio Tracker" },
-      {
-        name: "description",
-        content:
-          "Exposição económica real da carteira: geografia, setores, moedas, empresas e concentração.",
-      },
-      { property: "og:title", content: "Exposição — Portefólio Tracker" },
-      {
-        property: "og:description",
-        content:
-          "Exposição económica real da carteira: geografia, setores, moedas, empresas e concentração.",
-      },
-    ],
-  }),
+  head: () => ({ meta: [
+    { title: "Exposição e peso das empresas — Portefólio Tracker" },
+    { name: "description", content: "Peso real das empresas, países e setores na carteira, com posições completas dos ETFs e cobertura das gestoras." },
+    { property: "og:title", content: "Exposição e peso das empresas — Portefólio Tracker" },
+    { property: "og:description", content: "Exposição direta e via ETFs, concentração das empresas e cobertura das posições." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" },
+  ] }),
   component: ExposicaoPage,
 });
 
-const pct = (v: number, hidden: boolean) => formatPct(v, 1, hidden);
-
-function SliceList({
-  title,
-  note,
-  slices,
-  hidden,
-  limit = 8,
-  translate,
-}: {
-  title: string;
-  note?: string;
-  slices: Slice[];
-  hidden: boolean;
-  limit?: number;
-  /** Traduz o rótulo da fonte (ex.: países e setores em inglês). */
-  translate?: (value: string) => string;
-}) {
-  const [open, setOpen] = useState<string | null>(null);
-  const rows = slices.slice(0, limit);
-
-  return (
-    <div className="rounded-xl border border-border bg-card p-5">
-      <h2 className="text-sm font-semibold">{title}</h2>
-      {note && <p className="mt-1 text-xs text-muted-foreground">{note}</p>}
-      <ul className="mt-4 space-y-2">
-        {rows.length === 0 && <li className="text-sm text-muted-foreground">Não disponível</li>}
-        {rows.map((s) => (
-          <li key={s.value} className="rounded-lg border border-border/60">
-            <button
-              onClick={() => setOpen(open === s.value ? null : s.value)}
-              className="w-full px-4 py-2.5 text-left"
-            >
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-medium">{translate ? translate(s.value) : s.value}</span>
-                <span className="text-muted-foreground">
-                  {formatEUR(s.amount, hidden)} · {pct(s.pct, hidden)}
-                </span>
-              </div>
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
-                <div
-                  className="h-full rounded-full bg-primary"
-                  style={{ width: `${Math.min(100, s.pct)}%` }}
-                />
-              </div>
-            </button>
-            {open === s.value && (
-              <ul className="space-y-1 border-t border-border/60 px-4 py-2">
-                {s.contributors.map((c) => (
-                  <li
-                    key={c.assetId}
-                    className="flex justify-between text-xs text-muted-foreground"
-                  >
-                    <span>{c.name}</span>
-                    <span>{formatEUR(c.amount, hidden)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+const identity = (value: string) => value;
+function SliceSection({ title, slices, hidden, translate = identity }: { title: string; slices: Slice[]; hidden: boolean; translate?: (value: string) => string }) {
+  const rows = useMemo(() => mergeDisplaySlices(slices, translate), [slices, translate]);
+  return <section className="min-w-0 space-y-3">
+    <h2 className="text-base font-semibold">{title}</h2>
+    <ExposureTable rows={rows} label={title} rowKey={(r) => r.value} rowLabel={(r) => r.value} pageSize={50} columns={[
+      { id: "name", label: "Categoria", value: (r) => r.value, cell: (r) => <details className="min-w-36 max-w-64"><summary className="cursor-pointer font-medium">{r.value}</summary><ul className="mt-2 space-y-1 text-xs text-muted-foreground">{r.contributors.map((c) => <li key={c.assetId} className="flex justify-between gap-3"><span>{c.name}</span><span className="num whitespace-nowrap">{exposureEUR(c.amount, hidden)}</span></li>)}</ul></details> },
+      { id: "amount", label: "Valor", numeric: true, value: (r) => r.amount, cell: (r) => exposureEUR(r.amount, hidden) },
+      { id: "pct", label: "% carteira", numeric: true, value: (r) => r.pct, cell: (r) => <div className="flex items-center justify-end gap-3"><div aria-hidden className="h-1.5 w-20 shrink-0 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary" style={{ width: `${hidden ? 0 : Math.min(100, r.pct)}%` }} /></div><span className="w-16">{exposurePct(r.pct, hidden)}</span></div> },
+    ]} />
+  </section>;
 }
 
-const SOURCE_LABELS: Record<string, string> = {
-  ishares: "iShares",
-  vanguard: "Vanguard",
-  vaneck: "VanEck",
-  wisdomtree: "WisdomTree",
-  xtrackers: "Xtrackers",
-  bnpparibas: "BNP Paribas",
-  justetf: "justETF",
-  "justetf+ft": "justETF + Financial Times",
-  ft: "Financial Times",
-  yahoo: "Yahoo Finance",
+const etfContributors = (company: CompanyExposure) => {
+  const contributors = new Map<string, { assetId: string; name: string; amount: number }>();
+  for (const c of company.contributors.filter((r) => r.via === "etf")) {
+    const prior = contributors.get(c.assetId);
+    if (prior) prior.amount += c.amount;
+    else contributors.set(c.assetId, { ...c });
+  }
+  return [...contributors.values()].sort((a, b) => b.amount - a.amount);
 };
 
-function sourceLabel(source: string | null): string {
-  if (!source) return "Não disponível";
-  const base = source.split(":")[0] ?? source;
-  return SOURCE_LABELS[base] ?? base;
-}
-
-function CoverageBadge({ coverage }: { coverage: number }) {
-  if (coverage >= 99.5) return <Badge tone="gain">Completa</Badge>;
-  if (coverage > 0) return <Badge tone="warn">Parcial</Badge>;
-  return <Badge>Indisponível</Badge>;
+function CompanyTable({ rows, hidden }: { rows: CompanyExposure[]; hidden: boolean }) {
+  return <section className="min-w-0 space-y-4">
+    <h2 className="text-base font-semibold">Peso real por empresa</h2>
+    <ExposureTable rows={rows} label="Peso real por empresa" rowKey={(r) => `${r.symbol ?? ""}|${r.name}`} rowLabel={(r) => r.name} searchText={(r) => `${r.name} ${r.symbol ?? ""}`} columns={[
+      { id: "name", label: "Empresa", value: (r) => r.name, cell: (r) => <div className="min-w-48 max-w-xs"><p className="font-medium">{r.name}</p><p className="text-xs text-muted-foreground">{r.symbol ?? "—"}</p></div> },
+      { id: "indirect", label: "Via ETFs", numeric: true, value: (r) => r.indirect, cell: (r) => exposureEUR(r.indirect, hidden) },
+      { id: "direct", label: "Direto", numeric: true, value: (r) => r.direct, cell: (r) => exposureEUR(r.direct, hidden) },
+      { id: "total", label: "Total", numeric: true, value: (r) => r.amount, cell: (r) => <span className="font-medium">{exposureEUR(r.amount, hidden)}</span> },
+      { id: "etfs", label: "N.º ETFs", numeric: true, value: (r) => etfContributors(r).length, cell: (r) => {
+        const etfs = etfContributors(r);
+        return etfs.length ? <details className="min-w-20 text-left"><summary className="num cursor-pointer text-right">{etfs.length}</summary><ul className="mt-2 min-w-56 max-w-80 space-y-2 text-xs text-muted-foreground">{etfs.map((etf) => <li key={etf.assetId}><p className="whitespace-normal">{etf.name}</p><p className="num">{exposureEUR(etf.amount, hidden)}</p></li>)}</ul></details> : "0";
+      } },
+      { id: "pct", label: "% carteira", numeric: true, value: (r) => r.pct, cell: (r) => exposurePct(r.pct, hidden) },
+    ]} />
+  </section>;
 }
 
 function ExposicaoPage() {
@@ -136,261 +70,44 @@ function ExposicaoPage() {
   const queryClient = useQueryClient();
   const fetchExposure = useServerFn(getExposure);
   const syncFn = useServerFn(syncAllAssetExposure);
-
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["exposure"],
-    queryFn: () => fetchExposure(),
-  });
-
-  const sync = useMutation({
-    mutationFn: () => syncFn(),
-    onSuccess: (res) => {
-      toast.success(`Composição atualizada: ${res.updated} de ${res.total} ativos.`);
-      queryClient.invalidateQueries({ queryKey: ["exposure"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
+  const { data, isPending, isError, refetch } = useQuery({ queryKey: ["exposure"], queryFn: () => fetchExposure() });
+  const reload = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["exposure"] }),
+      queryClient.invalidateQueries({ queryKey: ["asset-exposure"] }),
+    ]);
+  };
+  const sync = useMutation({ mutationFn: () => syncFn(), onSuccess: async (res) => { toast.success(`Composição atualizada: ${res.updated} de ${res.total} ativos.`); await reload(); }, onError: () => toast.error("Não foi possível atualizar a composição.") });
+  const managers = useMutation({ mutationFn: () => syncManagerHoldings(), onSuccess: async (res) => { toast[res.failed ? "warning" : "success"](syncSummaryText(res)); await reload(); }, onError: (e: Error) => toast.error(e.message) });
   const report = data?.report;
-  const meta = data?.meta ?? [];
-
-  const actions = (
-    <Button onClick={() => sync.mutate()} loading={sync.isPending}>
-      {!sync.isPending && <RefreshCw aria-hidden className="h-4 w-4" />}
-      Atualizar composição
-    </Button>
-  );
-
-  if (!isLoading && (!report || report.total === 0)) {
-    return (
-      <div className="space-y-6">
-        <PageHeader
-          title="Exposição"
-          subtitle="Exposição económica real da carteira."
-          actions={actions}
-        />
-        <EmptyState
-          title="Sem exposição calculada"
-          description="Adicione ativos e atualize a composição para ver a exposição subjacente."
-        />
+  const etfs = data?.meta.filter((m) => m.class === "etf") ?? [];
+  const partial = etfs.filter((m) => m.holdingsStatus !== "full");
+  const actions = <>
+    <Button variant="outline" onClick={() => sync.mutate()} loading={sync.isPending} disabled={managers.isPending}><RefreshCw aria-hidden className="h-4 w-4" />Atualizar ações e REITs</Button>
+    <Button onClick={() => managers.mutate()} loading={managers.isPending} disabled={sync.isPending}><RefreshCw aria-hidden className="h-4 w-4" />Sincronizar com gestoras</Button>
+  </>;
+  return <div className="min-w-0 space-y-6">
+    <PageHeader title="Exposição" actions={actions} />
+    {isError ? <ErrorState onRetry={() => void refetch()} /> : isPending ? <><KpiGridSkeleton count={4} /><Skeleton className="h-64 w-full" /></> : !report || report.total === 0 ? <EmptyState title="Sem exposição calculada" description="Não existem posições abertas na carteira." /> : <>
+      {partial.length > 0 && <div role="status" className="flex items-start gap-3 border-l-2 border-warning bg-warning/10 px-4 py-3 text-sm"><CircleAlert aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-warning" /><p><strong>{partial.length} ETFs com dados incompletos.</strong> As listas parciais subestimam o peso das empresas e a concentração apresentada.</p></div>}
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <MetricCard label="Valor do portefólio" value={exposureEUR(report.total, hidden)} />
+        <MetricCard label="Cobertura geográfica" value={exposurePct(report.coverage, hidden)} />
+        <MetricCard label="Maior empresa" value={exposurePct(report.concentration.largest, hidden)} sub={report.companies[0]?.name ?? "—"} />
+        <MetricCard label="Top 10 empresas" value={exposurePct(report.concentration.top10, hidden)} sub={`Top 5: ${exposurePct(report.concentration.top5, hidden)}`} />
       </div>
-    );
-  }
-
-  if (!report) {
-    return (
-      <div className="space-y-6">
-        <PageHeader
-          title="Exposição"
-          subtitle="Exposição económica real da carteira."
-          actions={actions}
-        />
-        {isError ? (
-          <ErrorState onRetry={() => void refetch()} />
-        ) : (
-          <div aria-busy="true" aria-label="A calcular a exposição" className="space-y-4">
-            <KpiGridSkeleton count={4} />
-            <Skeleton className="h-64 w-full" />
-          </div>
-        )}
+      <CompanyTable rows={report.companies} hidden={hidden} />
+      {etfs.length > 0 && <EtfCoverageTable rows={etfs} hidden={hidden} />}
+      <div className="grid min-w-0 gap-6 xl:grid-cols-2">
+        <SliceSection title="Por país" slices={report.country} hidden={hidden} translate={exposureCountry} />
+        <SliceSection title="Por setor" slices={report.sector} hidden={hidden} translate={exposureSector} />
+        <SliceSection title="Por classe de ativo" slices={report.byClass} hidden={hidden} />
+        <SliceSection title="Por moeda económica" slices={report.currency} hidden={hidden} />
+        <SliceSection title="Por região" slices={report.region} hidden={hidden} translate={exposureCountry} />
+        <SliceSection title="Por continente" slices={report.continent} hidden={hidden} />
+        <SliceSection title="Desenvolvido vs. emergente" slices={report.development} hidden={hidden} />
+        <SliceSection title="Por indústria" slices={report.industry} hidden={hidden} translate={exposureSector} />
       </div>
-    );
-  }
-
-  const c = report.concentration;
-  const derived = meta.filter((m) => m.derived);
-  const etfMeta = meta.filter((m) => m.class === "etf");
-
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Exposição"
-        subtitle="Exposição direta e indireta (via ETFs) calculada a partir dos dados reais dos ativos."
-        actions={actions}
-      />
-
-      <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
-        <MetricCard label="Valor analisado" value={formatEUR(report.total, hidden)} />
-        <MetricCard
-          label="Cobertura dos dados"
-          value={pct(report.coverage, hidden)}
-          sub="Parte da carteira com composição conhecida"
-        />
-        <MetricCard
-          label="Maior empresa"
-          value={pct(c.largest, hidden)}
-          sub={report.companies[0]?.name ?? "—"}
-        />
-        <MetricCard
-          label="Top 10 empresas"
-          value={pct(c.top10, hidden)}
-          sub={`Top 5: ${pct(c.top5, hidden)}`}
-        />
-      </div>
-
-      {etfMeta.length > 0 && (
-        <div className="rounded-xl border border-border bg-card p-5">
-          <h2 className="text-sm font-semibold">Cobertura por ETF</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            A fonte oficial da gestora é usada sempre que disponível; quando publica apenas as
-            principais posições, a cobertura mantém-se parcial em vez de assumir 100%.
-          </p>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
-                  <th className="py-2 pr-3 font-medium">ETF</th>
-                  <th className="py-2 pr-3 text-right font-medium">Valor</th>
-                  <th className="py-2 pr-3 font-medium">Cobertura</th>
-                  <th className="py-2 pr-3 font-medium">Fonte</th>
-                  <th className="py-2 font-medium">Data</th>
-                </tr>
-              </thead>
-              <tbody>
-                {etfMeta.map((m) => (
-                  <tr key={m.assetId} className="border-b border-border/50">
-                    <td className="py-2 pr-3 font-medium">
-                      {m.name}
-                      {m.ticker && (
-                        <span className="ml-2 text-xs text-muted-foreground">{m.ticker}</span>
-                      )}
-                    </td>
-                    <td className="py-2 pr-3 text-right">{formatEUR(m.value, hidden)}</td>
-                    <td className="py-2 pr-3">
-                      <div className="flex items-center gap-2">
-                        <span>{pct(m.coverage, hidden)}</span>
-                        <CoverageBadge coverage={m.coverage} />
-                      </div>
-                    </td>
-                    <td className="py-2 pr-3 text-muted-foreground">{sourceLabel(m.source)}</td>
-                    <td className="py-2 text-muted-foreground">
-                      {m.asOfDate
-                        ? new Date(m.asOfDate).toLocaleDateString("pt-PT")
-                        : "Não disponível"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {derived.length > 0 && (
-            <p className="mt-3 text-xs text-muted-foreground">
-              Geografia e setores derivados das holdings (fonte não publica distribuição própria)
-              em: {derived.map((m) => m.name).join(", ")}.
-            </p>
-          )}
-        </div>
-      )}
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <SliceList title="Por classe de ativo" slices={report.byClass} hidden={hidden} />
-        <SliceList
-          title="Por país"
-          note="Exposição económica subjacente, não o país de domiciliação do fundo."
-          slices={report.country}
-          hidden={hidden}
-          translate={countryNamePt}
-        />
-        <SliceList
-          title="Por região"
-          slices={report.region}
-          hidden={hidden}
-          translate={countryNamePt}
-        />
-        <SliceList title="Por continente" slices={report.continent} hidden={hidden} />
-        <SliceList
-          title="Desenvolvido vs. emergente"
-          slices={report.development}
-          hidden={hidden}
-          limit={4}
-        />
-        <SliceList
-          title="Por setor"
-          slices={report.sector}
-          hidden={hidden}
-          limit={12}
-          translate={sectorNamePt}
-        />
-        <SliceList
-          title="Por moeda económica"
-          note="Moeda dos ativos subjacentes, não a moeda de cotação."
-          slices={report.currency}
-          hidden={hidden}
-        />
-        <SliceList
-          title="Por indústria"
-          slices={report.industry}
-          hidden={hidden}
-          limit={10}
-          translate={sectorNamePt}
-        />
-      </div>
-
-      <div className="rounded-xl border border-border bg-card p-5">
-        <h2 className="text-sm font-semibold">Top 10 empresas (direta + indireta)</h2>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
-                <th className="py-2 pr-3 font-medium">Empresa</th>
-                <th className="py-2 pr-3 font-medium">País</th>
-                <th className="py-2 pr-3 font-medium">Setor</th>
-                <th className="py-2 pr-3 text-right font-medium">Direta</th>
-                <th className="py-2 pr-3 text-right font-medium">Via ETFs</th>
-                <th className="py-2 pr-3 text-right font-medium">Total</th>
-                <th className="py-2 text-right font-medium">% carteira</th>
-              </tr>
-            </thead>
-            <tbody>
-              {report.companies.slice(0, 10).map((co) => (
-                <tr key={(co.symbol ?? co.name) + co.name} className="border-b border-border/50">
-                  <td className="py-2 pr-3 font-medium">
-                    {co.name}
-                    {co.symbol && (
-                      <span className="ml-2 text-xs text-muted-foreground">{co.symbol}</span>
-                    )}
-                  </td>
-                  <td className="py-2 pr-3 text-muted-foreground">
-                    {co.country ?? "Não disponível"}
-                  </td>
-                  <td className="py-2 pr-3 text-muted-foreground">
-                    {co.sector ?? "Não disponível"}
-                  </td>
-                  <td className="py-2 pr-3 text-right">{formatEUR(co.direct, hidden)}</td>
-                  <td className="py-2 pr-3 text-right">{formatEUR(co.indirect, hidden)}</td>
-                  <td className="py-2 pr-3 text-right font-medium">
-                    {formatEUR(co.amount, hidden)}
-                  </td>
-                  <td className="py-2 text-right text-muted-foreground">{pct(co.pct, hidden)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-3">
-        <MetricCard
-          label="Concentração por país"
-          value={pct(c.topCountry, hidden)}
-          sub="Maior país"
-        />
-        <MetricCard
-          label="Concentração por setor"
-          value={pct(c.topSector, hidden)}
-          sub="Maior setor"
-        />
-        <MetricCard
-          label="Concentração por moeda"
-          value={pct(c.topCurrency, hidden)}
-          sub="Maior moeda"
-        />
-      </div>
-
-      <p className="text-xs text-muted-foreground">
-        ETFs: justETF como fonte principal e Financial Times como segunda opção. Ações, REITs e
-        restantes títulos: Yahoo Finance. Nenhum dado financeiro é gerado por IA.
-      </p>
-    </div>
-  );
+    </>}
+  </div>;
 }
