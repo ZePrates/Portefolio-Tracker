@@ -128,7 +128,15 @@ export interface ExposureRow {
   pct: number;
 }
 
-function ExposureRows({ rows, hidden, sectors = false }: { rows: ExposureRow[]; hidden: boolean; sectors?: boolean }) {
+function ExposureRows({
+  rows,
+  hidden,
+  sectors = false,
+}: {
+  rows: ExposureRow[];
+  hidden: boolean;
+  sectors?: boolean;
+}) {
   if (rows.length === 0) return <EmptyRows label="Sem dados" />;
   const max = Math.max(...rows.map((r) => r.pct), 0);
   return (
@@ -144,7 +152,10 @@ function ExposureRows({ rows, hidden, sectors = false }: { rows: ExposureRow[]; 
           <span aria-hidden className="h-1.5 overflow-hidden rounded-full bg-foreground/5">
             <span
               className="block h-full rounded-full bg-muted-foreground/70"
-              style={{ width: hidden || max <= 0 ? 0 : `${(r.pct / max) * 100}%`, ...(sectors ? { backgroundColor: sectorColor(r.label) } : {}) }}
+              style={{
+                width: hidden || max <= 0 ? 0 : `${(r.pct / max) * 100}%`,
+                ...(sectors ? { backgroundColor: sectorColor(r.label) } : {}),
+              }}
             />
           </span>
           <span className="num text-right text-muted-foreground">

@@ -161,7 +161,9 @@ export function EtfSheetContent({
   const overlaps = useMemo(() => {
     if (d.holdingsStatus !== "full" || !portfolio) return [];
     const complete = new Set(
-      portfolio.meta.filter((m) => canCompareEtfs(d.holdingsStatus, m.holdingsStatus)).map((m) => m.assetId),
+      portfolio.meta
+        .filter((m) => canCompareEtfs(d.holdingsStatus, m.holdingsStatus))
+        .map((m) => m.assetId),
     );
     const current = {
       assetId: asset.id,
