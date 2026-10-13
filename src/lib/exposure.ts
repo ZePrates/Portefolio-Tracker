@@ -138,9 +138,14 @@ export function computeExposure(positions: PositionInput[]): ExposureReport {
   // Resolve ticker-less names to a ticker only when the name is unambiguous.
   const nameSymbols = new Map<string, Set<string>>();
   for (const p of active) {
-    const entries = p.class === "etf"
-      ? p.holdings.filter((h) => h.asset_class == null || h.asset_class.toLowerCase() === "equity").map((h) => ({ name: h.name, symbol: h.symbol }))
-      : EQUITY_CLASSES.has(p.class) ? [{ name: p.name, symbol: p.ticker }] : [];
+    const entries =
+      p.class === "etf"
+        ? p.holdings
+            .filter((h) => h.asset_class == null || h.asset_class.toLowerCase() === "equity")
+            .map((h) => ({ name: h.name, symbol: h.symbol }))
+        : EQUITY_CLASSES.has(p.class)
+          ? [{ name: p.name, symbol: p.ticker }]
+          : [];
     for (const entry of entries) {
       if (!entry.symbol?.trim()) continue;
       const name = companyNameKey(entry.name);

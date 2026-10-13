@@ -43,7 +43,8 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
     coverage: 0,
   };
   // Manager holdings are authoritative; legacy fallback sync must never overwrite them.
-  if (asset.class === "etf") return { ...base, message: "Sincronize este ETF com as gestoras na página Exposição." };
+  if (asset.class === "etf")
+    return { ...base, message: "Sincronize este ETF com as gestoras na página Exposição." };
   // Estado já guardado para nunca apagar dados válidos numa falha da fonte.
   const { data: existing } = await supabase
     .from("asset_profiles")
@@ -352,7 +353,12 @@ export interface AssetExposureMeta {
 }
 
 /** Data API pages are bounded: always read every page in deterministic ID order. */
-async function readExposurePages<T>(query: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>): Promise<T[]> {
+async function readExposurePages<T>(
+  query: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+): Promise<T[]> {
   const rows: T[] = [];
   for (let from = 0; ; from += 1000) {
     const { data, error } = await query(from, from + 999);
@@ -368,8 +374,12 @@ export const getExposure = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const [assetsRes, exposuresRes, holdingsRes, profilesRes] = await Promise.all([
       context.supabase.from("assets").select("*").neq("status", "closed"),
-      readExposurePages((from, to) => context.supabase.from("asset_exposures").select("*").order("id").range(from, to)),
-      readExposurePages((from, to) => context.supabase.from("etf_holdings").select("*").order("id").range(from, to)),
+      readExposurePages((from, to) =>
+        context.supabase.from("asset_exposures").select("*").order("id").range(from, to),
+      ),
+      readExposurePages((from, to) =>
+        context.supabase.from("etf_holdings").select("*").order("id").range(from, to),
+      ),
       context.supabase.from("asset_profiles").select("*"),
     ]);
     if (assetsRes.error) throw new Error(assetsRes.error.message);
@@ -449,7 +459,14 @@ export const getExposure = createServerFn({ method: "GET" })
         class: a.class,
         ticker: a.ticker,
         value: assetCurrentValue(a),
-        coverage: Math.min(100, (a.class === "etf" ? (profile?.holdings_coverage ?? holdingCoverage) : (hasCountryDim ? 1 : holdingCoverage)) * 100),
+        coverage: Math.min(
+          100,
+          (a.class === "etf"
+            ? (profile?.holdings_coverage ?? holdingCoverage)
+            : hasCountryDim
+              ? 1
+              : holdingCoverage) * 100,
+        ),
         holdingsStatus: profile?.holdings_status ?? (hs.length ? "partial" : null),
         holdingsCount: hs.length,
         holdingsError: profile?.holdings_error ?? null,
@@ -508,7 +525,14 @@ export const getAssetExposure = createServerFn({ method: "GET" })
     const [assetRes, exRes, hsRes, prRes] = await Promise.all([
       context.supabase.from("assets").select("*").eq("id", data.assetId).maybeSingle(),
       context.supabase.from("asset_exposures").select("*").eq("asset_id", data.assetId),
-      readExposurePages((from, to) => context.supabase.from("etf_holdings").select("*").eq("asset_id", data.assetId).order("id").range(from, to)),
+      readExposurePages((from, to) =>
+        context.supabase
+          .from("etf_holdings")
+          .select("*")
+          .eq("asset_id", data.assetId)
+          .order("id")
+          .range(from, to),
+      ),
       context.supabase
         .from("asset_profiles")
         .select("*")
@@ -564,7 +588,14 @@ export const getAssetExposure = createServerFn({ method: "GET" })
     return {
       assetId: asset.id,
       value,
-      coverage: Math.min(100, (asset.class === "etf" ? (pr?.holdings_coverage ?? holdingCoverage) : (hasCountryDim ? 1 : holdingCoverage)) * 100),
+      coverage: Math.min(
+        100,
+        (asset.class === "etf"
+          ? (pr?.holdings_coverage ?? holdingCoverage)
+          : hasCountryDim
+            ? 1
+            : holdingCoverage) * 100,
+      ),
       holdingsStatus: pr?.holdings_status ?? (hs.length ? "partial" : null),
       holdingsError: pr?.holdings_error ?? null,
       asOfDate: pr?.as_of_date ?? hs[0]?.as_of_date ?? ex[0]?.as_of_date ?? null,

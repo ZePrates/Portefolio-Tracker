@@ -27,13 +27,13 @@ export const Route = createFileRoute("/_authenticated/etfs")({
 function EtfsPage() {
   return (
     <div className="min-w-0 space-y-6">
-    <AssetClassPage
-      assetClass="etf"
-      title="ETFs"
-      subtitle="Fundos negociados em bolsa — exposição diversificada por índice, setor ou geografia."
-      emptyLabel="Ainda não tens ETFs"
-    />
-    <EtfCoverageSection />
+      <AssetClassPage
+        assetClass="etf"
+        title="ETFs"
+        subtitle="Fundos negociados em bolsa — exposição diversificada por índice, setor ou geografia."
+        emptyLabel="Ainda não tens ETFs"
+      />
+      <EtfCoverageSection />
     </div>
   );
 }
