@@ -7,6 +7,7 @@ import type { AssetPerformance } from "@/lib/dashboard";
 import { formatPct, formatPercent, formatSignedEUR } from "@/lib/format";
 import { Card } from "@/components/ui-bits";
 import { CLASS_ROUTES } from "@/components/nav-config";
+import { sectorColor } from "@/lib/exposure-visuals";
 
 /** Abas segmentadas (Radix Tabs: `role="tablist"`, setas esquerda/direita). */
 function SegmentedList({ label, items }: { label: string; items: Array<[string, string]> }) {
@@ -127,7 +128,15 @@ export interface ExposureRow {
   pct: number;
 }
 
-function ExposureRows({ rows, hidden }: { rows: ExposureRow[]; hidden: boolean }) {
+function ExposureRows({
+  rows,
+  hidden,
+  sectors = false,
+}: {
+  rows: ExposureRow[];
+  hidden: boolean;
+  sectors?: boolean;
+}) {
   if (rows.length === 0) return <EmptyRows label="Sem dados" />;
   const max = Math.max(...rows.map((r) => r.pct), 0);
   return (
@@ -143,7 +152,10 @@ function ExposureRows({ rows, hidden }: { rows: ExposureRow[]; hidden: boolean }
           <span aria-hidden className="h-1.5 overflow-hidden rounded-full bg-foreground/5">
             <span
               className="block h-full rounded-full bg-muted-foreground/70"
-              style={{ width: hidden || max <= 0 ? 0 : `${(r.pct / max) * 100}%` }}
+              style={{
+                width: hidden || max <= 0 ? 0 : `${(r.pct / max) * 100}%`,
+                ...(sectors ? { backgroundColor: sectorColor(r.label) } : {}),
+              }}
             />
           </span>
           <span className="num text-right text-muted-foreground">
@@ -194,7 +206,7 @@ export function ExposureCard({
               <ExposureRows rows={countries} hidden={hidden} />
             </Tabs.Content>
             <Tabs.Content value="sectors">
-              <ExposureRows rows={sectors ?? []} hidden={hidden} />
+              <ExposureRows rows={sectors ?? []} hidden={hidden} sectors />
             </Tabs.Content>
             <Tabs.Content value="companies">
               <ExposureRows rows={companies ?? []} hidden={hidden} />

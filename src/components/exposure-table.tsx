@@ -48,7 +48,7 @@ export function ExposureTable<T>({
     <div className="min-w-0 space-y-3">
       {searchText && (
         <div className="flex flex-wrap items-center gap-3">
-          <div className="relative min-w-0 flex-1 sm:max-w-sm">
+          <div className="relative w-full min-w-0 sm:w-auto sm:flex-1 sm:max-w-sm">
             <label className="sr-only" htmlFor={id}>
               Pesquisar {label}
             </label>

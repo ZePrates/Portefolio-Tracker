@@ -4,8 +4,7 @@
  * a fração de A que também está em B (e vice-versa) nas holdings conhecidas.
  */
 
-import { isValidIsin } from "@/lib/identifiers";
-import { normalizeCompanyKey } from "@/lib/intelligence";
+import { holdingIndex } from "@/lib/holding-identity";
 
 export interface EtfHoldings {
   assetId: string;
@@ -25,35 +24,36 @@ export interface OverlapPair {
   top: Array<{ name: string; weight: number }>;
 }
 
-function keyOf(h: { name: string; isin?: string | null; symbol?: string | null }): string {
-  const isin = h.isin?.trim().toUpperCase();
-  if (isin && isValidIsin(isin)) return `isin:${isin}`;
-  return `name:${normalizeCompanyKey(h.name || h.symbol || "")}`;
-}
-
-function weightsOf(etf: EtfHoldings): Map<string, { name: string; weight: number }> {
-  const map = new Map<string, { name: string; weight: number }>();
+function weightsOf(etf: EtfHoldings): EtfHoldings["holdings"] {
+  const rows = new Map<EtfHoldings["holdings"][number], EtfHoldings["holdings"][number]>();
+  const find = holdingIndex(etf.holdings);
   for (const h of etf.holdings) {
-    const w = Number(h.weight) || 0;
-    if (w <= 0) continue;
-    const k = keyOf(h);
-    const cur = map.get(k);
-    map.set(k, { name: cur?.name ?? h.name, weight: (cur?.weight ?? 0) + w });
+    if (!Number.isFinite(h.weight) || h.weight <= 0) continue;
+    const representative = find(h) ?? h;
+    const prior = rows.get(representative);
+    if (prior) prior.weight += h.weight;
+    else rows.set(representative, { ...h });
   }
-  return map;
+  return [...rows.values()];
 }
 
 export function etfOverlap(etfs: EtfHoldings[], topN = 5): OverlapPair[] {
-  const maps = etfs.map((e) => ({ etf: e, w: weightsOf(e) })).filter((x) => x.w.size > 0);
+  const maps = etfs.map((e) => ({ etf: e, w: weightsOf(e) })).filter((x) => x.w.length > 0);
   const pairs: OverlapPair[] = [];
   for (let i = 0; i < maps.length; i++) {
     for (let j = i + 1; j < maps.length; j++) {
-      const A = maps[i]!;
-      const B = maps[j]!;
+      const A = maps[i];
+      const B = maps[j];
+      if (!A || !B) continue;
+      const find = holdingIndex(B.w);
+      const used = new Set<EtfHoldings["holdings"][number]>();
       const shared: Array<{ name: string; weight: number }> = [];
-      for (const [k, va] of A.w) {
-        const vb = B.w.get(k);
-        if (vb) shared.push({ name: va.name, weight: Math.min(va.weight, vb.weight) });
+      for (const va of A.w) {
+        const vb = find(va);
+        if (vb && !used.has(vb)) {
+          used.add(vb);
+          shared.push({ name: va.name, weight: Math.min(va.weight, vb.weight) });
+        }
       }
       shared.sort((x, y) => y.weight - x.weight);
       pairs.push({

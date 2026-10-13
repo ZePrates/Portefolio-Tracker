@@ -8,6 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/external-types";
 import { todayLisbon } from "@/lib/dates";
 import { dbError } from "@/lib/errors";
+import { readExposurePages } from "@/lib/exposure-pagination";
 
 /**
  * Sincronização de perfis, composição e exposição dos ativos.
@@ -357,22 +358,6 @@ export interface AssetExposureMeta {
   holdingsSyncedAt: string | null;
 }
 
-/** Data API pages are bounded: always read every page in deterministic ID order. */
-async function readExposurePages<T>(
-  query: (
-    from: number,
-    to: number,
-  ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
-): Promise<T[]> {
-  const rows: T[] = [];
-  for (let from = 0; ; from += 1000) {
-    const { data, error } = await query(from, from + 999);
-    if (error) throw new Error(error.message);
-    rows.push(...(data ?? []));
-    if (!data || data.length < 1000) return rows;
-  }
-}
-
 /** Leitura consolidada: lê exclusivamente da base de dados (sem chamadas externas). */
 export const getExposure = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -402,6 +387,7 @@ export const getExposure = createServerFn({ method: "GET" })
     const holdings = holdingsRes as Array<{
       asset_id: string;
       holding_name: string;
+      isin?: string | null;
       holding_symbol: string | null;
       asset_class?: string | null;
       weight: number;
@@ -435,6 +421,7 @@ export const getExposure = createServerFn({ method: "GET" })
         name: a.name,
         class: a.class,
         ticker: a.ticker,
+        isin: a.isin,
         value: assetCurrentValue(a),
         nativeCurrency: a.native_currency || a.currency || "EUR",
         exposures: ex.map((e): ExposureRecord => ({
@@ -447,6 +434,7 @@ export const getExposure = createServerFn({ method: "GET" })
         holdings: hs.map((h): HoldingRecord => ({
           name: h.holding_name,
           symbol: h.holding_symbol,
+          isin: h.isin ?? null,
           asset_class: h.asset_class ?? null,
           weight: Number(h.weight) || 0,
           country: h.country,
@@ -505,6 +493,8 @@ export interface AssetExposureDetail {
     holdingsCount: number | null;
     isin: string | null;
     managerSlug: string | null;
+    indexTracked: string | null;
+    distributionFrequency: string | null;
   } | null;
   /** Dimensões declaradas pela fonte para este ativo. */
   dimensions: Array<{ dimension: string; value: string; pct: number }>;
@@ -512,6 +502,8 @@ export interface AssetExposureDetail {
   holdings: Array<{
     name: string;
     symbol: string | null;
+    isin: string | null;
+    assetClass: string | null;
     pct: number;
     amount: number;
     country: string | null;
@@ -561,6 +553,7 @@ export const getAssetExposure = createServerFn({ method: "GET" })
     const hs = hsRes as Array<{
       holding_name: string;
       holding_symbol: string | null;
+      isin?: string | null;
       asset_class?: string | null;
       weight: number;
       country: string | null;
@@ -582,6 +575,8 @@ export const getAssetExposure = createServerFn({ method: "GET" })
       as_of_date: string | null;
       isin: string | null;
       manager_slug: string | null;
+      index_tracked?: string | null;
+      distribution_frequency?: string | null;
       holdings_status?: "full" | "partial" | "error" | null;
       holdings_coverage?: number | null;
       holdings_error?: string | null;
@@ -617,6 +612,8 @@ export const getAssetExposure = createServerFn({ method: "GET" })
             holdingsCount: pr.holdings_count,
             isin: pr.isin,
             managerSlug: pr.manager_slug,
+            indexTracked: pr.index_tracked ?? null,
+            distributionFrequency: pr.distribution_frequency ?? null,
           }
         : null,
       dimensions: ex
@@ -630,6 +627,8 @@ export const getAssetExposure = createServerFn({ method: "GET" })
         .map((h) => ({
           name: h.holding_name,
           symbol: h.holding_symbol,
+          isin: h.isin ?? null,
+          assetClass: h.asset_class ?? null,
           pct: (Number(h.weight) || 0) * 100,
           amount: value * (Number(h.weight) || 0),
           country: h.country,

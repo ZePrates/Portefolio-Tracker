@@ -12,6 +12,7 @@
 <!-- LOVABLE:END -->
 
 - Exposure reads paginate holdings and exposure records in stable ID order, because manager lists exceed Data API row limits.
+- ETF sheets mount cached per-asset queries only while open; their reusable bars, geography mapping and identity matching live in exposure-scoped modules to keep presentation consistent without changing other asset sheets.
 - Company exposure calculations stay in the pure exposure module; exposure-only formatting and tables stay scoped to their own modules to avoid changing other portfolio views.
 - ETF manager sync uses the existing authenticated function through the browser session; legacy composition sync must never overwrite manager holdings.
 - External database column extensions live in external-types.ts and are shared by external authenticated clients and helpers, because generated Cloud types describe a different schema and must remain untouched.
