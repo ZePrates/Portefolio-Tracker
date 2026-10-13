@@ -308,6 +308,7 @@ export function EtfSheetContent({
         {portfolioError && retryPortfolio && <ErrorState onRetry={retryPortfolio} />}
         <ExposureTable
           rows={shown}
+          verticalScroll={false}
           label="Posições do ETF"
           rowKey={(h) => `${h.isin ?? ""}|${h.symbol ?? ""}|${h.name}`}
           rowLabel={(h) => h.name}
