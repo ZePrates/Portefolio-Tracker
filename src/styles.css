@@ -45,6 +45,7 @@
   --color-chart-6: var(--chart-6);
   --color-chart-7: var(--chart-7);
   --color-chart-8: var(--chart-8);
+  --color-sector-real-estate: var(--sector-real-estate);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -101,6 +102,7 @@
   --chart-6: oklch(0.58 0.19 350);
   --chart-7: oklch(0.6 0.12 200);
   --chart-8: oklch(0.55 0.02 260);
+  --sector-real-estate: oklch(0.52 0.14 15);
   --sidebar: oklch(0.97 0.004 250);
   --sidebar-foreground: oklch(0.2 0.02 260);
   --sidebar-primary: oklch(0.5 0.12 75);
@@ -146,6 +148,7 @@
   --chart-6: oklch(0.72 0.18 350);
   --chart-7: oklch(0.78 0.12 200);
   --chart-8: oklch(0.7 0.02 260);
+  --sector-real-estate: oklch(0.73 0.15 15);
   --sidebar: oklch(0.155 0.008 264);
   --sidebar-foreground: oklch(0.95 0.005 250);
   --sidebar-primary: oklch(0.82 0.155 85);

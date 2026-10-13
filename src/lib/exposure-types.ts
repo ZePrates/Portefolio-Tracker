@@ -22,6 +22,7 @@ export interface ExposureRecord {
 export interface HoldingRecord {
   name: string;
   symbol: string | null;
+  isin?: string | null;
   asset_class?: string | null;
   /** Peso em fração (0–1) dentro do ETF. */
   weight: number;
@@ -37,6 +38,7 @@ export interface PositionInput {
   /** Classe interna: etf | reit | acao_dividendo | acao_crescimento | metal | p2p */
   class: string;
   ticker: string | null;
+  isin?: string | null;
   /** Valor atual em EUR. */
   value: number;
   nativeCurrency: string;
