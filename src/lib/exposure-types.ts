@@ -22,6 +22,7 @@ export interface ExposureRecord {
 export interface HoldingRecord {
   name: string;
   symbol: string | null;
+  asset_class?: string | null;
   /** Peso em fração (0–1) dentro do ETF. */
   weight: number;
   country: string | null;

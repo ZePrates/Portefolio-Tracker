@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware-external";
-import type { Database } from "@/integrations/supabase/types";
+import type { Database } from "@/integrations/supabase/external-types";
 import { todayLisbon } from "@/lib/dates";
 import { dbError } from "@/lib/errors";
 import { replayLedger } from "@/lib/fifo";

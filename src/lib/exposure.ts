@@ -18,6 +18,7 @@ import {
   type PositionInput,
   type Slice,
 } from "@/lib/exposure-types";
+import { companyNameKey, readableCompanyName } from "@/lib/exposure-display";
 
 const EQUITY_CLASSES = new Set(["reit", "acao_dividendo", "acao_crescimento"]);
 
@@ -134,6 +135,32 @@ export function computeExposure(positions: PositionInput[]): ExposureReport {
   const currencyB: Bucket = new Map();
 
   const companies = new Map<string, CompanyExposure>();
+  // Resolve ticker-less names to a ticker only when the name is unambiguous.
+  const nameSymbols = new Map<string, Set<string>>();
+  for (const p of active) {
+    const entries =
+      p.class === "etf"
+        ? p.holdings
+            .filter((h) => h.asset_class == null || h.asset_class.toLowerCase() === "equity")
+            .map((h) => ({ name: h.name, symbol: h.symbol }))
+        : EQUITY_CLASSES.has(p.class)
+          ? [{ name: p.name, symbol: p.ticker }]
+          : [];
+    for (const entry of entries) {
+      if (!entry.symbol?.trim()) continue;
+      const name = companyNameKey(entry.name);
+      const symbols = nameSymbols.get(name) ?? new Set<string>();
+      symbols.add(entry.symbol.trim().toUpperCase());
+      nameSymbols.set(name, symbols);
+    }
+  }
+  const companyKey = (name: string, symbol: string | null) => {
+    const ticker = symbol?.trim().toUpperCase();
+    const normalized = companyNameKey(name);
+    const candidates = nameSymbols.get(normalized);
+    const matched = candidates?.size === 1 ? [...candidates][0] : undefined;
+    return ticker || matched ? `ticker:${ticker || matched}` : `name:${normalized}`;
+  };
   let knownCountryAmount = 0;
 
   for (const p of active) {
@@ -143,12 +170,12 @@ export function computeExposure(positions: PositionInput[]): ExposureReport {
     if (p.class === "etf") {
       for (const h of p.holdings) {
         const w = Number(h.weight) || 0;
-        if (w <= 0) continue;
+        if (w <= 0 || (h.asset_class != null && h.asset_class.toLowerCase() !== "equity")) continue;
         const amount = p.value * w;
-        const key = (h.symbol || h.name).toUpperCase();
+        const key = companyKey(h.name, h.symbol);
         const c = companies.get(key) ?? {
-          name: h.name,
-          symbol: h.symbol,
+          name: readableCompanyName(h.name),
+          symbol: h.symbol?.trim().toUpperCase() ?? null,
           direct: 0,
           indirect: 0,
           amount: 0,
@@ -158,6 +185,7 @@ export function computeExposure(positions: PositionInput[]): ExposureReport {
           contributors: [],
         };
         c.indirect += amount;
+        if (!c.symbol && h.symbol) c.symbol = h.symbol.trim().toUpperCase();
         c.amount += amount;
         if (!c.country && h.country) c.country = h.country;
         if (!c.sector && h.sector) c.sector = sectorLabel(h.sector);
@@ -165,12 +193,12 @@ export function computeExposure(positions: PositionInput[]): ExposureReport {
         companies.set(key, c);
       }
     } else if (EQUITY_CLASSES.has(p.class)) {
-      const key = (p.ticker || p.name).toUpperCase();
+      const key = companyKey(p.name, p.ticker);
       const country = [...weightsFor(p, "country").keys()][0] ?? null;
       const sector = [...weightsFor(p, "sector").keys()][0] ?? null;
       const c = companies.get(key) ?? {
-        name: p.name,
-        symbol: p.ticker,
+        name: readableCompanyName(p.name),
+        symbol: p.ticker?.trim().toUpperCase() ?? null,
         direct: 0,
         indirect: 0,
         amount: 0,
@@ -180,6 +208,7 @@ export function computeExposure(positions: PositionInput[]): ExposureReport {
         contributors: [],
       };
       c.direct += p.value;
+      if (!c.symbol && p.ticker) c.symbol = p.ticker.trim().toUpperCase();
       c.amount += p.value;
       if (!c.country && country) c.country = country;
       if (!c.sector && sector) c.sector = sector;

@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -52,11 +52,9 @@ export type Database = {
           created_at: string
           currency: string
           fx_rate: number
-          grams_deducted: number
           id: string
           incurred_at: string
           notes: string | null
-          price_per_gram: number | null
           type: string
           updated_at: string
           user_id: string
@@ -68,11 +66,9 @@ export type Database = {
           created_at?: string
           currency?: string
           fx_rate?: number
-          grams_deducted?: number
           id?: string
           incurred_at?: string
           notes?: string | null
-          price_per_gram?: number | null
           type?: string
           updated_at?: string
           user_id: string
@@ -84,11 +80,9 @@ export type Database = {
           created_at?: string
           currency?: string
           fx_rate?: number
-          grams_deducted?: number
           id?: string
           incurred_at?: string
           notes?: string | null
-          price_per_gram?: number | null
           type?: string
           updated_at?: string
           user_id?: string
@@ -231,12 +225,10 @@ export type Database = {
         Row: {
           annual_yield: number | null
           average_price: number
-          buyback_discount: number | null
           class: string
           closed_at: string | null
           created_at: string
           currency: string
-          custodian: string | null
           current_price: number
           current_price_native: number | null
           current_value: number
@@ -253,7 +245,6 @@ export type Database = {
           native_currency: string
           notes: string | null
           p2p_group: string | null
-          plan_name: string | null
           price_source: string | null
           price_updated_at: string | null
           purchase_price_native: number | null
@@ -264,18 +255,15 @@ export type Database = {
           total_fees: number
           updated_at: string
           user_id: string
-          vault_ref: string | null
           withholding_rate: number | null
         }
         Insert: {
           annual_yield?: number | null
           average_price?: number
-          buyback_discount?: number | null
           class: string
           closed_at?: string | null
           created_at?: string
           currency?: string
-          custodian?: string | null
           current_price?: number
           current_price_native?: number | null
           current_value?: number
@@ -292,7 +280,6 @@ export type Database = {
           native_currency?: string
           notes?: string | null
           p2p_group?: string | null
-          plan_name?: string | null
           price_source?: string | null
           price_updated_at?: string | null
           purchase_price_native?: number | null
@@ -303,18 +290,15 @@ export type Database = {
           total_fees?: number
           updated_at?: string
           user_id: string
-          vault_ref?: string | null
           withholding_rate?: number | null
         }
         Update: {
           annual_yield?: number | null
           average_price?: number
-          buyback_discount?: number | null
           class?: string
           closed_at?: string | null
           created_at?: string
           currency?: string
-          custodian?: string | null
           current_price?: number
           current_price_native?: number | null
           current_value?: number
@@ -331,7 +315,6 @@ export type Database = {
           native_currency?: string
           notes?: string | null
           p2p_group?: string | null
-          plan_name?: string | null
           price_source?: string | null
           price_updated_at?: string | null
           purchase_price_native?: number | null
@@ -342,7 +325,6 @@ export type Database = {
           total_fees?: number
           updated_at?: string
           user_id?: string
-          vault_ref?: string | null
           withholding_rate?: number | null
         }
         Relationships: []
@@ -736,7 +718,6 @@ export type Database = {
           lot_breakdown: Json | null
           native_currency: string
           notes: string | null
-          premium_rate: number | null
           price: number
           price_native: number | null
           quantity: number
@@ -760,7 +741,6 @@ export type Database = {
           lot_breakdown?: Json | null
           native_currency?: string
           notes?: string | null
-          premium_rate?: number | null
           price?: number
           price_native?: number | null
           quantity?: number
@@ -784,7 +764,6 @@ export type Database = {
           lot_breakdown?: Json | null
           native_currency?: string
           notes?: string | null
-          premium_rate?: number | null
           price?: number
           price_native?: number | null
           quantity?: number
