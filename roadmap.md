@@ -10,3 +10,4 @@
 - [x] Mesma ordem no Simulador, Análise, Dashboard e Desempenho (CLASS_ORDER) + teste que a bloqueia
 - [ ] Regra de segurança da tabela de perfis na base externa — SQL entregue, falta o utilizador colá-lo no editor SQL
 - [x] Exposição: holdings completas, peso por empresa, cobertura por ETF e sincronização com gestoras sem alterações de schema/RLS
+- [ ] Validar exposição e sincronização na carteira real — sem sessão externa disponível; verificação global também bloqueada por tipos antigos das colunas de metais fora deste pedido.
