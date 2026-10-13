@@ -307,7 +307,12 @@ export const syncAllAssetExposure = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const targets = ((rows ?? []) as Asset[]).filter(
-      (a) => a.ticker && a.class !== "metal" && a.class !== "p2p" && isOpenPosition(a),
+      (a) =>
+        a.ticker &&
+        a.class !== "etf" &&
+        a.class !== "metal" &&
+        a.class !== "p2p" &&
+        isOpenPosition(a),
     );
     const results: SyncResult[] = [];
     for (const a of targets) {
