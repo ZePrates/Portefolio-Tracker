@@ -42,8 +42,9 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
     holdings: 0,
     coverage: 0,
   };
+  const isEtf = asset.class === "etf";
   // Manager holdings are authoritative; legacy fallback sync must never overwrite them.
-  if (asset.class === "etf")
+  if (isEtf)
     return { ...base, message: "Sincronize este ETF com as gestoras na página Exposição." };
   // Estado já guardado para nunca apagar dados válidos numa falha da fonte.
   const { data: existing } = await supabase
@@ -53,7 +54,6 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
     .maybeSingle();
 
   const isin = asset.isin ?? existing?.isin ?? null;
-  const isEtf = asset.class === "etf";
   let justEtf: Awaited<
     ReturnType<typeof import("@/lib/exposure-providers/justetf.server").fetchJustEtf>
   > = null;
