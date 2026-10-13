@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   companyNameKey,
+  readableCompanyName,
+  exposureEUR,
+  exposurePct,
   mergeDisplaySlices,
   exposureCountry,
   exposureSector,
@@ -10,6 +13,19 @@ import {
 import { paginate, filterRows } from "@/lib/table";
 
 describe("regras das listas de exposição", () => {
+  it("preserva siglas e apresenta nomes das gestoras de forma legível", () => {
+    expect(readableCompanyName("MICRON TECHNOLOGY")).toBe("Micron Technology");
+    for (const name of ["ASML", "SAP", "AMD"]) expect(readableCompanyName(name)).toBe(name);
+  });
+  it("usa percentagens europeias com precisão abaixo de 1%", () => {
+    expect(exposurePct(12.345).replace(/\s/g, "")).toBe("12,3%");
+    expect(exposurePct(0.456).replace(/\s/g, "")).toBe("0,46%");
+  });
+  it("mostra euros sem decimais acima de mil e oculta valores privados", () => {
+    expect(exposureEUR(1234.56).replace(/\s/g, "")).toBe("1.235€");
+    expect(exposureEUR(999.56).replace(/\s/g, "")).toBe("999,56€");
+    expect(exposureEUR(1234, true)).toBe("••••");
+  });
   it("normaliza nomes sem pontuação, sufixos e classes A/B/C", () => {
     expect(companyNameKey("MICRON TECHNOLOGY INC. Class A")).toBe(
       companyNameKey("Micron Technology Corp"),
