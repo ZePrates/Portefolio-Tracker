@@ -5,6 +5,7 @@ import {
   exposureEUR,
   exposurePct,
   mergeDisplaySlices,
+  mergeDisplayDimensions,
   exposureCountry,
   exposureSector,
   sortExposureRows,
@@ -58,6 +59,17 @@ describe("regras das listas de exposição", () => {
     );
     expect(merged).toHaveLength(1);
     expect(merged[0]?.pct).toBe(30);
+  });
+  it("junta variantes por dimensão no detalhe sem misturar país com setor", () => {
+    expect(mergeDisplayDimensions([
+      { dimension: "country", value: "USA", pct: 10 },
+      { dimension: "country", value: "United States", pct: 20 },
+      { dimension: "sector", value: "Technology", pct: 5 },
+      { dimension: "sector", value: "Tecnologia", pct: 10 },
+    ])).toEqual([
+      { dimension: "country", value: "Estados Unidos", pct: 30 },
+      { dimension: "sector", value: "Tecnologia", pct: 15 },
+    ]);
   });
   it.each(["asc", "desc"] as const)("mantém Outros no fim em %s", (dir) => {
     const rows = [

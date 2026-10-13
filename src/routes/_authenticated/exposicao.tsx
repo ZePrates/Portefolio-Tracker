@@ -331,7 +331,6 @@ function ExposicaoPage() {
               title="Por região"
               slices={report.region}
               hidden={hidden}
-              translate={exposureCountry}
             />
             <SliceSection title="Por continente" slices={report.continent} hidden={hidden} />
             <SliceSection

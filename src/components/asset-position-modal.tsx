@@ -46,6 +46,7 @@ import {
   exposureEUR,
   exposurePct,
   exposureSector,
+  mergeDisplayDimensions,
   readableCompanyName,
 } from "@/lib/exposure-display";
 import { syncManagerHoldings, syncSummaryText } from "@/lib/holdings-sync";
@@ -1129,15 +1130,11 @@ function UnderlyingExposure({
           )}
           {d.dimensions.length > 0 && (
             <ul className="space-y-1 text-xs text-muted-foreground">
-              {d.dimensions.map((x, i) => (
+              {mergeDisplayDimensions(d.dimensions).map((x, i) => (
                 <li key={`${x.dimension}-${x.value}-${i}`} className="flex justify-between gap-4">
                   <span>
                     {DIM_LABELS[x.dimension] ?? x.dimension}:{" "}
-                    {x.dimension === "country"
-                      ? exposureCountry(x.value)
-                      : x.dimension === "sector"
-                        ? exposureSector(x.value)
-                        : x.value}
+                    {x.value}
                   </span>
                   <span className="num whitespace-nowrap">{exposurePct(x.pct, hidden)}</span>
                 </li>
