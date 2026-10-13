@@ -160,6 +160,20 @@ export function mergeDisplaySlices(slices: Slice[], translate: (s: string) => st
   return [...merged.values()];
 }
 
+export function mergeDisplayDimensions(
+  rows: Array<{ dimension: string; value: string; pct: number }>,
+) {
+  const merged = new Map<string, { dimension: string; value: string; pct: number }>();
+  for (const row of rows) {
+    const value = row.dimension === "country" ? exposureCountry(row.value) : row.dimension === "sector" ? exposureSector(row.value) : row.value;
+    const key = `${row.dimension}:${value}`;
+    const existing = merged.get(key);
+    if (existing) existing.pct += row.pct;
+    else merged.set(key, { ...row, value });
+  }
+  return sortExposureRows([...merged.values()], (r) => r.pct, "desc", (r) => r.value);
+}
+
 export function sortExposureRows<T>(
   rows: T[],
   value: (r: T) => SortValue,
