@@ -304,25 +304,13 @@ export function EtfSheetContent({
         />
       </div>
       <section className="min-w-0 space-y-3">
-        <header className="flex items-center justify-between gap-2">
-          <h3 className="font-semibold">{all ? "Todas as posições" : "Principais posições"}</h3>
-          <Button size="sm" variant="outline" onClick={() => setAll(!all)}>
-            {all ? "Ver top 10" : "Ver todas"}
-          </Button>
-        </header>
+        <h3 className="font-semibold">Principais posições</h3>
         {portfolioError && retryPortfolio && <ErrorState onRetry={retryPortfolio} />}
         <ExposureTable
-          key={all ? "all" : "top"}
-          rows={all ? d.holdings : d.holdings.slice(0, 10)}
+          rows={shown}
           label="Posições do ETF"
           rowKey={(h) => `${h.isin ?? ""}|${h.symbol ?? ""}|${h.name}`}
           rowLabel={(h) => h.name}
-          {...(all
-            ? {
-                searchText: (h: AssetExposureDetail["holdings"][number]) =>
-                  `${h.name} ${h.symbol ?? ""} ${h.isin ?? ""}`,
-              }
-            : {})}
           columns={[
             {
               id: "name",
