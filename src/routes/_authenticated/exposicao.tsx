@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { getExposure, syncAllAssetExposure } from "@/lib/exposure.functions";
 import type { CompanyExposure, Slice } from "@/lib/exposure-types";
 import {
-  exposureCountry,
   exposureEUR,
   exposurePct,
   exposureSector,
@@ -23,6 +22,7 @@ import {
   MetricCard,
   PageHeader,
 } from "@/components/ui-bits";
+import { ExposureBars } from "@/components/exposure-bars";
 import { ExposureTable } from "@/components/exposure-table";
 import { EtfCoverageTable } from "@/components/etf-coverage";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -313,17 +313,17 @@ function ExposicaoPage() {
           <CompanyTable rows={report.companies} hidden={hidden} />
           {etfs.length > 0 && <EtfCoverageTable rows={etfs} hidden={hidden} />}
           <div className="grid min-w-0 gap-6 xl:grid-cols-2">
-            <SliceSection
-              title="Por país"
+            <ExposureBars
+              title="Geografia"
               slices={report.country}
               hidden={hidden}
-              translate={exposureCountry}
+              kind="country"
             />
-            <SliceSection
-              title="Por setor"
+            <ExposureBars
+              title="Setores"
               slices={report.sector}
               hidden={hidden}
-              translate={exposureSector}
+              kind="sector"
             />
             <SliceSection title="Por classe de ativo" slices={report.byClass} hidden={hidden} />
             <SliceSection title="Por moeda económica" slices={report.currency} hidden={hidden} />

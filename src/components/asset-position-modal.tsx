@@ -39,6 +39,7 @@ import { Button, Field, Modal, TextInput, useConfirm } from "@/components/ui-bit
 import { validateExpenseAmount, validateTradeForm } from "@/lib/trade-form";
 import { cn } from "@/lib/utils";
 import { todayLisbon } from "@/lib/dates";
+import { EtfPositionSheet } from "@/components/etf-position-sheet";
 import { ExposureTable } from "@/components/exposure-table";
 import { HoldingsStatus } from "@/components/etf-coverage";
 import {
@@ -481,7 +482,9 @@ export function AssetPositionModal({ asset, onClose }: Props) {
           <p className="text-sm text-muted-foreground">A carregar posição…</p>
         ) : (
           <>
-            {metal ? (
+            {asset.class === "etf" ? (
+              <EtfPositionSheet asset={asset} hidden={hidden} unrealized={pos.unrealizedPL} costBasis={pos.costBasis} />
+            ) : metal ? (
               <MetalPositionPanel
                 summary={metal}
                 expenses={expenses}
@@ -765,11 +768,11 @@ export function AssetPositionModal({ asset, onClose }: Props) {
 
             {!isMetal && (
               <>
-                <UnderlyingExposure
+                {asset.class !== "etf" && <UnderlyingExposure
                   assetId={asset.id}
-                  isEtf={asset.class === "etf"}
+                  isEtf={false}
                   hidden={hidden}
-                />
+                />}
 
                 <section>
                   <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
