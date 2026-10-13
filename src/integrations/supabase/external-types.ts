@@ -13,14 +13,13 @@ type ExtraColumns = {
 };
 
 type ExternalTables = {
-  [Name in keyof GeneratedDatabase["public"]["Tables"]]:
-    Name extends keyof ExtraColumns
-      ? Omit<GeneratedDatabase["public"]["Tables"][Name], "Row" | "Insert" | "Update"> & {
-          Row: GeneratedDatabase["public"]["Tables"][Name]["Row"] & ExtraColumns[Name];
-          Insert: GeneratedDatabase["public"]["Tables"][Name]["Insert"] & Partial<ExtraColumns[Name]>;
-          Update: GeneratedDatabase["public"]["Tables"][Name]["Update"] & Partial<ExtraColumns[Name]>;
-        }
-      : GeneratedDatabase["public"]["Tables"][Name];
+  [Name in keyof GeneratedDatabase["public"]["Tables"]]: Name extends keyof ExtraColumns
+    ? Omit<GeneratedDatabase["public"]["Tables"][Name], "Row" | "Insert" | "Update"> & {
+        Row: GeneratedDatabase["public"]["Tables"][Name]["Row"] & ExtraColumns[Name];
+        Insert: GeneratedDatabase["public"]["Tables"][Name]["Insert"] & Partial<ExtraColumns[Name]>;
+        Update: GeneratedDatabase["public"]["Tables"][Name]["Update"] & Partial<ExtraColumns[Name]>;
+      }
+    : GeneratedDatabase["public"]["Tables"][Name];
 };
 
 export type Database = Omit<GeneratedDatabase, "public"> & {
