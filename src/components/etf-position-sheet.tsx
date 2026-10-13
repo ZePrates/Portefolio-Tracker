@@ -386,6 +386,12 @@ export function EtfSheetContent({
             },
           ]}
         />
+        <p className="text-xs text-muted-foreground">
+          {shown.length < heldCount
+            ? `Mostradas as ${shown.length} maiores de ${heldCount.toLocaleString("pt-PT")} posições`
+            : `Todas as ${heldCount.toLocaleString("pt-PT")} posições`}{" "}
+          · dados de {formatDatePt(d.asOfDate)}
+        </p>
       </section>
       {d.holdingsStatus === "full" && (
         <section className="space-y-3 border-t border-border pt-5">
