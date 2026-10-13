@@ -15,6 +15,7 @@ describe("regras das listas de exposição", () => {
       companyNameKey("Micron Technology Corp"),
     );
     expect(companyNameKey("SAP SE")).toBe("sap");
+    expect(companyNameKey("Company S.A.")).toBe(companyNameKey("Company NV"));
   });
   it("junta variantes de setores e soma valores, pesos e contribuições", () => {
     const slices = ["Consumer Cyclical", "Consumer Cyclicals"].map((value) => ({

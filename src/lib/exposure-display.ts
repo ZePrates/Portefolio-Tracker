@@ -6,7 +6,7 @@ export function companyNameKey(name: string): string {
   return name
     .toLowerCase()
     .replace(/\bclass\s+[abc]\b/g, "")
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
     .replace(/\b(inc|corp|corporation|plc|ag|sa|nv|se|ltd|co|holdings|limited|company)\b/g, "")
     .replace(/\s+/g, " ")
     .trim();
