@@ -42,6 +42,8 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
     holdings: 0,
     coverage: 0,
   };
+  // Manager holdings are authoritative; legacy fallback sync must never overwrite them.
+  if (asset.class === "etf") return { ...base, message: "Sincronize este ETF com as gestoras na página Exposição." };
   // Estado já guardado para nunca apagar dados válidos numa falha da fonte.
   const { data: existing } = await supabase
     .from("asset_profiles")
@@ -254,7 +256,6 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
   const legacyEtfSources = [
     "source.like.yahoo%",
     "source.like.tradingview%",
-    "source.like.ishares%",
     "source.like.vanguard%",
     "source.like.registry%",
   ].join(",");
@@ -344,6 +345,21 @@ export interface AssetExposureMeta {
   asOfDate: string | null;
   source: string | null;
   domicile: string | null;
+  holdingsStatus: "full" | "partial" | "error" | null;
+  holdingsCount: number;
+  holdingsError: string | null;
+  holdingsSyncedAt: string | null;
+}
+
+/** Data API pages are bounded: always read every page in deterministic ID order. */
+async function readExposurePages<T>(query: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await query(from, from + 999);
+    if (error) throw new Error(error.message);
+    rows.push(...(data ?? []));
+    if (!data || data.length < 1000) return rows;
+  }
 }
 
 /** Leitura consolidada: lê exclusivamente da base de dados (sem chamadas externas). */
@@ -352,14 +368,15 @@ export const getExposure = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const [assetsRes, exposuresRes, holdingsRes, profilesRes] = await Promise.all([
       context.supabase.from("assets").select("*").neq("status", "closed"),
-      context.supabase.from("asset_exposures").select("*"),
-      context.supabase.from("etf_holdings").select("*"),
+      readExposurePages((from, to) => context.supabase.from("asset_exposures").select("*").order("id").range(from, to)),
+      readExposurePages((from, to) => context.supabase.from("etf_holdings").select("*").order("id").range(from, to)),
       context.supabase.from("asset_profiles").select("*"),
     ]);
     if (assetsRes.error) throw new Error(assetsRes.error.message);
 
     const assets = ((assetsRes.data ?? []) as Asset[]).filter(isOpenPosition);
-    const exposures = (exposuresRes.data ?? []) as Array<{
+    if (profilesRes.error) throw new Error(profilesRes.error.message);
+    const exposures = exposuresRes as Array<{
       asset_id: string;
       dimension: string;
       value: string;
@@ -367,10 +384,11 @@ export const getExposure = createServerFn({ method: "GET" })
       source: string | null;
       as_of_date: string | null;
     }>;
-    const holdings = (holdingsRes.data ?? []) as Array<{
+    const holdings = holdingsRes as Array<{
       asset_id: string;
       holding_name: string;
       holding_symbol: string | null;
+      asset_class?: string | null;
       weight: number;
       country: string | null;
       sector: string | null;
@@ -381,6 +399,10 @@ export const getExposure = createServerFn({ method: "GET" })
     const profiles = (profilesRes.data ?? []) as Array<{
       asset_id: string;
       domicile_country: string | null;
+      holdings_status?: "full" | "partial" | "error" | null;
+      holdings_coverage?: number | null;
+      holdings_synced_at?: string | null;
+      holdings_error?: string | null;
       source: string | null;
       as_of_date: string | null;
     }>;
@@ -410,6 +432,7 @@ export const getExposure = createServerFn({ method: "GET" })
         holdings: hs.map((h): HoldingRecord => ({
           name: h.holding_name,
           symbol: h.holding_symbol,
+          asset_class: h.asset_class ?? null,
           weight: Number(h.weight) || 0,
           country: h.country,
           sector: h.sector,
@@ -426,9 +449,13 @@ export const getExposure = createServerFn({ method: "GET" })
         class: a.class,
         ticker: a.ticker,
         value: assetCurrentValue(a),
-        coverage: Math.min(100, (hasCountryDim ? 1 : holdingCoverage) * 100),
+        coverage: Math.min(100, (a.class === "etf" ? (profile?.holdings_coverage ?? holdingCoverage) : (hasCountryDim ? 1 : holdingCoverage)) * 100),
+        holdingsStatus: profile?.holdings_status ?? (hs.length ? "partial" : null),
+        holdingsCount: hs.length,
+        holdingsError: profile?.holdings_error ?? null,
+        holdingsSyncedAt: profile?.holdings_synced_at ?? null,
         derived: !hasCountryDim && hs.length > 0,
-        asOfDate: hs[0]?.as_of_date ?? ex[0]?.as_of_date ?? profile?.as_of_date ?? null,
+        asOfDate: profile?.as_of_date ?? hs[0]?.as_of_date ?? ex[0]?.as_of_date ?? null,
         source: hs[0]?.source ?? ex[0]?.source ?? profile?.source ?? null,
         domicile: profile?.domicile_country ?? null,
       });
@@ -443,6 +470,8 @@ export interface AssetExposureDetail {
   coverage: number;
   asOfDate: string | null;
   source: string | null;
+  holdingsStatus: "full" | "partial" | "error" | null;
+  holdingsError: string | null;
   profile: {
     officialName: string | null;
     assetType: string | null;
@@ -479,7 +508,7 @@ export const getAssetExposure = createServerFn({ method: "GET" })
     const [assetRes, exRes, hsRes, prRes] = await Promise.all([
       context.supabase.from("assets").select("*").eq("id", data.assetId).maybeSingle(),
       context.supabase.from("asset_exposures").select("*").eq("asset_id", data.assetId),
-      context.supabase.from("etf_holdings").select("*").eq("asset_id", data.assetId),
+      readExposurePages((from, to) => context.supabase.from("etf_holdings").select("*").eq("asset_id", data.assetId).order("id").range(from, to)),
       context.supabase
         .from("asset_profiles")
         .select("*")
@@ -498,9 +527,12 @@ export const getAssetExposure = createServerFn({ method: "GET" })
       source: string | null;
       as_of_date: string | null;
     }>;
-    const hs = (hsRes.data ?? []) as Array<{
+    if (exRes.error) throw new Error(exRes.error.message);
+    if (prRes.error) throw new Error(prRes.error.message);
+    const hs = hsRes as Array<{
       holding_name: string;
       holding_symbol: string | null;
+      asset_class?: string | null;
       weight: number;
       country: string | null;
       sector: string | null;
@@ -521,6 +553,9 @@ export const getAssetExposure = createServerFn({ method: "GET" })
       as_of_date: string | null;
       isin: string | null;
       manager_slug: string | null;
+      holdings_status?: "full" | "partial" | "error" | null;
+      holdings_coverage?: number | null;
+      holdings_error?: string | null;
     } | null;
 
     const holdingCoverage = hs.reduce((s, h) => s + (Number(h.weight) || 0), 0);
@@ -529,8 +564,10 @@ export const getAssetExposure = createServerFn({ method: "GET" })
     return {
       assetId: asset.id,
       value,
-      coverage: Math.min(100, (hasCountryDim ? 1 : holdingCoverage) * 100),
-      asOfDate: hs[0]?.as_of_date ?? ex[0]?.as_of_date ?? pr?.as_of_date ?? null,
+      coverage: Math.min(100, (asset.class === "etf" ? (pr?.holdings_coverage ?? holdingCoverage) : (hasCountryDim ? 1 : holdingCoverage)) * 100),
+      holdingsStatus: pr?.holdings_status ?? (hs.length ? "partial" : null),
+      holdingsError: pr?.holdings_error ?? null,
+      asOfDate: pr?.as_of_date ?? hs[0]?.as_of_date ?? ex[0]?.as_of_date ?? null,
       source: hs[0]?.source ?? ex[0]?.source ?? pr?.source ?? null,
       profile: pr
         ? {
