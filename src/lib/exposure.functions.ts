@@ -5,7 +5,7 @@ import { computeExposure, mergeByKey } from "@/lib/exposure";
 import type { ExposureRecord, HoldingRecord, PositionInput } from "@/lib/exposure-types";
 import { assetCurrentValue, isOpenPosition, type Asset } from "@/lib/portfolio-types";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/integrations/supabase/types";
+import type { Database } from "@/integrations/supabase/external-types";
 import { todayLisbon } from "@/lib/dates";
 import { dbError } from "@/lib/errors";
 
