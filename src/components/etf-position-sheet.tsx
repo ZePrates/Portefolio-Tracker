@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Copy, RefreshCw, Layers, ArrowUpRight } from "lucide-react";
@@ -122,7 +122,6 @@ export function EtfSheetContent({
   syncing?: boolean;
   onSync: () => void;
 }) {
-  const [all, setAll] = useState(false);
   const sectors = useMemo(() => mergeDisplaySlices(detailSlices(d, "sector"), (s) => s), [d]);
   const countries = useMemo(
     () => mergeDisplaySlices(detailSlices(d, "country"), countryLabel),
@@ -134,6 +133,8 @@ export function EtfSheetContent({
     .reduce((s, m) => s + m.value, 0);
   const largest = d.holdings[0];
   const top10 = d.holdings.slice(0, 10).reduce((s, h) => s + h.pct, 0);
+  const shown = d.holdings.slice(0, 10);
+  const heldCount = d.profile?.holdingsCount ?? d.holdings.length;
   const dominant = [...sectors].sort((a, b) => b.pct - a.pct)[0];
   const cash = d.holdings
     .filter((h) => !equityHolding(h) && /cash|derivative|future|\bfx\b/i.test(h.assetClass ?? ""))
@@ -303,25 +304,14 @@ export function EtfSheetContent({
         />
       </div>
       <section className="min-w-0 space-y-3">
-        <header className="flex items-center justify-between gap-2">
-          <h3 className="font-semibold">{all ? "Todas as posições" : "Principais posições"}</h3>
-          <Button size="sm" variant="outline" onClick={() => setAll(!all)}>
-            {all ? "Ver top 10" : "Ver todas"}
-          </Button>
-        </header>
+        <h3 className="font-semibold">Principais posições</h3>
         {portfolioError && retryPortfolio && <ErrorState onRetry={retryPortfolio} />}
         <ExposureTable
-          key={all ? "all" : "top"}
-          rows={all ? d.holdings : d.holdings.slice(0, 10)}
+          rows={shown}
+          verticalScroll={false}
           label="Posições do ETF"
           rowKey={(h) => `${h.isin ?? ""}|${h.symbol ?? ""}|${h.name}`}
           rowLabel={(h) => h.name}
-          {...(all
-            ? {
-                searchText: (h: AssetExposureDetail["holdings"][number]) =>
-                  `${h.name} ${h.symbol ?? ""} ${h.isin ?? ""}`,
-              }
-            : {})}
           columns={[
             {
               id: "name",
@@ -397,6 +387,12 @@ export function EtfSheetContent({
             },
           ]}
         />
+        <p className="text-xs text-muted-foreground">
+          {shown.length < heldCount
+            ? `Mostradas as ${shown.length} maiores de ${heldCount.toLocaleString("pt-PT")} posições`
+            : `Todas as ${heldCount.toLocaleString("pt-PT")} posições`}{" "}
+          · dados de {formatDatePt(d.asOfDate)}
+        </p>
       </section>
       {d.holdingsStatus === "full" && (
         <section className="space-y-3 border-t border-border pt-5">

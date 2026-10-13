@@ -1,5 +1,6 @@
 # Roadmap
 
+- [x] Ficha ETF: "Principais posições" fixa nas 10 maiores (sem "Ver todas", pesquisa ou paginação) + linha de resumo com N e data; cálculos de bastidores inalterados.
 - [x] Redesenhar ficha ETF e barras de setores/países; 62 testes e verificação visual com dados de teste, sem schema/RLS.
 
 - [x] Sidebar "Dourado refinado": item ativo com barra dourada + gradiente, separadores limpos, tokens do tema
