@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Redesenhar ficha ETF e barras de setores/países; testar sobreposição, regiões e paginação, sem schema/RLS.
+- [x] Redesenhar ficha ETF e barras de setores/países; 62 testes e verificação visual com dados de teste, sem schema/RLS.
 
 - [x] Sidebar "Dourado refinado": item ativo com barra dourada + gradiente, separadores limpos, tokens do tema
 - [x] Modal do ativo: botões editar/apagar como ícones alinhados com o tema
