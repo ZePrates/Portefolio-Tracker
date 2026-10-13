@@ -25,14 +25,16 @@ export interface OverlapPair {
 }
 
 function weightsOf(etf: EtfHoldings): EtfHoldings["holdings"] {
-  const rows: EtfHoldings["holdings"] = [];
+  const rows = new Map<EtfHoldings["holdings"][number], EtfHoldings["holdings"][number]>();
+  const find = holdingIndex(etf.holdings);
   for (const h of etf.holdings) {
     if (!Number.isFinite(h.weight) || h.weight <= 0) continue;
-    const prior = holdingIndex(rows)(h);
+    const representative = find(h) ?? h;
+    const prior = rows.get(representative);
     if (prior) prior.weight += h.weight;
-    else rows.push({ ...h });
+    else rows.set(representative, { ...h });
   }
-  return rows;
+  return [...rows.values()];
 }
 
 export function etfOverlap(etfs: EtfHoldings[], topN = 5): OverlapPair[] {

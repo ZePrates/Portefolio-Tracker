@@ -483,7 +483,12 @@ export function AssetPositionModal({ asset, onClose }: Props) {
         ) : (
           <>
             {asset.class === "etf" ? (
-              <EtfPositionSheet asset={asset} hidden={hidden} unrealized={pos.unrealizedPL} costBasis={pos.costBasis} />
+              <EtfPositionSheet
+                asset={asset}
+                hidden={hidden}
+                unrealized={pos.unrealizedPL}
+                costBasis={pos.costBasis}
+              />
             ) : metal ? (
               <MetalPositionPanel
                 summary={metal}
@@ -768,11 +773,9 @@ export function AssetPositionModal({ asset, onClose }: Props) {
 
             {!isMetal && (
               <>
-                {asset.class !== "etf" && <UnderlyingExposure
-                  assetId={asset.id}
-                  isEtf={false}
-                  hidden={hidden}
-                />}
+                {asset.class !== "etf" && (
+                  <UnderlyingExposure assetId={asset.id} isEtf={false} hidden={hidden} />
+                )}
 
                 <section>
                   <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
