@@ -21,6 +21,7 @@ export function ExposureTable<T>({
   rowLabel,
   searchText,
   pageSize = 50,
+  verticalScroll = true,
 }: {
   rows: T[];
   columns: ExposureColumn<T>[];
@@ -29,6 +30,7 @@ export function ExposureTable<T>({
   rowLabel: (row: T) => string;
   searchText?: (row: T) => string;
   pageSize?: number;
+  verticalScroll?: boolean;
 }) {
   const id = useId();
   const [query, setQuery] = useState("");
@@ -88,7 +90,12 @@ export function ExposureTable<T>({
           </SelectInput>
         </div>
       )}
-      <div className="max-h-[36rem] max-w-full overflow-auto rounded-lg border border-border">
+      <div
+        className={cn(
+          "max-w-full overflow-auto rounded-lg border border-border",
+          verticalScroll && "max-h-[36rem]",
+        )}
+      >
         <table className="w-full text-sm">
           <caption className="sr-only">{label}</caption>
           <thead className="sticky top-0 z-10 bg-card">
