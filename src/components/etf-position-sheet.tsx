@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Copy, RefreshCw, Layers, ArrowUpRight } from "lucide-react";
@@ -122,7 +122,6 @@ export function EtfSheetContent({
   syncing?: boolean;
   onSync: () => void;
 }) {
-  const [all, setAll] = useState(false);
   const sectors = useMemo(() => mergeDisplaySlices(detailSlices(d, "sector"), (s) => s), [d]);
   const countries = useMemo(
     () => mergeDisplaySlices(detailSlices(d, "country"), countryLabel),
@@ -134,6 +133,8 @@ export function EtfSheetContent({
     .reduce((s, m) => s + m.value, 0);
   const largest = d.holdings[0];
   const top10 = d.holdings.slice(0, 10).reduce((s, h) => s + h.pct, 0);
+  const shown = d.holdings.slice(0, 10);
+  const heldCount = d.profile?.holdingsCount ?? d.holdings.length;
   const dominant = [...sectors].sort((a, b) => b.pct - a.pct)[0];
   const cash = d.holdings
     .filter((h) => !equityHolding(h) && /cash|derivative|future|\bfx\b/i.test(h.assetClass ?? ""))
