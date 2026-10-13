@@ -37,7 +37,7 @@ const sectors: Record<string, string> = {
   consumerdefensive: "Consumo não cíclico", consumernoncyclicals: "Consumo não cíclico", consumernoncyclical: "Consumo não cíclico", consumerstaples: "Consumo não cíclico", consumodefensivo: "Consumo não cíclico", consumobasico: "Consumo não cíclico",
   communicationservices: "Comunicações", nonenergymaterials: "Materiais", basicmaterials: "Materiais", materials: "Materiais",
   energy: "Energia", utilities: "Utilities", realestate: "Imobiliário", other: "Outros", others: "Outros", outros: "Outros",
-  cash: "Liquidez e derivados", cashandderivatives: "Liquidez e derivados", cashandorderivatives: "Liquidez e derivados", futures: "Liquidez e derivados", fx: "Liquidez e derivados", derivatives: "Liquidez e derivados", money market: "Liquidez e derivados",
+  cash: "Liquidez e derivados", cashandderivatives: "Liquidez e derivados", cashandorderivatives: "Liquidez e derivados", futures: "Liquidez e derivados", fx: "Liquidez e derivados", derivatives: "Liquidez e derivados", moneymarket: "Liquidez e derivados",
 };
 export function exposureSector(raw: string): string {
   const key = raw.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z]/g, "");

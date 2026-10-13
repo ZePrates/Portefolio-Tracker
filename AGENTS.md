@@ -10,3 +10,7 @@
 > the editor, so keep the branch in a working state.
 
 <!-- LOVABLE:END -->
+
+- Exposure reads paginate holdings and exposure records in stable ID order, because manager lists exceed Data API row limits.
+- Company exposure calculations stay in the pure exposure module; exposure-only formatting and tables stay scoped to their own modules to avoid changing other portfolio views.
+- ETF manager sync uses the existing authenticated function through the browser session; legacy composition sync must never overwrite manager holdings.

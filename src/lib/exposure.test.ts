@@ -202,3 +202,41 @@ describe("mergeByKey", () => {
     expect(out[1]!.name).toBe("Apple");
   });
 });
+
+describe("listas completas das gestoras", () => {
+  it("conta apenas Equity ou classe nula na exposição por empresa", () => {
+    const report = computeExposure([etf({ value: 10000, holdings: [
+      { name: "Apple", symbol: "AAPL", weight: 0.5, country: null, sector: null, asset_class: "Equity" },
+      { name: "SAP", symbol: "SAP", weight: 0.2, country: null, sector: null, asset_class: null },
+      { name: "USD Cash", symbol: "USD", weight: 0.1, country: null, sector: null, asset_class: "Cash" },
+      { name: "Future", symbol: "FUT", weight: 0.1, country: null, sector: null, asset_class: "Futures" },
+      { name: "FX", symbol: "FX", weight: 0.1, country: null, sector: null, asset_class: "FX" },
+    ] })]);
+    expect(report.companies).toHaveLength(2);
+    expect(report.companies.reduce((sum, c) => sum + c.amount, 0)).toBe(7000);
+  });
+  it("ticker sem diferenciar maiúsculas une direto, holdings e nomes sem ticker", () => {
+    const report = computeExposure([stock({ name: "Micron Technology", ticker: "mu", value: 1000 }), etf({ holdings: [
+      { name: "MICRON TECHNOLOGY INC", symbol: "MU", weight: 0.1, country: null, sector: null },
+      { name: "Micron Technology Corp. Class B", symbol: null, weight: 0.05, country: null, sector: null },
+    ] })]);
+    expect(report.companies).toHaveLength(1);
+    expect(report.companies[0]).toMatchObject({ symbol: "MU", direct: 1000, indirect: 1500, amount: 2500 });
+  });
+  it("usa o portefólio total, incluindo metais e P2P, no denominador", () => {
+    const report = computeExposure([stock({ value: 1000 }), etf({ value: 10000 }), stock({ assetId: "metal", class: "metal", value: 9000 })]);
+    expect(report.total).toBe(20000);
+    expect(report.companies.find((c) => c.symbol === "AAPL")?.pct).toBe(8.5);
+    expect(report.companies.some((c) => c.direct === 9000)).toBe(false);
+  });
+  it("não renormaliza ETFs parciais para 100%", () => {
+    const report = computeExposure([etf()]);
+    expect(report.companies.reduce((sum, c) => sum + c.pct, 0)).toBeCloseTo(14);
+  });
+  it("usa todas as posições, incluindo além das primeiras 1000", () => {
+    const report = computeExposure([etf({ holdings: Array.from({ length: 2000 }, (_, i) => ({ name: `Company ${i}`, symbol: `T${i}`, weight: 0.0005, country: "United States", sector: "Technology", asset_class: "Equity" })) })]);
+    expect(report.companies).toHaveLength(2000);
+    expect(report.concentration.top10).toBeCloseTo(0.5);
+    expect(report.companies.reduce((sum, c) => sum + c.amount, 0)).toBeCloseTo(10000);
+  });
+});
