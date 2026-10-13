@@ -1133,8 +1133,7 @@ function UnderlyingExposure({
               {mergeDisplayDimensions(d.dimensions).map((x, i) => (
                 <li key={`${x.dimension}-${x.value}-${i}`} className="flex justify-between gap-4">
                   <span>
-                    {DIM_LABELS[x.dimension] ?? x.dimension}:{" "}
-                    {x.value}
+                    {DIM_LABELS[x.dimension] ?? x.dimension}: {x.value}
                   </span>
                   <span className="num whitespace-nowrap">{exposurePct(x.pct, hidden)}</span>
                 </li>

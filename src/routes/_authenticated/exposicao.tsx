@@ -327,11 +327,7 @@ function ExposicaoPage() {
             />
             <SliceSection title="Por classe de ativo" slices={report.byClass} hidden={hidden} />
             <SliceSection title="Por moeda económica" slices={report.currency} hidden={hidden} />
-            <SliceSection
-              title="Por região"
-              slices={report.region}
-              hidden={hidden}
-            />
+            <SliceSection title="Por região" slices={report.region} hidden={hidden} />
             <SliceSection title="Por continente" slices={report.continent} hidden={hidden} />
             <SliceSection
               title="Desenvolvido vs. emergente"
