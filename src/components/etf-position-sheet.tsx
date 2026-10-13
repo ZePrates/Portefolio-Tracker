@@ -8,6 +8,7 @@ import type { Asset } from "@/lib/portfolio-types";
 import {
   exposureEUR,
   exposurePct,
+  exposureSector,
   mergeDisplaySlices,
   readableCompanyName,
 } from "@/lib/exposure-display";
@@ -71,7 +72,13 @@ export function EtfPositionSheet({
       </section>
     );
   if (detail.isError) return <ErrorState onRetry={() => void detail.refetch()} />;
-  if (!detail.data) return <EmptyState title="Sem composição disponível" />;
+  if (!detail.data)
+    return (
+      <EmptyState
+        title="Sem composição disponível"
+        description="Ainda não existem posições guardadas para este ETF."
+      />
+    );
   return (
     <EtfSheetContent
       key={asset.id}
@@ -105,7 +112,7 @@ export function EtfSheetContent({
 }: {
   asset: Asset;
   detail: AssetExposureDetail;
-  portfolio?: Awaited<ReturnType<typeof getExposure>>;
+  portfolio?: Awaited<ReturnType<typeof getExposure>> | undefined;
   portfolioPending?: boolean;
   portfolioError?: boolean;
   retryPortfolio?: () => void;
@@ -136,7 +143,7 @@ export function EtfSheetContent({
     const direct = holdingIndex(
       positions
         .filter((p) => ["acao_dividendo", "acao_crescimento", "reit"].includes(p.class))
-        .map((p) => ({ name: p.name, symbol: p.ticker, isin: p.isin })),
+        .map((p) => ({ name: p.name, symbol: p.ticker, isin: p.isin ?? null })),
     );
     const other = positions
       .filter((p) => p.class === "etf" && p.assetId !== asset.id)
@@ -307,7 +314,12 @@ export function EtfSheetContent({
           label="Posições do ETF"
           rowKey={(h) => `${h.isin ?? ""}|${h.symbol ?? ""}|${h.name}`}
           rowLabel={(h) => h.name}
-          searchText={all ? (h) => `${h.name} ${h.symbol ?? ""} ${h.isin ?? ""}` : undefined}
+          {...(all
+            ? {
+                searchText: (h: AssetExposureDetail["holdings"][number]) =>
+                  `${h.name} ${h.symbol ?? ""} ${h.isin ?? ""}`,
+              }
+            : {})}
           columns={[
             {
               id: "name",
@@ -342,12 +354,7 @@ export function EtfSheetContent({
                     className="h-2 w-2 rounded-sm"
                     style={{ backgroundColor: sectorColor(h.sector ?? "") }}
                   />
-                  {h.sector
-                    ? detailSlices(
-                        { ...d, dimensions: [{ dimension: "sector", value: h.sector, pct: 0 }] },
-                        "sector",
-                      )[0]?.value
-                    : "—"}
+                  {h.sector ? exposureSector(h.sector) : "—"}
                 </span>
               ),
             },
@@ -436,7 +443,7 @@ export function EtfSheetContent({
     </div>
   );
 }
-function Kpi({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Kpi({ label, value, sub }: { label: string; value: string; sub?: string | undefined }) {
   return (
     <div className="min-w-0 rounded-md border border-border bg-secondary/30 p-3">
       <p className="text-xs text-muted-foreground">{label}</p>
