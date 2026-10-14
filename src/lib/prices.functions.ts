@@ -1,8 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware-external";
-import { runPriceUpdate, type PriceablePosition, type Quote } from "@/lib/prices";
 import { takeSnapshot, type SB } from "@/lib/snapshots.functions";
+import type { PricesDb } from "@/lib/prices.server";
 
 /** Procura no Yahoo Finance toda a informação de um ticker (preço, moeda, dividendos, yield). */
 export const lookupTicker = createServerFn({ method: "POST" })
@@ -56,85 +56,12 @@ export const updateAllPrices = createServerFn({ method: "POST" })
       .parse(input ?? { class: null, assetId: null }),
   )
   .handler(async ({ data, context }) => {
-    const { yahooSymbolFor, fetchYahoo, normalize, getRateToEUR } =
-      await import("@/lib/yahoo.server");
-    const { fetchMetalSpot } = await import("@/lib/metals.server");
-    const { buybackDiscountOf } = await import("@/lib/metals");
-
-    let query = context.supabase
-      .from("assets")
-      .select(
-        "id, name, class, ticker, price_source, metal_type, buyback_discount, quantity, current_price, current_price_native, native_currency, status",
-      )
-      .neq("status", "closed");
-    if (data.class) query = query.eq("class", data.class);
-    if (data.assetId) query = query.eq("id", data.assetId);
-
-    const { data: rows, error } = await query;
-    if (error) throw new Error(error.message);
-
-    type Row = NonNullable<typeof rows>[number];
-    const targets = (rows ?? []).filter(
-      (a) => a.class === "metal" || (a.class !== "p2p" && !!a.ticker),
+    const { refreshPrices } = await import("@/lib/prices.server");
+    const result = await refreshPrices(
+      context.supabase as unknown as PricesDb,
+      context.userId,
+      data,
     );
-    const byId = new Map<string, Row>(targets.map((a) => [a.id, a]));
-
-    const rateCache = new Map<string, number | null>();
-
-    const assets: PriceablePosition[] = targets.map((a) => ({
-      id: a.id,
-      name: a.name,
-      class: a.class,
-      quantity: a.quantity,
-      current_price: a.current_price,
-      current_price_native: a.current_price_native,
-      native_currency: a.native_currency,
-    }));
-
-    const outcome = await runPriceUpdate(
-      assets,
-      async (asset): Promise<Quote | null> => {
-        const row = byId.get(asset.id);
-        if (!row) return null;
-        if (row.class === "metal")
-          return fetchMetalSpot(
-            row.metal_type,
-            row.ticker,
-            buybackDiscountOf(row.buyback_discount),
-            rateCache,
-          );
-        const symbol = yahooSymbolFor(row);
-        if (!symbol) return null;
-        // 5 anos para ter histórico de dividendos suficiente para o yield estimado.
-        const q = await fetchYahoo(symbol, "5y");
-        if (!q) return null;
-        const { price, currency, factor } = normalize(q);
-        const { annualYieldPercent } = await import("@/lib/yield");
-        const dividends = q.dividends.map((d) => ({ ...d, amount: d.amount * factor }));
-        return {
-          price,
-          currency,
-          source: `yahoo:${symbol}`,
-          annualYield: annualYieldPercent(dividends, price),
-        };
-      },
-      (currency) => getRateToEUR(currency, rateCache),
-      async (asset, patch) => {
-        const { error: upErr } = await context.supabase
-          .from("assets")
-          .update(patch)
-          .eq("id", asset.id);
-        if (upErr) throw new Error(upErr.message);
-      },
-    );
-
     await takeSnapshot(context.supabase as unknown as SB, context.userId);
-
-    return {
-      total: targets.length,
-      updated: outcome.updated,
-      failed: outcome.failed.map((f) => `${f.name}: ${f.error}`),
-      results: outcome.results,
-      finishedAt: new Date().toISOString(),
-    };
+    return result;
   });
