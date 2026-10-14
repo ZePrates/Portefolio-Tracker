@@ -28,6 +28,7 @@ export async function takeSnapshot(supabase: SB, userId: string): Promise<void> 
     const { data } = await supabase
       .from("assets")
       .select("class, quantity, invested_amount, current_value, status")
+      .eq("user_id", userId)
       .neq("status", "closed");
     const assets = (data ?? []) as Pick<
       Asset,
