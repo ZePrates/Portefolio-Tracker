@@ -150,7 +150,7 @@ function BenchmarkBody({
           <Line
             type="monotone"
             dataKey="Capital investido"
-            stroke="var(--color-chart-1)"
+            stroke="var(--color-muted-foreground)"
             strokeDasharray="4 4"
             dot={false}
           />
