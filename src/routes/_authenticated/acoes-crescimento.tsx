@@ -4,9 +4,9 @@ import { AssetClassPage } from "@/components/asset-class-page";
 export const Route = createFileRoute("/_authenticated/acoes-crescimento")({
   head: () => ({
     meta: [
-      { title: "Ações de Crescimento — Portefólio Tracker" },
+      { title: "Ações Crescimento — Portefólio Tracker" },
       { name: "description", content: "Ações de empresas com foco em crescimento de capital." },
-      { property: "og:title", content: "Ações de Crescimento — Portefólio Tracker" },
+      { property: "og:title", content: "Ações Crescimento — Portefólio Tracker" },
       {
         property: "og:description",
         content: "Ações de empresas com foco em crescimento de capital.",
@@ -20,7 +20,7 @@ function AcoesCrescimentoPage() {
   return (
     <AssetClassPage
       assetClass="acao_crescimento"
-      title="Ações de Crescimento"
+      title="Ações Crescimento"
       subtitle="Ações de empresas com foco em crescimento de capital."
       emptyLabel="Ainda não tens ações de crescimento"
     />

@@ -2,7 +2,17 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, Pencil, Trash2, RefreshCw, Search, Download, ArrowLeftRight } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  RefreshCw,
+  Search,
+  Download,
+  ArrowLeftRight,
+  Ellipsis,
+  History,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   type Asset,
@@ -14,6 +24,14 @@ import {
   isOpenPosition,
 } from "@/lib/portfolio-types";
 import { AssetPositionModal } from "@/components/asset-position-modal";
+import { invalidatePortfolio } from "@/lib/portfolio-queries";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   listAssets,
   createAsset,
@@ -417,10 +435,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         }
       }
       setDialogOpen(false);
-      await queryClient.invalidateQueries({ queryKey: ["assets"] });
-      await queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      await queryClient.invalidateQueries({ queryKey: ["portfolio-snapshots"] });
-      await queryClient.invalidateQueries({ queryKey: ["dividends"] });
+      await invalidatePortfolio(queryClient);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao guardar.");
     } finally {
@@ -430,7 +445,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
 
   const importDividends = async (a: Asset) => {
     setImportingId(a.id);
-    const id = toast.loading(`A sincronizar dividendos de ${a.name}...`);
+    const id = toast.loading(`A atualizar dividendos de ${a.name}…`);
     try {
       const res = (await syncDivFn({ data: { assetId: a.id } })) as {
         status: string;
@@ -438,7 +453,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         inserted: number;
         updated: number;
       };
-      await queryClient.invalidateQueries({ queryKey: ["dividends"] });
+      await invalidatePortfolio(queryClient);
       if (res.status !== "ok") {
         toast.warning(res.reason ?? "Dados de dividendos indisponíveis.", { id });
       } else {
@@ -450,7 +465,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         );
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Falha ao sincronizar dividendos.", { id });
+      toast.error(e instanceof Error ? e.message : "Falha ao atualizar os dividendos.", { id });
     } finally {
       setImportingId(null);
     }
@@ -468,9 +483,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
     try {
       await deleteFn({ data: { id: a.id } });
       toast.success("Ativo eliminado.");
-      await queryClient.invalidateQueries({ queryKey: ["assets"] });
-      await queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      await queryClient.invalidateQueries({ queryKey: ["portfolio-snapshots"] });
+      await invalidatePortfolio(queryClient);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao eliminar.");
     }
@@ -479,27 +492,30 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   const refreshPrices = async () => {
     if (refreshing) return;
     setRefreshing(true);
-    const toastId = toast.loading("A obter preços do Yahoo Finance...");
+    const toastId = toast.loading("A obter cotações do Yahoo Finance…");
     try {
       const res = (await refreshFn({ data: { class: assetClass } })) as {
         updated: number;
         failed: string[];
         total: number;
       };
-      await queryClient.invalidateQueries({ queryKey: ["assets"] });
-      await queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      await queryClient.invalidateQueries({ queryKey: ["portfolio-snapshots"] });
+      await invalidatePortfolio(queryClient);
       if (res.updated === 0 && res.total === 0) {
         toast.info("Não há ativos com ticker nesta página.", { id: toastId });
       } else if (res.failed.length > 0) {
-        toast.warning(`${res.updated} preços atualizados. Sem cotação: ${res.failed.join(", ")}`, {
-          id: toastId,
-        });
+        toast.warning(
+          `${res.updated} cotações atualizadas. Sem cotação: ${res.failed.join(", ")}`,
+          {
+            id: toastId,
+          },
+        );
       } else {
-        toast.success(`${res.updated} preços atualizados.`, { id: toastId });
+        toast.success(`${res.updated} cotações atualizadas.`, { id: toastId });
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Falha ao atualizar preços.", { id: toastId });
+      toast.error(e instanceof Error ? e.message : "Falha ao atualizar as cotações.", {
+        id: toastId,
+      });
     } finally {
       setRefreshing(false);
     }
@@ -532,11 +548,60 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
       ? a.current_price / a.current_price_native
       : 1;
 
+  /** Nome do ativo: abre a ficha (movimentos, posição e composição). */
   const assetName = (a: Asset) => (
-    <div className="min-w-0 max-w-[26rem]">
-      <p className="font-medium">{a.name}</p>
-      {a.ticker && <p className="text-xs text-muted-foreground">{a.ticker}</p>}
-    </div>
+    <button
+      type="button"
+      onClick={() => setPositionAsset(a)}
+      aria-label={`Abrir a ficha de ${a.name}`}
+      className="block min-w-0 max-w-[26rem] rounded text-left hover:underline hover:decoration-muted-foreground/50 hover:underline-offset-4"
+    >
+      <span className="block font-medium leading-snug">{a.name}</span>
+      {a.ticker && <span className="block text-xs text-muted-foreground">{a.ticker}</span>}
+    </button>
+  );
+
+  /** Menu "⋯" com as ações secundárias de uma linha. */
+  const moreMenu = (a: Asset, closed = false) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <IconButton label={`Mais ações para ${a.name}`}>
+          <Ellipsis aria-hidden className="h-4 w-4" />
+        </IconButton>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {closed ? (
+          <DropdownMenuItem onSelect={() => setPositionAsset(a)}>
+            <History aria-hidden />
+            Ver histórico
+          </DropdownMenuItem>
+        ) : (
+          <>
+            {paysDividends(assetClass) && a.ticker && (
+              <DropdownMenuItem
+                disabled={importingId === a.id}
+                onSelect={() => void importDividends(a)}
+              >
+                <Download aria-hidden />
+                Atualizar dividendos
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onSelect={() => openEdit(a)}>
+              <Pencil aria-hidden />
+              Editar
+            </DropdownMenuItem>
+          </>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onSelect={() => void remove(a)}
+          className="text-destructive focus:bg-destructive/15 focus:text-destructive"
+        >
+          <Trash2 aria-hidden />
+          Eliminar
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 
   const rowActions = (a: Asset) => (
@@ -546,25 +611,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
           <ArrowLeftRight aria-hidden className="h-4 w-4" />
         </IconButton>
       )}
-      {paysDividends(assetClass) && a.ticker && (
-        <IconButton
-          label={`Importar dividendos de ${a.name}`}
-          onClick={() => importDividends(a)}
-          disabled={importingId === a.id}
-        >
-          <Download aria-hidden className="h-4 w-4" />
-        </IconButton>
-      )}
-      <IconButton label={`Editar ${a.name}`} onClick={() => openEdit(a)}>
-        <Pencil aria-hidden className="h-4 w-4" />
-      </IconButton>
-      <IconButton
-        label={`Eliminar ${a.name}`}
-        className="hover:bg-destructive/15 hover:text-destructive"
-        onClick={() => remove(a)}
-      >
-        <Trash2 aria-hidden className="h-4 w-4" />
-      </IconButton>
+      {moreMenu(a)}
     </div>
   );
 
@@ -686,10 +733,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
     return (
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="font-medium leading-snug">{a.name}</p>
-            {a.ticker && <p className="text-xs text-muted-foreground">{a.ticker}</p>}
-          </div>
+          <div className="min-w-0">{assetName(a)}</div>
           <div className="shrink-0 text-right">
             <p className="num font-semibold">{formatEUR(assetCurrentValue(a), hidden)}</p>
             <Delta value={p.abs} className="justify-end text-xs">
@@ -761,30 +805,14 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
       id: "actions",
       header: <span className="sr-only">Ações</span>,
       required: true,
-      cell: (a) => (
-        <div className="flex justify-end gap-1">
-          <IconButton label={`Ver histórico de ${a.name}`} onClick={() => setPositionAsset(a)}>
-            <ArrowLeftRight aria-hidden className="h-4 w-4" />
-          </IconButton>
-          <IconButton
-            label={`Eliminar ${a.name}`}
-            className="hover:bg-destructive/15 hover:text-destructive"
-            onClick={() => remove(a)}
-          >
-            <Trash2 aria-hidden className="h-4 w-4" />
-          </IconButton>
-        </div>
-      ),
+      cell: (a) => <div className="flex justify-end">{moreMenu(a, true)}</div>,
     },
   ];
 
   const closedCard = (a: Asset) => (
     <div className="space-y-2">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="font-medium leading-snug">{a.name}</p>
-          {a.ticker && <p className="text-xs text-muted-foreground">{a.ticker}</p>}
-        </div>
+        <div className="min-w-0">{assetName(a)}</div>
         <Delta value={assetRealizedPL(a)} className="shrink-0">
           {formatEUR(assetRealizedPL(a), hidden)}
         </Delta>
@@ -792,20 +820,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
       <p className="text-xs text-muted-foreground">
         Fecho {formatDatePt(a.closed_at)} · comissões {formatEUR(a.total_fees ?? 0, hidden)}
       </p>
-      <div className="border-t border-border/60 pt-2">
-        <div className="flex justify-end gap-1">
-          <IconButton label={`Ver histórico de ${a.name}`} onClick={() => setPositionAsset(a)}>
-            <ArrowLeftRight aria-hidden className="h-4 w-4" />
-          </IconButton>
-          <IconButton
-            label={`Eliminar ${a.name}`}
-            className="hover:bg-destructive/15 hover:text-destructive"
-            onClick={() => remove(a)}
-          >
-            <Trash2 aria-hidden className="h-4 w-4" />
-          </IconButton>
-        </div>
-      </div>
+      <div className="flex justify-end border-t border-border/60 pt-2">{moreMenu(a, true)}</div>
     </div>
   );
 
@@ -818,7 +833,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
           <>
             <Button variant="outline" onClick={refreshPrices} loading={refreshing}>
               {!refreshing && <RefreshCw aria-hidden className="h-4 w-4" />}
-              Atualizar preços
+              Atualizar<span className="hidden sm:inline"> cotações</span>
             </Button>
             <Button onClick={openCreate}>
               <Plus className="h-4 w-4" />

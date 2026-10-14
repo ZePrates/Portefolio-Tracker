@@ -125,7 +125,8 @@ Um branch, um PR por bloco e `tsc` + `eslint` + testes em cada um. Só o bloco 3
 
 - **Decisões D1–D5 aprovadas** (todas as recomendações).
 - **Revalidação:** a análise foi feita sobre uma cópia local atrasada 60 commits (PRs #42–#45: FIRE com patamares, comparação com o S&P 500, fotografia diária automática, redesenho de ETFs e Exposição). Ao rever o `main` atualizado, todos os pontos continuam válidos, exceto o primeiro texto do E5, que já tinha sido corrigido. O estado vazio das fotografias continuava errado e foi corrigido no bloco 1.
-- **Bloco 1 feito** no branch `cleanup/bloco-1-correcoes`: E2 (antecipado do bloco 3, por ser só de interface), E4, E5, E6, E8, E9, E10, C3, C5 e C7; de C4, os termos em inglês do Desempenho, do Simulador e da Inteligência, mais o "Cost basis". O título "Desempenho" (parte de C1) também ficou feito.
+- **Bloco 1 feito** no branch `cleanup/bloco-1-correcoes`: E2 (antecipado do bloco 3, por ser só de interface), E4, E5, E6, E8, E9, E10, C3, C5 e C7; de C4, os termos em inglês do Desempenho, do Simulador e da Inteligência, mais o "Cost basis". O título "Desempenho" (parte de C1) também ficou feito. Juntado no PR #46.
+- **Bloco 2 feito** no branch `cleanup/bloco-2-coerencia`: C1 (títulos iguais ao menu, protegido por teste), C2 (verbos "Atualizar cotações" e "Atualizar dividendos"; "Auditar" passa a "Verificar dividendos" no menu "⋯"), C8 (o nome do ativo abre a ficha; nas linhas ficam a ação principal e o menu "⋯") e L4/E7 (`invalidatePortfolio`, com um teste que obriga cada chave de query nova a estar na lista). L3 já tinha ficado feito no bloco 1. O C6 (formulários das Projeções) passa para o bloco 4, junto com a fusão das Projeções em Objetivos.
 
 ## 7. Decisões que preciso de ti
 

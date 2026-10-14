@@ -1,8 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { invalidatePortfolio } from "@/lib/portfolio-queries";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, Trash2, RefreshCw, ShieldCheck } from "lucide-react";
+import { Ellipsis, Plus, Trash2, RefreshCw, ShieldCheck } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { toast } from "sonner";
 import {
@@ -155,7 +162,7 @@ function DividendosPage() {
 
   const sync = async () => {
     setSyncing(true);
-    const id = toast.loading("A sincronizar dividendos…");
+    const id = toast.loading("A atualizar dividendos…");
     try {
       const res = (await syncFn({ data: { class: null } })) as {
         inserted: number;
@@ -163,7 +170,7 @@ function DividendosPage() {
         unavailable: string[];
       };
       await recalcFn();
-      await queryClient.invalidateQueries({ queryKey: ["dividends"] });
+      await invalidatePortfolio(queryClient);
       toast.success(
         `${res.inserted} novos, ${res.updated} atualizados${
           res.unavailable.length > 0 ? ` · sem dados: ${res.unavailable.join(", ")}` : ""
@@ -171,7 +178,7 @@ function DividendosPage() {
         { id },
       );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Falha na sincronização.", { id });
+      toast.error(e instanceof Error ? e.message : "Falha ao atualizar os dividendos.", { id });
     } finally {
       setSyncing(false);
     }
@@ -179,7 +186,7 @@ function DividendosPage() {
 
   const runAudit = async () => {
     setAuditing(true);
-    const id = toast.loading("A auditar dividendos…");
+    const id = toast.loading("A verificar dividendos…");
     try {
       const res = (await auditFn()) as {
         reviewed: number;
@@ -192,12 +199,12 @@ function DividendosPage() {
         toast.warning(
           `${res.findings.length} registos com problemas${
             res.duplicates.length > 0 ? ` · ${res.duplicates.length} duplicados` : ""
-          }. Usa Sincronizar para recalcular.`,
+          }. Usa Atualizar dividendos para os recalcular.`,
           { id },
         );
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Falha na auditoria.", { id });
+      toast.error(e instanceof Error ? e.message : "Falha na verificação dos dividendos.", { id });
     } finally {
       setAuditing(false);
     }
@@ -251,7 +258,7 @@ function DividendosPage() {
       setOpen(false);
       setAmount("");
       setTax("");
-      await queryClient.invalidateQueries({ queryKey: ["dividends"] });
+      await invalidatePortfolio(queryClient);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao registar.");
     } finally {
@@ -269,7 +276,7 @@ function DividendosPage() {
     if (!ok) return;
     try {
       await deleteFn({ data: { id: d.id } });
-      await queryClient.invalidateQueries({ queryKey: ["dividends"] });
+      await invalidatePortfolio(queryClient);
       toast.success("Registo eliminado.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao eliminar.");
@@ -433,18 +440,27 @@ function DividendosPage() {
         subtitle="Dividendos efetivamente recebidos, calculados sobre a posição elegível em cada data ex-dividendo."
         actions={
           <div className="flex gap-2">
-            <Button variant="outline" onClick={runAudit} loading={auditing}>
-              {!auditing && <ShieldCheck aria-hidden className="h-4 w-4" />}
-              Auditar
-            </Button>
             <Button variant="outline" onClick={sync} loading={syncing}>
               {!syncing && <RefreshCw aria-hidden className="h-4 w-4" />}
-              Sincronizar
+              Atualizar dividendos
             </Button>
             <Button onClick={openForm}>
               <Plus aria-hidden className="h-4 w-4" />
               Registar dividendo
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <IconButton label="Mais ações" className="border border-border">
+                  <Ellipsis aria-hidden className="h-4 w-4" />
+                </IconButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem disabled={auditing} onSelect={() => void runAudit()}>
+                  <ShieldCheck aria-hidden />
+                  Verificar dividendos
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         }
       />
@@ -574,11 +590,11 @@ function DividendosPage() {
       ) : dividends.length === 0 ? (
         <EmptyState
           title="Ainda sem dividendos registados"
-          description="Sincroniza os dividendos dos teus ativos ou regista manualmente o primeiro pagamento."
+          description="Atualiza os dividendos dos teus ativos ou regista manualmente o primeiro pagamento."
           action={
             <Button onClick={sync} loading={syncing}>
               {!syncing && <RefreshCw aria-hidden className="h-4 w-4" />}
-              Sincronizar dividendos
+              Atualizar dividendos
             </Button>
           }
         />

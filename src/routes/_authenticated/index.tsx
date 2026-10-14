@@ -26,6 +26,7 @@ import { getExposure } from "@/lib/exposure.functions";
 import { getScramble } from "@/lib/scramble.functions";
 import { scramblePassiveIncome } from "@/lib/scramble";
 import { updateAllPrices } from "@/lib/prices.functions";
+import { invalidatePortfolio } from "@/lib/portfolio-queries";
 
 import { dismissDataQualityAlerts, getDataQualityAlerts } from "@/lib/data-quality.functions";
 import { alertKey, type DataQualityAlert } from "@/lib/data-quality";
@@ -244,21 +245,21 @@ function DashboardPage() {
         failed: string[];
         total: number;
       };
-      await queryClient.invalidateQueries({ queryKey: ["assets"] });
-      await queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      await queryClient.invalidateQueries({ queryKey: ["portfolio-snapshots"] });
-      await queryClient.invalidateQueries({ queryKey: ["fire"] });
-      await queryClient.invalidateQueries({ queryKey: ["allocation"] });
-      await queryClient.invalidateQueries({ queryKey: ["data-quality"] });
+      await invalidatePortfolio(queryClient);
       if (res.failed.length > 0) {
-        toast.warning(`${res.updated} preços atualizados. Sem cotação: ${res.failed.join(", ")}`, {
-          id: toastId,
-        });
+        toast.warning(
+          `${res.updated} cotações atualizadas. Sem cotação: ${res.failed.join(", ")}`,
+          {
+            id: toastId,
+          },
+        );
       } else {
-        toast.success(`${res.updated} preços atualizados.`, { id: toastId });
+        toast.success(`${res.updated} cotações atualizadas.`, { id: toastId });
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Falha ao atualizar preços.", { id: toastId });
+      toast.error(e instanceof Error ? e.message : "Falha ao atualizar as cotações.", {
+        id: toastId,
+      });
     } finally {
       setRefreshing(false);
     }
@@ -400,11 +401,11 @@ function DashboardPage() {
       variant="outline"
       onClick={refreshPrices}
       loading={refreshing}
-      title="Obter cotações"
+      title="Atualizar cotações"
       className="min-h-11 sm:min-h-[34px] sm:py-1"
     >
       {!refreshing && <RefreshCw aria-hidden className="h-[15px] w-[15px]" />}
-      Atualizar
+      Atualizar<span className="hidden sm:inline"> cotações</span>
     </Button>
   );
 
