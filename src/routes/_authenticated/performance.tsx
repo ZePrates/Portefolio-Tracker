@@ -121,8 +121,8 @@ function PerformancePage() {
     [assets, dividends, range],
   );
   const benchmark = useMemo(
-    () => benchmarkComparison(assets, transactions, dividends, todayISO()),
-    [assets, transactions, dividends],
+    () => benchmarkComparison(assets, transactions, dividends, todayISO(), snapshots),
+    [assets, transactions, dividends, snapshots],
   );
   // Drawdown só é calculável sobre séries reais de valor de mercado.
   const dd = useMemo(() => drawdown(valuations), [valuations]);

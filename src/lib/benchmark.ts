@@ -24,6 +24,18 @@ export interface BenchmarkPoint {
   invested: number;
   /** Valor do benchmark com os mesmos fluxos. */
   benchmark: number;
+  /**
+   * Valor da carteira (+ dividendos recebidos até à data), da última
+   * fotografia do mês; null quando não há fotografia nesse mês.
+   */
+  portfolio: number | null;
+}
+
+/** Fotografia diária da carteira (ver snapshots.functions). */
+export interface BenchmarkSnapshot {
+  snapshotDate: string;
+  scope: string;
+  marketValue: number | null;
 }
 
 export interface BenchmarkComparison {
@@ -62,6 +74,7 @@ export function benchmarkComparison(
   transactions: PerfTransaction[],
   dividends: DividendRecord[],
   today: string,
+  snapshots: BenchmarkSnapshot[] = [],
   annualReturnPct = SP500_ANNUAL_RETURN_PCT,
 ): BenchmarkComparison | null {
   const flows = cashFlowsFromLedger(transactions).filter((f) => f.date <= today);
@@ -71,9 +84,16 @@ export function benchmarkComparison(
   const portfolioValue = assets
     .filter((a) => ids.has(a.id) && isOpenPosition(a))
     .reduce((s, a) => s + assetCurrentValue(a), 0);
-  const divs = dividends
+  const ledgerDivs = dividends
     .filter((d) => d.asset_id != null && ids.has(d.asset_id) && isReceived(d, today))
-    .reduce((s, d) => s + netOf(d), 0);
+    .map((d) => ({ date: (d.payment_date ?? d.paid_at).slice(0, 10), amount: netOf(d) }));
+  const divs = ledgerDivs.reduce((s, d) => s + d.amount, 0);
+  const divsUntil = (date: string) =>
+    ledgerDivs.filter((d) => d.date <= date).reduce((s, d) => s + d.amount, 0);
+  const history = snapshotValues(
+    snapshots,
+    new Set(assets.filter((a) => ids.has(a.id)).map((a) => a.class)),
+  );
 
   const annual = annualReturnPct / 100;
   const series: BenchmarkPoint[] = [];
@@ -93,7 +113,13 @@ export function benchmarkComparison(
     }
     value = grow(value, at, stop, annual);
     at = stop;
-    series.push({ date: stop, invested, benchmark: value });
+    const portfolio = portfolioValue + divs;
+    let point: number | null = stop === today ? portfolio : null;
+    if (point == null) {
+      const snap = lastInMonth(history, stop);
+      if (snap) point = snap.value + divsUntil(snap.date);
+    }
+    series.push({ date: stop, invested, benchmark: value, portfolio: point });
     if (stop === today) break;
   }
 
@@ -115,4 +141,43 @@ export function benchmarkComparison(
 
 function addDays(date: string, n: number): string {
   return new Date(Date.parse(`${date}T00:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10);
+}
+
+/**
+ * Valor por data a partir das fotografias da app: soma das classes que têm
+ * movimentos no ledger. Só usa datas com fotografia "total" (as da app
+ * gravam todas as classes nesse dia; históricos importados só de uma classe
+ * ficam de fora para não mostrar uma carteira incompleta).
+ */
+function snapshotValues(
+  snapshots: BenchmarkSnapshot[],
+  classes: Set<string>,
+): Array<{ date: string; value: number }> {
+  const totals = new Set(
+    snapshots
+      .filter((s) => s.scope === "total" && s.marketValue != null)
+      .map((s) => s.snapshotDate),
+  );
+  const byDate = new Map<string, number>();
+  for (const s of snapshots) {
+    if (!totals.has(s.snapshotDate) || s.marketValue == null) continue;
+    if (!s.scope.startsWith("class:") || !classes.has(s.scope.slice(6))) continue;
+    byDate.set(s.snapshotDate, (byDate.get(s.snapshotDate) ?? 0) + s.marketValue);
+  }
+  return [...byDate.entries()]
+    .map(([date, value]) => ({ date, value }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/** Última fotografia do mês de `monthEndDate` (até essa data). */
+function lastInMonth(
+  history: Array<{ date: string; value: number }>,
+  monthEndDate: string,
+): { date: string; value: number } | null {
+  const month = monthEndDate.slice(0, 7);
+  let found: { date: string; value: number } | null = null;
+  for (const h of history) {
+    if (h.date.slice(0, 7) === month && h.date <= monthEndDate) found = h;
+  }
+  return found;
 }

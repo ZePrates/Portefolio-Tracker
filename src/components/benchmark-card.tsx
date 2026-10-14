@@ -24,7 +24,9 @@ export function BenchmarkCard({
     date: p.date,
     [`S&P 500 a ${rate} %`]: Math.round(p.benchmark),
     "Capital investido": Math.round(p.invested),
+    Carteira: p.portfolio == null ? null : Math.round(p.portfolio),
   }));
+  const months = c.series.filter((p) => p.portfolio != null).length;
 
   return (
     <Card
@@ -51,7 +53,7 @@ export function BenchmarkCard({
       </div>
 
       <ChartFrame
-        label="Valor do S&P 500 hipotético e capital investido, por mês"
+        label="Valor da carteira, do S&P 500 hipotético e capital investido, por mês"
         height={260}
         empty={chart.length < 2}
         emptyLabel="Histórico ainda curto para o gráfico."
@@ -92,6 +94,14 @@ export function BenchmarkCard({
           />
           <Line
             type="monotone"
+            dataKey="Carteira"
+            stroke="var(--color-primary)"
+            strokeWidth={2.5}
+            dot={months < 6}
+            connectNulls
+          />
+          <Line
+            type="monotone"
             dataKey="Capital investido"
             stroke="var(--color-chart-1)"
             strokeDasharray="4 4"
@@ -100,9 +110,11 @@ export function BenchmarkCard({
         </LineChart>
       </ChartFrame>
       <p className="mt-3 text-[12px] text-muted-foreground">
-        Retorno fixo, sem volatilidade nem câmbio: serve para comparar com uma referência simples,
-        não para dizer como o S&P 500 se comportou de facto. Só entram ativos com movimentos
-        registados (ex.: P2P sem transações fica de fora).
+        A linha da carteira usa as fotografias diárias guardadas pela app (valor + dividendos
+        recebidos); nos meses sem fotografia não há ponto. Retorno fixo, sem volatilidade nem
+        câmbio: serve para comparar com uma referência simples, não para dizer como o S&P 500 se
+        comportou de facto. Só entram ativos com movimentos registados (ex.: P2P sem transações fica
+        de fora).
       </p>
     </Card>
   );

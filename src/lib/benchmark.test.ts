@@ -108,3 +108,28 @@ describe("benchmarkComparison", () => {
     expect(c.portfolio).toBe(1140);
   });
 });
+
+describe("benchmarkComparison — linha da carteira", () => {
+  it("usa a última fotografia de cada mês das classes com movimentos, mais dividendos", () => {
+    const snaps = [
+      { snapshotDate: "2026-01-20", scope: "total", marketValue: 9999 },
+      { snapshotDate: "2026-01-20", scope: "class:etf", marketValue: 1000 },
+      { snapshotDate: "2026-01-20", scope: "class:p2p", marketValue: 8999 },
+      { snapshotDate: "2026-01-28", scope: "total", marketValue: 9999 },
+      { snapshotDate: "2026-01-28", scope: "class:etf", marketValue: 1050 },
+      // Histórico importado só de ETFs (sem "total") fica de fora.
+      { snapshotDate: "2026-02-15", scope: "class:etf", marketValue: 1100 },
+    ];
+    const divs: DividendRecord[] = [
+      { asset_id: "a", asset_name: "A", amount: 10, paid_at: "2026-01-25", status: "received" },
+    ];
+    const c = benchmarkComparison(
+      [asset({ id: "a", quantity: 1, current_price: 1200 })],
+      [buy("a", "2026-01-10", 1000)],
+      divs,
+      "2026-03-05",
+      snaps,
+    )!;
+    expect(c.series.map((p) => p.portfolio)).toEqual([1060, null, 1210]);
+  });
+});
