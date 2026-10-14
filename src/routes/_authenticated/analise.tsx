@@ -127,24 +127,24 @@ function AnalisePage() {
             <Bar
               dataKey="invested"
               name="Investido"
-              fill="var(--color-chart-3)"
+              fill="var(--color-chart-1)"
               radius={[4, 4, 0, 0]}
             />
             <Bar
               dataKey="current"
               name="Valor atual"
-              fill="var(--color-chart-1)"
+              fill="var(--color-chart-3)"
               radius={[4, 4, 0, 0]}
             />
           </BarChart>
         </ChartFrame>
         <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
           <li className="flex items-center gap-1.5">
-            <span aria-hidden className="h-2.5 w-2.5 rounded-sm bg-[var(--color-chart-3)]" />
+            <span aria-hidden className="h-2.5 w-2.5 rounded-sm bg-[var(--color-chart-1)]" />
             Investido
           </li>
           <li className="flex items-center gap-1.5">
-            <span aria-hidden className="h-2.5 w-2.5 rounded-sm bg-[var(--color-chart-1)]" />
+            <span aria-hidden className="h-2.5 w-2.5 rounded-sm bg-[var(--color-chart-3)]" />
             Valor atual
           </li>
         </ul>

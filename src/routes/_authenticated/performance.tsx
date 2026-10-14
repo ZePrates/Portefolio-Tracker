@@ -376,7 +376,7 @@ function PerformancePage() {
                 type="monotone"
                 dataKey="invested"
                 name="Capital investido"
-                stroke="var(--color-chart-8)"
+                stroke="var(--color-chart-1)"
                 strokeDasharray="4 3"
                 dot={false}
               />

@@ -90,7 +90,15 @@ function Metric({
   );
 }
 
-function LegendLine({ dashed, label }: { dashed?: boolean; label: string }) {
+function LegendLine({
+  dashed,
+  label,
+  color,
+}: {
+  dashed?: boolean;
+  label: string;
+  color?: string;
+}) {
   return (
     <span className="inline-flex items-center gap-2 text-[12.5px] text-muted-foreground">
       <svg aria-hidden width="18" height="4" className="shrink-0">
@@ -99,7 +107,7 @@ function LegendLine({ dashed, label }: { dashed?: boolean; label: string }) {
           y1="2"
           x2="18"
           y2="2"
-          stroke={dashed ? "var(--color-muted-foreground)" : "var(--color-foreground)"}
+          stroke={color ?? (dashed ? "var(--color-muted-foreground)" : "var(--color-foreground)")}
           strokeWidth={dashed ? 1.5 : 2}
           strokeDasharray={dashed ? "4 4" : undefined}
         />
@@ -186,7 +194,7 @@ export function DashboardHero({
           type="monotone"
           dataKey="invested"
           name="Capital investido"
-          stroke="var(--color-muted-foreground)"
+          stroke="var(--color-chart-1)"
           strokeWidth={1.5}
           strokeDasharray="4 4"
           fill="none"
@@ -276,7 +284,7 @@ export function DashboardHero({
       <div className="min-w-0 px-3 pb-3 lg:px-6 lg:pb-4 lg:pt-5">
         <div className="hidden flex-wrap items-center gap-x-5 gap-y-1 pb-3 lg:flex">
           <LegendLine label="Valor de mercado" />
-          <LegendLine dashed label="Capital investido" />
+          <LegendLine dashed label="Capital investido" color="var(--color-chart-1)" />
           <span className="ml-auto text-[12.5px] text-muted-foreground">fotografias diárias</span>
         </div>
         {chart}
