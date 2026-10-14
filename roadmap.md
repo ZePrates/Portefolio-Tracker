@@ -1,5 +1,8 @@
 # Roadmap
 
+- [x] FIRE: patamares (Half/Barista, Lean, FIRE, Fat), Coast FIRE (sem mais aportes) e FIRE com 28 % sobre mais-valias, sem schema/RLS; testes, typecheck e build verificados.
+- [ ] FIRE: confirmação visual na carteira real (pendente do utilizador no preview).
+- [ ] Carteira vs. benchmark real (mesmos aportes em S&P 500/VWCE) na página Desempenho.
 - [x] Ficha ETF: "Principais posições" fixa nas 10 maiores (sem "Ver todas", pesquisa ou paginação) + linha de resumo com N e data; cálculos de bastidores inalterados.
 - [x] Redesenhar ficha ETF e barras de setores/países; 62 testes e verificação visual com dados de teste, sem schema/RLS.
 

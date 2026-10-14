@@ -16,6 +16,7 @@ import {
 } from "@/components/ui-bits";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CLASS_COLOR } from "@/components/chart-kit";
+import { FireLevels } from "@/components/fire-levels";
 import { usePrivateMode } from "@/components/private-mode";
 import {
   getAllocation,
@@ -284,6 +285,7 @@ function FireSection() {
                 }
               />
             </div>
+            {data?.details && <FireLevels details={data.details} hidden={hidden} />}
           </div>
         )
       )}

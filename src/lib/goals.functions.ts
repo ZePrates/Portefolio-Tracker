@@ -6,8 +6,13 @@ import { allocationByClass, assetPerformance } from "@/lib/dashboard";
 import { todayLisbon } from "@/lib/dates";
 import { receivedLast12Months, type DividendRecord } from "@/lib/dividends";
 import { dbError } from "@/lib/errors";
-import { fireProgress } from "@/lib/fire";
-import { assetCurrentValue, isOpenPosition, type Asset } from "@/lib/portfolio-types";
+import { fireDetails, fireProgress } from "@/lib/fire";
+import {
+  assetCurrentValue,
+  assetInvested,
+  isOpenPosition,
+  type Asset,
+} from "@/lib/portfolio-types";
 
 const scopeSchema = z.enum(["class", "asset"]);
 
@@ -129,7 +134,7 @@ export const getFireProgress = createServerFn({ method: "GET" })
     ]);
     for (const r of [settingsRes, assetsRes, divRes, p2pRes]) if (r.error) throw dbError(r.error);
     const row = settingsRes.data;
-    if (!row) return { settings: null, progress: null };
+    if (!row) return { settings: null, progress: null, details: null };
 
     const settings = {
       annualExpenses: Number(row.annual_expenses),
@@ -139,7 +144,9 @@ export const getFireProgress = createServerFn({ method: "GET" })
       inflationPct: Number(row.inflation_pct),
     };
     const assets = (assetsRes.data ?? []) as Asset[];
-    const value = assets.filter(isOpenPosition).reduce((s, a) => s + assetCurrentValue(a), 0);
+    const open = assets.filter(isOpenPosition);
+    const value = open.reduce((s, a) => s + assetCurrentValue(a), 0);
+    const cost = open.reduce((s, a) => s + assetInvested(a), 0);
     const today = todayLisbon();
     const p2pIncome: DividendRecord[] = (p2pRes.data ?? []).map((m) => ({
       asset_id: m.asset_id,
@@ -154,7 +161,11 @@ export const getFireProgress = createServerFn({ method: "GET" })
       today,
       "net",
     );
-    return { settings, progress: fireProgress(settings, value, passive, today) };
+    return {
+      settings,
+      progress: fireProgress(settings, value, passive, today),
+      details: fireDetails(settings, value, cost, today),
+    };
   });
 
 export const saveFireSettings = createServerFn({ method: "POST" })
