@@ -90,15 +90,7 @@ function Metric({
   );
 }
 
-function LegendLine({
-  dashed,
-  label,
-  color,
-}: {
-  dashed?: boolean;
-  label: string;
-  color?: string;
-}) {
+function LegendLine({ dashed, label, color }: { dashed?: boolean; label: string; color?: string }) {
   return (
     <span className="inline-flex items-center gap-2 text-[12.5px] text-muted-foreground">
       <svg aria-hidden width="18" height="4" className="shrink-0">
