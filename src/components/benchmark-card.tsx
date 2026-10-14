@@ -1,5 +1,9 @@
 import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis, Legend } from "recharts";
-import type { BenchmarkComparison } from "@/lib/benchmark";
+import {
+  SP500_ANNUAL_RETURN_PCT,
+  type BenchmarkComparison,
+  type BenchmarkScope,
+} from "@/lib/benchmark";
 import {
   formatEUR,
   formatEURCompact,
@@ -8,29 +12,74 @@ import {
   formatPeriodKey,
 } from "@/lib/format";
 import { AXIS_LINE, AXIS_TICK, ChartFrame, ChartTooltip, GRID_PROPS } from "@/components/chart-kit";
-import { Card, MetricCard } from "@/components/ui-bits";
+import { Button, Card, EmptyState, MetricCard } from "@/components/ui-bits";
 
 /** Carteira vs. S&P 500 hipotético com os mesmos aportes, nas mesmas datas. */
 export function BenchmarkCard({
-  comparison: c,
+  comparison,
+  scope,
+  onScopeChange,
   hidden,
 }: {
-  comparison: BenchmarkComparison;
+  comparison: BenchmarkComparison | null;
+  scope: BenchmarkScope;
+  onScopeChange: (scope: BenchmarkScope) => void;
   hidden: boolean;
 }) {
-  const ahead = c.difference >= 0;
-  const rate = formatNumber(c.annualReturnPct, 2);
-  const chart = c.series.map((p) => ({
-    date: p.date,
-    [`S&P 500 a ${rate} %`]: Math.round(p.benchmark),
-    "Capital investido": Math.round(p.invested),
-  }));
-
+  const rate = formatNumber(comparison?.annualReturnPct ?? SP500_ANNUAL_RETURN_PCT, 2);
   return (
     <Card
       title={`Carteira vs. S&P 500 (${rate} %/ano)`}
       description={`Os mesmos aportes e vendas, nas mesmas datas, num S&P 500 que rendesse ${rate} % ao ano com dividendos reinvestidos. Desde o primeiro movimento, independentemente do período escolhido.`}
+      action={
+        <div className="flex gap-1">
+          <Button
+            variant={scope === "total" ? "primary" : "outline"}
+            onClick={() => onScopeChange("total")}
+          >
+            Carteira toda
+          </Button>
+          <Button
+            variant={scope === "etf" ? "primary" : "outline"}
+            onClick={() => onScopeChange("etf")}
+          >
+            Só ETFs
+          </Button>
+        </div>
+      }
     >
+      {comparison ? (
+        <BenchmarkBody c={comparison} rate={rate} hidden={hidden} />
+      ) : (
+        <EmptyState
+          title="Sem movimentos"
+          description="Não há compras registadas neste âmbito para comparar."
+        />
+      )}
+    </Card>
+  );
+}
+
+function BenchmarkBody({
+  c,
+  rate,
+  hidden,
+}: {
+  c: BenchmarkComparison;
+  rate: string;
+  hidden: boolean;
+}) {
+  const ahead = c.difference >= 0;
+  const chart = c.series.map((p) => ({
+    date: p.date,
+    [`S&P 500 a ${rate} %`]: Math.round(p.benchmark),
+    "Capital investido": Math.round(p.invested),
+    Carteira: p.portfolio == null ? null : Math.round(p.portfolio),
+  }));
+  const months = c.series.filter((p) => p.portfolio != null).length;
+
+  return (
+    <>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:gap-4">
         <MetricCard
           label="Carteira"
@@ -51,7 +100,7 @@ export function BenchmarkCard({
       </div>
 
       <ChartFrame
-        label="Valor do S&P 500 hipotético e capital investido, por mês"
+        label="Valor da carteira, do S&P 500 hipotético e capital investido, por mês"
         height={260}
         empty={chart.length < 2}
         emptyLabel="Histórico ainda curto para o gráfico."
@@ -92,6 +141,14 @@ export function BenchmarkCard({
           />
           <Line
             type="monotone"
+            dataKey="Carteira"
+            stroke="var(--color-primary)"
+            strokeWidth={2.5}
+            dot={months < 6}
+            connectNulls
+          />
+          <Line
+            type="monotone"
             dataKey="Capital investido"
             stroke="var(--color-chart-1)"
             strokeDasharray="4 4"
@@ -100,10 +157,12 @@ export function BenchmarkCard({
         </LineChart>
       </ChartFrame>
       <p className="mt-3 text-[12px] text-muted-foreground">
-        Retorno fixo, sem volatilidade nem câmbio: serve para comparar com uma referência simples,
-        não para dizer como o S&P 500 se comportou de facto. Só entram ativos com movimentos
-        registados (ex.: P2P sem transações fica de fora).
+        A linha da carteira usa as fotografias guardadas pela app e o histórico importado de ETFs
+        (valor + dividendos recebidos); nos meses sem fotografia não há ponto. Retorno fixo, sem
+        volatilidade nem câmbio: serve para comparar com uma referência simples, não para dizer como
+        o S&P 500 se comportou de facto. Só entram ativos com movimentos registados (ex.: P2P sem
+        transações fica de fora).
       </p>
-    </Card>
+    </>
   );
 }
