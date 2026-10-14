@@ -1,0 +1,109 @@
+import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis, Legend } from "recharts";
+import type { BenchmarkComparison } from "@/lib/benchmark";
+import {
+  formatEUR,
+  formatEURCompact,
+  formatNumber,
+  formatPct,
+  formatPeriodKey,
+} from "@/lib/format";
+import { AXIS_LINE, AXIS_TICK, ChartFrame, ChartTooltip, GRID_PROPS } from "@/components/chart-kit";
+import { Card, MetricCard } from "@/components/ui-bits";
+
+/** Carteira vs. S&P 500 hipotético com os mesmos aportes, nas mesmas datas. */
+export function BenchmarkCard({
+  comparison: c,
+  hidden,
+}: {
+  comparison: BenchmarkComparison;
+  hidden: boolean;
+}) {
+  const ahead = c.difference >= 0;
+  const rate = formatNumber(c.annualReturnPct, 2);
+  const chart = c.series.map((p) => ({
+    date: p.date,
+    [`S&P 500 a ${rate} %`]: Math.round(p.benchmark),
+    "Capital investido": Math.round(p.invested),
+  }));
+
+  return (
+    <Card
+      title={`Carteira vs. S&P 500 (${rate} %/ano)`}
+      description={`Os mesmos aportes e vendas, nas mesmas datas, num S&P 500 que rendesse ${rate} % ao ano com dividendos reinvestidos. Desde o primeiro movimento, independentemente do período escolhido.`}
+    >
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:gap-4">
+        <MetricCard
+          label="Carteira"
+          value={formatEUR(c.portfolio, hidden)}
+          sub={`valor atual + ${formatEUR(c.dividends, hidden)} de dividendos recebidos`}
+        />
+        <MetricCard
+          label={`S&P 500 a ${rate} %`}
+          value={formatEUR(c.benchmark, hidden)}
+          sub={`com ${formatEUR(c.invested, hidden)} investidos`}
+        />
+        <MetricCard
+          label={ahead ? "À frente do S&P 500" : "Atrás do S&P 500"}
+          value={`${ahead ? "+" : ""}${formatEUR(c.difference, hidden)}`}
+          sub={c.differencePct == null ? "" : formatPct(c.differencePct, 1, hidden)}
+          tone={ahead ? "positive" : "negative"}
+        />
+      </div>
+
+      <ChartFrame
+        label="Valor do S&P 500 hipotético e capital investido, por mês"
+        height={260}
+        empty={chart.length < 2}
+        emptyLabel="Histórico ainda curto para o gráfico."
+        className="mt-5"
+      >
+        <LineChart data={chart}>
+          <CartesianGrid {...GRID_PROPS} />
+          <XAxis
+            dataKey="date"
+            tick={AXIS_TICK}
+            axisLine={AXIS_LINE}
+            tickLine={false}
+            tickFormatter={(k: string) => formatPeriodKey(k)}
+            minTickGap={24}
+          />
+          <YAxis
+            tick={AXIS_TICK}
+            axisLine={false}
+            tickLine={false}
+            width={52}
+            tickFormatter={(v: number) => (hidden ? "•" : formatEURCompact(v))}
+          />
+          <Tooltip
+            content={
+              <ChartTooltip
+                labelFormatter={(l) => formatPeriodKey(l, true)}
+                valueFormatter={(v) => formatEUR(v, hidden)}
+              />
+            }
+          />
+          <Legend />
+          <Line
+            type="monotone"
+            dataKey={`S&P 500 a ${rate} %`}
+            stroke="var(--color-chart-2)"
+            strokeWidth={2}
+            dot={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="Capital investido"
+            stroke="var(--color-chart-1)"
+            strokeDasharray="4 4"
+            dot={false}
+          />
+        </LineChart>
+      </ChartFrame>
+      <p className="mt-3 text-[12px] text-muted-foreground">
+        Retorno fixo, sem volatilidade nem câmbio: serve para comparar com uma referência simples,
+        não para dizer como o S&P 500 se comportou de facto. Só entram ativos com movimentos
+        registados (ex.: P2P sem transações fica de fora).
+      </p>
+    </Card>
+  );
+}
