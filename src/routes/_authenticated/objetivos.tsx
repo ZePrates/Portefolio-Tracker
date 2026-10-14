@@ -267,7 +267,7 @@ function FireSection() {
               <MetricCard
                 label="Despesas cobertas"
                 value={formatPct(progress.passiveCoveragePct, 1, hidden)}
-                sub="dividendos líquidos (12 m) ÷ despesas"
+                sub="dividendos e juros P2P líquidos (12 m) ÷ despesas"
               />
               <MetricCard
                 label="Previsão"

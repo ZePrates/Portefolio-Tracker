@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listAssets } from "@/lib/portfolio.functions";
@@ -7,17 +7,42 @@ import { portfolioIntelligence } from "@/lib/intelligence";
 import type { ExposureReport } from "@/lib/exposure";
 import type { PositionInput } from "@/lib/exposure-types";
 import type { Asset, AssetClass } from "@/lib/portfolio-types";
-import { CLASS_LABELS } from "@/lib/portfolio-types";
-import { PageHeader, MetricCard } from "@/components/ui-bits";
+import { CLASS_LABELS, isOpenPosition } from "@/lib/portfolio-types";
+import { Plus, TriangleAlert } from "lucide-react";
+import {
+  Button,
+  EmptyState,
+  ErrorState,
+  KpiGridSkeleton,
+  MetricCard,
+  PageHeader,
+} from "@/components/ui-bits";
 import { usePrivateMode } from "@/components/private-mode";
 import { formatNumber, formatPct } from "@/lib/format";
 
-export const Route = createFileRoute("/_authenticated/inteligencia")({ component: Inteligencia });
+const TITLE = "Inteligência";
+const DESCRIPTION =
+  "Concentração real da carteira: o peso de cada empresa dentro dos ETFs também conta, não só o tipo de instrumento.";
+
+export const Route = createFileRoute("/_authenticated/inteligencia")({
+  head: () => ({
+    meta: [
+      { title: `${TITLE} — Portefólio Tracker` },
+      { name: "description", content: DESCRIPTION },
+      { property: "og:title", content: `${TITLE} — Portefólio Tracker` },
+      { property: "og:description", content: DESCRIPTION },
+    ],
+  }),
+  component: Inteligencia,
+});
 
 function Inteligencia() {
   const fetch = useServerFn(listAssets),
     fetchExposure = useServerFn(getExposure);
-  const { data } = useQuery({ queryKey: ["assets"], queryFn: () => fetch() });
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ["assets"],
+    queryFn: () => fetch(),
+  });
   const { data: ex } = useQuery({ queryKey: ["exposure"], queryFn: () => fetchExposure() });
   const { hidden } = usePrivateMode();
   const assets = (data ?? []) as Asset[];
@@ -27,18 +52,41 @@ function Inteligencia() {
   const intel = portfolioIntelligence(assets, report, positions);
   const pct = (v: number) => formatPct(v, 1, hidden);
 
+  if (isError || isLoading || !assets.some(isOpenPosition)) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title={TITLE} subtitle={DESCRIPTION} />
+        {isError ? (
+          <ErrorState onRetry={() => void refetch()} />
+        ) : isLoading ? (
+          <KpiGridSkeleton count={4} />
+        ) : (
+          <EmptyState
+            title="Sem posições para analisar"
+            description="Adiciona ativos à carteira para veres a concentração real."
+            action={
+              <Link to="/etfs">
+                <Button>
+                  <Plus aria-hidden className="h-4 w-4" />
+                  Adicionar primeiro ativo
+                </Button>
+              </Link>
+            }
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Inteligência da Carteira"
-        subtitle="Concentração calculada com look-through: o peso de cada empresa dentro dos ETFs conta para a exposição real, não só o rótulo do instrumento."
-      />
+      <PageHeader title={TITLE} subtitle={DESCRIPTION} />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <MetricCard label="Score" value={hidden ? "••••" : `${formatNumber(intel.score, 0)}/100`} />
         <MetricCard
-          label="Maior empresa (look-through)"
-          value={pct(intel.metrics.largestCompany)}
+          label="Pontuação"
+          value={hidden ? "••••" : `${formatNumber(intel.score, 0)}/100`}
         />
+        <MetricCard label="Maior empresa (com ETFs)" value={pct(intel.metrics.largestCompany)} />
         <MetricCard label="Top 5 empresas" value={pct(intel.metrics.top5Companies)} />
         <MetricCard
           label="Composição de ETF desconhecida"
@@ -126,18 +174,21 @@ function Inteligencia() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
-        {report && intel.metrics.coverage < 99 ? (
-          <>
-            ⚠️ A cobertura dos dados de exposição é de{" "}
-            <strong>{formatPct(intel.metrics.coverage, 1)}</strong>. As métricas de concentração
-            económica e as recomendações podem estar incompletas. Atualize os dados de exposição
-            para aumentar a confiança da análise.
-          </>
-        ) : (
-          <>A cobertura dos dados de exposição está adequada para esta análise.</>
-        )}
-      </div>
+      {report && intel.metrics.coverage < 99 ? (
+        <div className="flex items-start gap-3 rounded-xl border border-warning/20 bg-warning/[0.08] p-4 text-sm text-muted-foreground">
+          <TriangleAlert aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+          <p>
+            A cobertura dos dados de exposição é de{" "}
+            <strong className="text-foreground">{formatPct(intel.metrics.coverage, 1)}</strong>. As
+            métricas de concentração económica e as recomendações podem estar incompletas. Atualiza
+            a composição dos ETFs na página Exposição para teres uma análise mais fiável.
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
+          A cobertura dos dados de exposição está adequada para esta análise.
+        </div>
+      )}
       <p className="text-xs text-muted-foreground">
         A correspondência entre uma posição direta e a mesma empresa dentro de um ETF é feita por
         nome (aproximada) — pode não apanhar todas as coincidências. As recomendações são

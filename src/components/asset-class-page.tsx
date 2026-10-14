@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Plus, Pencil, Trash2, RefreshCw, Search, Download, ArrowLeftRight } from "lucide-react";
@@ -176,6 +177,16 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   );
   const assets = useMemo(() => classAssets.filter(isOpenPosition), [classAssets]);
   const closedAssets = useMemo(() => classAssets.filter((a) => !isOpenPosition(a)), [classAssets]);
+
+  // Vindo da pesquisa global (?ativo=<id>): abre a ficha desse ativo e limpa o parâmetro.
+  const navigate = useNavigate();
+  const { ativo } = useSearch({ strict: false }) as { ativo?: string };
+  useEffect(() => {
+    if (!ativo || !allAssets) return;
+    const target = classAssets.find((a) => a.id === ativo);
+    if (target) setPositionAsset(target);
+    void navigate({ to: ".", search: {}, replace: true });
+  }, [ativo, allAssets, classAssets, navigate]);
 
   const realizedTotal = classAssets.reduce((s, a) => s + assetRealizedPL(a), 0);
 

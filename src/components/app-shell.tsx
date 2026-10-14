@@ -13,22 +13,13 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { ALL_NAV, GO_SHORTCUTS, NAV_GROUPS } from "@/components/nav-config";
+import { ALL_NAV, CLASS_ROUTES, GO_SHORTCUTS, NAV_GROUPS } from "@/components/nav-config";
 import { usePrivateMode } from "@/components/private-mode";
 import { useTheme } from "@/components/theme";
 import { Modal } from "@/components/ui-bits";
 import { listAssets } from "@/lib/portfolio.functions";
-import { type Asset, type AssetClass, CLASS_LABELS } from "@/lib/portfolio-types";
+import { type Asset, CLASS_LABELS } from "@/lib/portfolio-types";
 import { normalizeSearch } from "@/lib/table";
-
-const CLASS_ROUTE: Record<AssetClass, string> = {
-  etf: "/etfs",
-  reit: "/reits",
-  acao_dividendo: "/acoes-dividendos",
-  acao_crescimento: "/acoes-crescimento",
-  metal: "/metais",
-  p2p: "/p2p",
-};
 
 interface AppShellValue {
   openPalette: () => void;
@@ -74,9 +65,9 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
   const assets = useMemo(() => (assetsRaw ?? []) as Asset[], [assetsRaw]);
 
   const go = useCallback(
-    (to: string) => {
+    (to: string, search?: Record<string, string>) => {
       setPaletteOpen(false);
-      void navigate({ to });
+      void navigate({ to, ...(search ? { search } : {}) });
     },
     [navigate],
   );
@@ -161,7 +152,7 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
                       <CommandItem
                         key={a.id}
                         value={searchValue(a.name, `${a.ticker ?? ""} ${a.isin ?? ""} ativo`)}
-                        onSelect={() => go(CLASS_ROUTE[a.class] ?? "/")}
+                        onSelect={() => go(CLASS_ROUTES[a.class] ?? "/", { ativo: a.id })}
                       >
                         <span className="min-w-0 flex-1 truncate">{a.name}</span>
                         <span className="ml-2 shrink-0 text-xs text-muted-foreground">

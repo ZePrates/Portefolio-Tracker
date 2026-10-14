@@ -1,5 +1,6 @@
 import type { Asset } from "@/lib/portfolio-types";
 import { assetCurrentValue, isOpenPosition } from "@/lib/portfolio-types";
+import { formatPct } from "@/lib/format";
 import type { ExposureReport } from "@/lib/exposure";
 import type { PositionInput } from "@/lib/exposure-types";
 
@@ -154,24 +155,24 @@ export function portfolioIntelligence(
   if (open.length === 0) risks.push("Carteira sem posições abertas.");
   if (metrics.largestCompany > 10)
     risks.push(
-      `Exposição a uma única empresa (contando o peso dela dentro dos ETFs) acima de 10% (${metrics.largestCompany.toFixed(1)}%).`,
+      `Exposição a uma única empresa (contando o peso dela dentro dos ETFs) acima de 10% (${formatPct(metrics.largestCompany)}).`,
     );
   if (metrics.top5Companies > 30)
     risks.push(
-      `As 5 maiores exposições a empresas somam ${metrics.top5Companies.toFixed(1)}% da carteira.`,
+      `As 5 maiores exposições a empresas somam ${formatPct(metrics.top5Companies)} da carteira.`,
     );
   if (positions && positions.length > 0 && metrics.unknownLookThrough > 40)
     risks.push(
-      `${metrics.unknownLookThrough.toFixed(1)}% da carteira está em ETFs sem composição suficientemente conhecida — a concentração real pode estar subestimada.`,
+      `${formatPct(metrics.unknownLookThrough)} da carteira está em ETFs sem composição suficientemente conhecida — a concentração real pode estar subestimada.`,
     );
   if (metrics.topSector > 40)
-    risks.push(`Setor dominante acima de 40% (${metrics.topSector.toFixed(1)}%).`);
+    risks.push(`Setor dominante acima de 40% (${formatPct(metrics.topSector)}).`);
   if (metrics.topCountry > 50)
-    risks.push(`País dominante acima de 50% (${metrics.topCountry.toFixed(1)}%).`);
+    risks.push(`País dominante acima de 50% (${formatPct(metrics.topCountry)}).`);
   if (metrics.topCurrency > 70)
-    risks.push(`Moeda dominante acima de 70% (${metrics.topCurrency.toFixed(1)}%).`);
+    risks.push(`Moeda dominante acima de 70% (${formatPct(metrics.topCurrency)}).`);
   if (exposure && metrics.coverage < 99)
-    risks.push(`Dados de exposição incompletos: cobertura de ${metrics.coverage.toFixed(1)}%.`);
+    risks.push(`Dados de exposição incompletos: cobertura de ${formatPct(metrics.coverage)}.`);
   if (risks.length === 0)
     recommendations.push(
       "Não foi detetado um risco de concentração material pelos limites definidos.",
