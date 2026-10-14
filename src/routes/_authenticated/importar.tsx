@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { invalidatePortfolio } from "@/lib/portfolio-queries";
 import { useServerFn } from "@tanstack/react-start";
 import { useId, useRef, useState } from "react";
 import { FileUp, TriangleAlert } from "lucide-react";
@@ -80,11 +81,7 @@ function ImportarPage() {
   const commit = useMutation({
     mutationFn: (text: string) => commitFn({ data: { csv: text } }),
     onSuccess: async (res) => {
-      await Promise.all(
-        ["assets", "transactions", "dividends", "data-quality", "fire", "portfolio-snapshots"].map(
-          (k) => queryClient.invalidateQueries({ queryKey: [k] }),
-        ),
-      );
+      await invalidatePortfolio(queryClient);
       toast.success(
         `Importação concluída: ${res.recomputedAssets} ${
           res.recomputedAssets === 1 ? "posição recalculada" : "posições recalculadas"

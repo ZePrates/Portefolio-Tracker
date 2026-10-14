@@ -86,7 +86,7 @@ export const ANALYSIS_NAV: NavItem[] = [
   },
   {
     to: "/objetivos",
-    label: "Objetivos e FIRE",
+    label: "Objetivos",
     icon: Target,
     key: "o",
     keywords: "objetivos fire independência financeira alocação alvo",

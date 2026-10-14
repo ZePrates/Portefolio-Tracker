@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { invalidatePortfolio } from "@/lib/portfolio-queries";
 import { useServerFn } from "@tanstack/react-start";
 import { useId, useState } from "react";
 import { FileUp, ShieldAlert } from "lucide-react";
@@ -108,11 +109,7 @@ export function ScramblePanel() {
       for (const f of ordered) await commitFn({ data: { csv: f.csv } });
     },
     onSuccess: async () => {
-      await Promise.all(
-        ["scramble", "assets", "data-quality", "fire", "portfolio-snapshots", "allocation"].map(
-          (k) => queryClient.invalidateQueries({ queryKey: [k] }),
-        ),
-      );
+      await invalidatePortfolio(queryClient);
       toast.success("Scramble atualizada.");
       setFiles([]);
       setShowImport(false);
@@ -376,8 +373,8 @@ export function ScramblePanel() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="P2P · Scramble"
-        subtitle="Rondas mensais de 6 meses a marcas europeias de bens de consumo. O capital volta todos os meses e os juros no vencimento."
+        title="P2P"
+        subtitle="Conta na Scramble: rondas mensais de 6 meses a marcas europeias de bens de consumo. O capital volta todos os meses e os juros no vencimento."
         actions={
           hasData && !showImport ? (
             <Button variant="outline" onClick={() => setShowImport(true)}>

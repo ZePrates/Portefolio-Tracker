@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { invalidatePortfolio } from "@/lib/portfolio-queries";
 import { useServerFn } from "@tanstack/react-start";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -258,10 +259,7 @@ export function AssetPositionModal({ asset, onClose }: Props) {
   const lastPremium = metal?.lots.at(-1)?.premiumRate ?? null;
 
   const refresh = async () => {
-    await queryClient.invalidateQueries({ queryKey: ["assets"] });
-    await queryClient.invalidateQueries({ queryKey: ["transactions"] });
-    await queryClient.invalidateQueries({ queryKey: ["portfolio-snapshots"] });
-    await queryClient.invalidateQueries({ queryKey: ["position", asset.id] });
+    await invalidatePortfolio(queryClient);
   };
 
   /** Compra de metal tal como aparece no extrato: valor pago, gramas e ágio. */
