@@ -133,3 +133,35 @@ describe("benchmarkComparison — linha da carteira", () => {
     expect(c.series.map((p) => p.portfolio)).toEqual([1060, null, 1210]);
   });
 });
+
+describe("benchmarkComparison — só ETFs", () => {
+  it("filtra ativos/movimentos a ETFs e usa o histórico importado de class:etf", () => {
+    const c = benchmarkComparison(
+      [
+        asset({ id: "etf", quantity: 1, current_price: 1300 }),
+        asset({ id: "acao", class: "acao_crescimento", quantity: 1, current_price: 999 }),
+      ],
+      [buy("etf", "2026-01-10", 1000), buy("acao", "2026-01-10", 500)],
+      [],
+      "2026-03-05",
+      [{ snapshotDate: "2026-02-19", scope: "class:etf", marketValue: 1150 }],
+      "etf",
+    )!;
+    expect(c.invested).toBe(1000);
+    expect(c.portfolio).toBe(1300);
+    expect(c.series.map((p) => p.portfolio)).toEqual([null, 1150, 1300]);
+  });
+
+  it("sem ETFs → null", () => {
+    expect(
+      benchmarkComparison(
+        [asset({ id: "acao", class: "acao_crescimento" })],
+        [buy("acao", "2026-01-10", 500)],
+        [],
+        "2026-03-05",
+        [],
+        "etf",
+      ),
+    ).toBeNull();
+  });
+});

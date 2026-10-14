@@ -16,7 +16,7 @@ import {
 import { listAssets, listDividends, listTransactions } from "@/lib/portfolio.functions";
 import { listPortfolioSnapshots } from "@/lib/snapshots.functions";
 import { type PeriodKey, PERIOD_LABELS, periodRange, todayISO } from "@/lib/dashboard";
-import { benchmarkComparison } from "@/lib/benchmark";
+import { benchmarkComparison, type BenchmarkScope } from "@/lib/benchmark";
 import { BenchmarkCard } from "@/components/benchmark-card";
 import {
   METHODOLOGY_LABELS,
@@ -120,9 +120,10 @@ function PerformancePage() {
     () => performanceByClass(assets, dividends, range),
     [assets, dividends, range],
   );
+  const [benchScope, setBenchScope] = useState<BenchmarkScope>("total");
   const benchmark = useMemo(
-    () => benchmarkComparison(assets, transactions, dividends, todayISO(), snapshots),
-    [assets, transactions, dividends, snapshots],
+    () => benchmarkComparison(assets, transactions, dividends, todayISO(), snapshots, benchScope),
+    [assets, transactions, dividends, snapshots, benchScope],
   );
   // Drawdown só é calculável sobre séries reais de valor de mercado.
   const dd = useMemo(() => drawdown(valuations), [valuations]);
@@ -242,7 +243,14 @@ function PerformancePage() {
         </Card>
       </div>
 
-      {benchmark && <BenchmarkCard comparison={benchmark} hidden={hidden} />}
+      {transactions.length > 0 && (
+        <BenchmarkCard
+          comparison={benchmark}
+          scope={benchScope}
+          onScopeChange={setBenchScope}
+          hidden={hidden}
+        />
+      )}
 
       <Card
         title="Evolução do capital"

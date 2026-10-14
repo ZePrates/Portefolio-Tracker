@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware-external";
 import { assetCurrentValue, isOpenPosition, type Asset } from "@/lib/portfolio-types";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -114,4 +115,59 @@ export const ensureDailySnapshot = createServerFn({ method: "POST" })
     if (data && data.length > 0) return { created: false, date: today };
     await takeSnapshot(context.supabase as unknown as SB, context.userId);
     return { created: true, date: today };
+  });
+
+const historySchema = z.object({
+  scope: z.literal("class:etf"),
+  rows: z
+    .array(
+      z.object({
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        invested: z.number().min(0).max(1e9),
+        value: z.number().min(0).max(1e9),
+      }),
+    )
+    .min(1)
+    .max(600),
+});
+
+/**
+ * Importa histórico mensal (ex.: folha de Excel) como fotografias de um
+ * âmbito. Nunca sobrepõe fotografias gravadas pela app nesse dia; reimportar
+ * atualiza as importações anteriores.
+ */
+export const importSnapshotHistory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => historySchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const today = todayLisbon();
+    const rows = data.rows.filter((r) => r.date <= today);
+    const { data: existing, error: readError } = await context.supabase
+      .from("portfolio_snapshots")
+      .select("snapshot_date")
+      .eq("scope", data.scope)
+      .eq("source", "app")
+      .in(
+        "snapshot_date",
+        rows.map((r) => r.date),
+      );
+    if (readError) throw new Error(readError.message);
+    const fromApp = new Set((existing ?? []).map((r) => r.snapshot_date));
+    const toWrite = rows
+      .filter((r) => !fromApp.has(r.date))
+      .map((r) => ({
+        user_id: context.userId,
+        snapshot_date: r.date,
+        scope: data.scope,
+        invested_amount: r.invested,
+        market_value: r.value,
+        source: "import",
+      }));
+    if (toWrite.length > 0) {
+      const { error } = await context.supabase
+        .from("portfolio_snapshots")
+        .upsert(toWrite, { onConflict: "user_id,snapshot_date,scope" });
+      if (error) throw new Error(error.message);
+    }
+    return { imported: toWrite.length, skipped: rows.length - toWrite.length };
   });

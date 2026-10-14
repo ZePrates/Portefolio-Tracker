@@ -69,14 +69,24 @@ function grow(value: number, from: string, to: string, annual: number): number {
   return value * Math.pow(1 + annual, Math.max(0, days(from, to)) / 365);
 }
 
+/** Carteira toda, ou só os ETFs (para comparar com um histórico importado de ETFs). */
+export type BenchmarkScope = "total" | "etf";
+
 export function benchmarkComparison(
-  assets: Asset[],
-  transactions: PerfTransaction[],
+  allAssets: Asset[],
+  allTransactions: PerfTransaction[],
   dividends: DividendRecord[],
   today: string,
   snapshots: BenchmarkSnapshot[] = [],
+  scope: BenchmarkScope = "total",
   annualReturnPct = SP500_ANNUAL_RETURN_PCT,
 ): BenchmarkComparison | null {
+  const assets = scope === "etf" ? allAssets.filter((a) => a.class === "etf") : allAssets;
+  const etfIds = new Set(assets.map((a) => a.id));
+  const transactions =
+    scope === "etf"
+      ? allTransactions.filter((t) => t.asset_id != null && etfIds.has(t.asset_id))
+      : allTransactions;
   const flows = cashFlowsFromLedger(transactions).filter((f) => f.date <= today);
   if (flows.length === 0) return null;
 
@@ -90,10 +100,10 @@ export function benchmarkComparison(
   const divs = ledgerDivs.reduce((s, d) => s + d.amount, 0);
   const divsUntil = (date: string) =>
     ledgerDivs.filter((d) => d.date <= date).reduce((s, d) => s + d.amount, 0);
-  const history = snapshotValues(
-    snapshots,
-    new Set(assets.filter((a) => ids.has(a.id)).map((a) => a.class)),
-  );
+  const history =
+    scope === "etf"
+      ? classHistory(snapshots, "class:etf")
+      : snapshotValues(snapshots, new Set(assets.filter((a) => ids.has(a.id)).map((a) => a.class)));
 
   const annual = annualReturnPct / 100;
   const series: BenchmarkPoint[] = [];
@@ -166,6 +176,17 @@ function snapshotValues(
   }
   return [...byDate.entries()]
     .map(([date, value]) => ({ date, value }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/** Histórico de um âmbito (fotografias da app e importadas). */
+function classHistory(
+  snapshots: BenchmarkSnapshot[],
+  scope: string,
+): Array<{ date: string; value: number }> {
+  return snapshots
+    .filter((s) => s.scope === scope && s.marketValue != null)
+    .map((s) => ({ date: s.snapshotDate, value: s.marketValue! }))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
