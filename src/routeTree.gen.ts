@@ -29,7 +29,7 @@ import { Route as AuthenticatedPerformanceRouteImport } from './routes/_authenti
 import { Route as AuthenticatedProjecoesRouteImport } from './routes/_authenticated/projecoes'
 import { Route as AuthenticatedReitsRouteImport } from './routes/_authenticated/reits'
 import { Route as AuthenticatedSimuladorRouteImport } from './routes/_authenticated/simulador'
-import { Route as ApiCronDailySnapshotRouteImport } from './routes/api/cron/daily-snapshot'
+import { Route as ApiPublicCronDailySnapshotRouteImport } from './routes/api/public/cron/daily-snapshot'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
@@ -134,11 +134,12 @@ const AuthenticatedSimuladorRoute = AuthenticatedSimuladorRouteImport.update({
   path: '/simulador',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ApiCronDailySnapshotRoute = ApiCronDailySnapshotRouteImport.update({
-  id: '/api/cron/daily-snapshot',
-  path: '/api/cron/daily-snapshot',
-  getParentRoute: () => rootRouteImport,
-} as any)
+const ApiPublicCronDailySnapshotRoute =
+  ApiPublicCronDailySnapshotRouteImport.update({
+    id: '/api/public/cron/daily-snapshot',
+    path: '/api/public/cron/daily-snapshot',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -160,7 +161,7 @@ export interface FileRoutesByFullPath {
   '/projecoes': typeof AuthenticatedProjecoesRoute
   '/reits': typeof AuthenticatedReitsRoute
   '/simulador': typeof AuthenticatedSimuladorRoute
-  '/api/cron/daily-snapshot': typeof ApiCronDailySnapshotRoute
+  '/api/public/cron/daily-snapshot': typeof ApiPublicCronDailySnapshotRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
@@ -182,7 +183,7 @@ export interface FileRoutesByTo {
   '/reits': typeof AuthenticatedReitsRoute
   '/simulador': typeof AuthenticatedSimuladorRoute
   '/': typeof AuthenticatedIndexRoute
-  '/api/cron/daily-snapshot': typeof ApiCronDailySnapshotRoute
+  '/api/public/cron/daily-snapshot': typeof ApiPublicCronDailySnapshotRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -206,7 +207,7 @@ export interface FileRoutesById {
   '/_authenticated/reits': typeof AuthenticatedReitsRoute
   '/_authenticated/simulador': typeof AuthenticatedSimuladorRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
-  '/api/cron/daily-snapshot': typeof ApiCronDailySnapshotRoute
+  '/api/public/cron/daily-snapshot': typeof ApiPublicCronDailySnapshotRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -230,7 +231,7 @@ export interface FileRouteTypes {
     | '/projecoes'
     | '/reits'
     | '/simulador'
-    | '/api/cron/daily-snapshot'
+    | '/api/public/cron/daily-snapshot'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -252,7 +253,7 @@ export interface FileRouteTypes {
     | '/reits'
     | '/simulador'
     | '/'
-    | '/api/cron/daily-snapshot'
+    | '/api/public/cron/daily-snapshot'
   id:
     | '__root__'
     | '/_authenticated'
@@ -275,13 +276,13 @@ export interface FileRouteTypes {
     | '/_authenticated/reits'
     | '/_authenticated/simulador'
     | '/_authenticated/'
-    | '/api/cron/daily-snapshot'
+    | '/api/public/cron/daily-snapshot'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
-  ApiCronDailySnapshotRoute: typeof ApiCronDailySnapshotRoute
+  ApiPublicCronDailySnapshotRoute: typeof ApiPublicCronDailySnapshotRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -426,11 +427,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSimuladorRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/api/cron/daily-snapshot': {
-      id: '/api/cron/daily-snapshot'
-      path: '/api/cron/daily-snapshot'
-      fullPath: '/api/cron/daily-snapshot'
-      preLoaderRoute: typeof ApiCronDailySnapshotRouteImport
+    '/api/public/cron/daily-snapshot': {
+      id: '/api/public/cron/daily-snapshot'
+      path: '/api/public/cron/daily-snapshot'
+      fullPath: '/api/public/cron/daily-snapshot'
+      preLoaderRoute: typeof ApiPublicCronDailySnapshotRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -484,7 +485,7 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
-  ApiCronDailySnapshotRoute: ApiCronDailySnapshotRoute,
+  ApiPublicCronDailySnapshotRoute: ApiPublicCronDailySnapshotRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
