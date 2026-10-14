@@ -1,10 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
-import { TriangleAlert } from "lucide-react";
+import { CircleCheck, Info, TriangleAlert } from "lucide-react";
 import { listAssets } from "@/lib/portfolio.functions";
-import { analyzePurchase } from "@/lib/decision";
+import { getExposure } from "@/lib/exposure.functions";
+import { getAllocation } from "@/lib/goals.functions";
+import { analyzePurchase, type ConcentrationSnapshot } from "@/lib/decision";
+import type { PositionInput } from "@/lib/exposure-types";
+import type { DriftReport } from "@/lib/allocation";
 import {
   CLASS_LABELS,
   CLASS_ORDER,
@@ -23,7 +27,7 @@ import {
   TextInput,
 } from "@/components/ui-bits";
 import { usePrivateMode } from "@/components/private-mode";
-import { formatEUR, formatNumber, formatPct, formatPp, parseNumberOr } from "@/lib/format";
+import { formatEUR, formatPct, formatPp, parseNumberOr } from "@/lib/format";
 
 const DESCRIPTION = "Testa uma compra antes de alterar a carteira.";
 
@@ -41,13 +45,29 @@ export const Route = createFileRoute("/_authenticated/simulador")({
 
 function Simulador() {
   const fetch = useServerFn(listAssets);
+  const fetchExposure = useServerFn(getExposure);
+  const fetchAllocation = useServerFn(getAllocation);
   const { hidden } = usePrivateMode();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["assets"],
     queryFn: () => fetch(),
   });
+  const { data: exposure } = useQuery({ queryKey: ["exposure"], queryFn: () => fetchExposure() });
+  const { data: allocationData } = useQuery({
+    queryKey: ["allocation", "class", 0],
+    queryFn: () => fetchAllocation({ data: { scope: "class", contribution: 0 } }),
+  });
   const assets = useMemo(() => (data ?? []) as Asset[], [data]);
   const openAssets = useMemo(() => assets.filter(isOpenPosition), [assets]);
+  const positions = (exposure as { positions?: PositionInput[] } | undefined)?.positions;
+  const targets = useMemo(() => {
+    const drift = (allocationData as { drift?: DriftReport } | undefined)?.drift;
+    if (!drift || drift.targetSum <= 0) return undefined;
+    return drift.rows
+      .filter((r) => r.targetPct > 0)
+      .map((r) => ({ key: r.key, targetPct: r.targetPct }));
+  }, [allocationData]);
+
   const [amount, setAmount] = useState("250");
   const [cls, setCls] = useState<AssetClass>("etf");
   const [assetId, setAssetId] = useState("");
@@ -56,17 +76,25 @@ function Simulador() {
   const assetClass = selected?.class ?? cls;
   const result = useMemo(
     () =>
-      analyzePurchase(assets, {
-        amount: parseNumberOr(amount, 0),
-        assetClass,
-        ...(assetId ? { assetId } : {}),
-        name: selected?.name ?? "Novo ativo",
-      }),
-    [assets, amount, assetClass, assetId, selected],
+      analyzePurchase(
+        assets,
+        {
+          amount: parseNumberOr(amount, 0),
+          assetClass,
+          ...(assetId ? { assetId } : {}),
+          name: selected?.name ?? "Novo ativo",
+        },
+        {
+          ...(positions ? { positions } : {}),
+          ...(targets ? { targets } : {}),
+        },
+      ),
+    [assets, amount, assetClass, assetId, selected, positions, targets],
   );
   const money = (v: number) => formatEUR(v, hidden);
   const pct = (v: number) => formatPct(v, 1, hidden);
-  const score = (v: number) => (hidden ? "••••" : `${formatNumber(v, 0)}/100`);
+  const company = (s: ConcentrationSnapshot) =>
+    hidden || !s.largestCompanyLabel ? undefined : s.largestCompanyLabel;
 
   return (
     <div className="space-y-6">
@@ -114,7 +142,7 @@ function Simulador() {
             </Card>
             {isLoading ? (
               <div className="lg:col-span-2">
-                <KpiGridSkeleton count={6} />
+                <KpiGridSkeleton count={5} />
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-3 lg:col-span-2">
@@ -122,21 +150,47 @@ function Simulador() {
                 <MetricCard label="Após compra" value={money(result.proposedTotal)} />
                 <MetricCard label="Peso da compra" value={pct(result.purchasePct)} />
                 <MetricCard
-                  label="Diversificação antes"
-                  value={score(result.diversificationScoreBefore)}
+                  label="Maior empresa (com ETFs)"
+                  value={`${pct(result.before.largestCompanyPct)} → ${pct(result.after.largestCompanyPct)}`}
+                  {...(company(result.after) ? { sub: company(result.after)! } : {})}
+                  className="sm:col-span-2"
                 />
                 <MetricCard
-                  label="Diversificação depois"
-                  value={score(result.diversificationScoreAfter)}
+                  label="5 maiores empresas"
+                  value={`${pct(result.before.top5CompaniesPct)} → ${pct(result.after.top5CompaniesPct)}`}
                 />
-                <MetricCard label="Maior posição depois" value={pct(result.largestAssetPctAfter)} />
               </div>
             )}
           </div>
-          <Card title="Alocação: atual vs. após compra">
+
+          {!isLoading && !result.lookThrough && (
+            <p className="flex items-start gap-2 text-xs text-muted-foreground">
+              <Info aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>
+                Sem a composição dos ETFs, cada posição conta como uma empresa. Atualiza a
+                composição na página{" "}
+                <Link to="/exposicao" className="underline">
+                  Exposição
+                </Link>{" "}
+                para veres a concentração real.
+              </span>
+            </p>
+          )}
+
+          <Card
+            title="Alocação: atual vs. após compra"
+            description={
+              result.hasTargets
+                ? "Comparada com os teus alvos de alocação."
+                : "Sem alvos definidos: define-os em Objetivos para veres o desvio de cada classe."
+            }
+          >
             <div className="space-y-3">
               {result.allocation.map((x) => (
-                <div key={x.class} className="grid grid-cols-[1fr_auto_auto] gap-4 text-sm">
+                <div
+                  key={x.class}
+                  className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-0.5 text-sm sm:grid-cols-[1fr_auto_auto_auto]"
+                >
                   <span>{x.label}</span>
                   <span className="num">
                     {pct(x.currentPct)} → {pct(x.proposedPct)}
@@ -146,10 +200,16 @@ function Simulador() {
                   >
                     {formatPp(x.deltaPct, 1, hidden)}
                   </span>
+                  {x.targetPct != null && (
+                    <span className="num col-span-3 text-xs text-muted-foreground sm:col-span-1 sm:text-right sm:text-sm">
+                      alvo {formatPct(x.targetPct, 0, hidden)}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
           </Card>
+
           {result.alerts.length > 0 && (
             <Card
               title="Alertas"
@@ -158,7 +218,20 @@ function Simulador() {
             >
               <ul className="list-disc space-y-1 pl-5 text-sm">
                 {result.alerts.map((a) => (
-                  <li key={a}>{a}</li>
+                  <li key={a}>{hidden ? "Valor escondido no modo privado." : a}</li>
+                ))}
+              </ul>
+            </Card>
+          )}
+          {result.notes.length > 0 && (
+            <Card
+              title="A favor"
+              icon={<CircleCheck aria-hidden className="h-4 w-4 text-success" />}
+              className="border-success/30 bg-success/5"
+            >
+              <ul className="list-disc space-y-1 pl-5 text-sm">
+                {result.notes.map((n) => (
+                  <li key={n}>{hidden ? "Valor escondido no modo privado." : n}</li>
                 ))}
               </ul>
             </Card>
