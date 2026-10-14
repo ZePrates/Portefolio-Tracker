@@ -728,3 +728,45 @@ export function buildSnapshotSeries(
       unrealized: s.marketValue == null ? null : s.marketValue - s.investedAmount,
     }));
 }
+
+export interface CapitalPoint {
+  date: string;
+  invested: number;
+  dividends: number;
+  /** Valor de mercado (investido + lucro não realizado); null sem fotografia nesse dia. */
+  value: number | null;
+}
+
+/**
+ * Evolução do capital: capital investido e dividendos do ledger, com o valor
+ * de mercado das fotografias reais (e o valor de hoje no fim). Nas datas sem
+ * fotografia o valor fica null — nunca é estimado.
+ */
+export function capitalEvolution(
+  series: LedgerSeriesPoint[],
+  valuations: ValuationPoint[],
+  currentValue: number,
+  today = todayISO(),
+): CapitalPoint[] {
+  const dates = new Set<string>();
+  for (const p of series) if (p.date <= today) dates.add(p.date);
+  for (const v of valuations) if (v.date <= today) dates.add(v.date);
+  if (dates.size === 0) return [];
+  dates.add(today);
+  const byValue = new Map(valuations.map((v) => [v.date, v.value]));
+  byValue.set(today, currentValue);
+
+  const out: CapitalPoint[] = [];
+  let i = 0;
+  let last: LedgerSeriesPoint | null = null;
+  for (const date of [...dates].sort()) {
+    while (i < series.length && series[i]!.date <= date) last = series[i++]!;
+    out.push({
+      date,
+      invested: last?.netInvested ?? 0,
+      dividends: last?.dividends ?? 0,
+      value: byValue.get(date) ?? null,
+    });
+  }
+  return out;
+}

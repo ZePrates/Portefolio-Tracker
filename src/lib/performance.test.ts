@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildLedgerSeries,
   buildSnapshotSeries,
+  capitalEvolution,
   cashFlowsFromLedger,
   contributionByAsset,
   drawdown,
@@ -347,5 +348,25 @@ describe("TWR com dividendos e snapshots (F9)", () => {
       { date: "2026-01-01", value: 100 },
       { date: "2026-01-02", value: 110 },
     ]);
+  });
+});
+
+describe("capitalEvolution", () => {
+  it("junta ledger, fotografias e o valor de hoje", () => {
+    const series = [
+      { date: "2026-01-10", netInvested: 1000, costBasis: 1000, realized: 0, dividends: 0 },
+      { date: "2026-03-01", netInvested: 1500, costBasis: 1500, realized: 0, dividends: 20 },
+    ];
+    const vals = [{ date: "2026-02-15", value: 1100 }];
+    expect(capitalEvolution(series, vals, 1800, "2026-04-01")).toEqual([
+      { date: "2026-01-10", invested: 1000, dividends: 0, value: null },
+      { date: "2026-02-15", invested: 1000, dividends: 0, value: 1100 },
+      { date: "2026-03-01", invested: 1500, dividends: 20, value: null },
+      { date: "2026-04-01", invested: 1500, dividends: 20, value: 1800 },
+    ]);
+  });
+
+  it("sem dados → vazio", () => {
+    expect(capitalEvolution([], [], 0, "2026-04-01")).toEqual([]);
   });
 });

@@ -3,8 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Activity } from "lucide-react";
 import {
-  AreaChart,
   Area,
+  ComposedChart,
   LineChart,
   Line,
   XAxis,
@@ -26,10 +26,11 @@ import {
   performanceByClass,
   periodPerformance,
   buildSnapshotSeries,
+  capitalEvolution,
   valuationsFromSnapshots,
   type PerfTransaction,
 } from "@/lib/performance";
-import type { Asset } from "@/lib/portfolio-types";
+import { assetCurrentValue, isOpenPosition, type Asset } from "@/lib/portfolio-types";
 import type { DividendRecord } from "@/lib/dividends";
 import { formatEUR, formatEURCompact, formatPct, formatPeriodKey } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
@@ -133,17 +134,21 @@ function PerformancePage() {
     [snapshots, snapScope],
   );
 
+  const currentValue = useMemo(
+    () => assets.filter(isOpenPosition).reduce((s, a) => s + assetCurrentValue(a), 0),
+    [assets],
+  );
   const chart = useMemo(
     () =>
-      series
+      capitalEvolution(series, valuations, currentValue, todayISO())
         .filter((p) => p.date >= range.from && p.date <= range.to)
         .map((p) => ({
           date: p.date,
-          "Capital investido": Math.round(p.netInvested),
-          "Realizado acumulado": Math.round(p.realized),
+          "Capital investido": Math.round(p.invested),
+          "Valor total": p.value == null ? null : Math.round(p.value),
           "Dividendos acumulados": Math.round(p.dividends),
         })),
-    [series, range],
+    [series, valuations, currentValue, range],
   );
 
   if (loading) {
@@ -254,15 +259,15 @@ function PerformancePage() {
 
       <Card
         title="Evolução do capital"
-        note="Derivada do ledger real (compras, vendas e dividendos). Não existem snapshots diários de valor de mercado, pelo que o valor histórico da carteira não é estimado."
+        note="Capital investido e dividendos vêm do ledger. O valor total (investido + lucro não realizado) vem das fotografias diárias da carteira e do valor de hoje; antes da primeira fotografia não é estimado."
       >
         <ChartFrame
-          label="Evolução do capital investido, resultado realizado e dividendos acumulados"
+          label="Evolução do capital investido, do valor total da carteira e dos dividendos acumulados"
           height={288}
           empty={chart.length < 2}
           emptyLabel="Dados não disponíveis para este período."
         >
-          <AreaChart data={chart}>
+          <ComposedChart data={chart}>
             <CartesianGrid {...GRID_PROPS} />
             <XAxis
               dataKey="date"
@@ -296,19 +301,20 @@ function PerformancePage() {
             />
             <Area
               type="monotone"
-              dataKey="Realizado acumulado"
-              stroke="var(--color-chart-2)"
-              fill="var(--color-chart-2)"
-              fillOpacity={0.15}
-            />
-            <Area
-              type="monotone"
               dataKey="Dividendos acumulados"
               stroke="var(--color-chart-3)"
               fill="var(--color-chart-3)"
               fillOpacity={0.15}
             />
-          </AreaChart>
+            <Line
+              type="monotone"
+              dataKey="Valor total"
+              stroke="var(--color-primary)"
+              strokeWidth={2.5}
+              dot={false}
+              connectNulls
+            />
+          </ComposedChart>
         </ChartFrame>
       </Card>
 
