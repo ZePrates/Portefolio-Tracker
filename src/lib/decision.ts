@@ -6,6 +6,7 @@ import {
   type Asset,
   type AssetClass,
 } from "@/lib/portfolio-types";
+import { formatPct } from "@/lib/format";
 
 export interface PurchaseProposal {
   amount: number;
@@ -94,7 +95,7 @@ export function analyzePurchase(assets: Asset[], proposal: PurchaseProposal): Pu
   const afterScore = score(afterValues, proposedTotal);
   const alerts: string[] = [];
   if (largestAfter > 25)
-    alerts.push(`Concentração elevada: a maior posição ficaria em ${largestAfter.toFixed(1)}%.`);
+    alerts.push(`Concentração elevada: a maior posição ficaria em ${formatPct(largestAfter)}.`);
   const targetClass = allocation.find((x) => x.class === proposal.assetClass);
   if ((targetClass?.proposedPct ?? 0) > 40)
     alerts.push(`A classe ${CLASS_LABELS[proposal.assetClass]} ultrapassaria 40% da carteira.`);

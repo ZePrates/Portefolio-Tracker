@@ -153,6 +153,6 @@ describe("exposure coverage (dimensão geografia/setor, não muda com esta corre
       coverage: 70,
     });
     expect(r.metrics.coverage).toBe(70);
-    expect(r.risks.some((x) => x.includes("cobertura de 70.0%"))).toBe(true);
+    expect(r.risks.some((x) => x.includes("cobertura de 70,0\u00a0%"))).toBe(true);
     expect(r.recommendations.some((x) => x.includes("dados de exposição"))).toBe(true);
   }));

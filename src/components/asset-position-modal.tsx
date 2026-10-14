@@ -733,7 +733,7 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                       value={formatMoney(num(price), currency, hidden)}
                     />
                     <Row label="Receita bruta" value={formatEUR(preview.proceeds, hidden)} />
-                    <Row label="Cost basis (FIFO)" value={formatEUR(preview.costBasis, hidden)} />
+                    <Row label="Custo (FIFO)" value={formatEUR(preview.costBasis, hidden)} />
                     <Row label="Comissão" value={formatEUR(preview.fee, hidden)} />
                     <Row
                       label="Lucro/prejuízo realizado"

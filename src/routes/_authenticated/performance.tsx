@@ -41,13 +41,13 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/performance")({
   head: () => ({
     meta: [
-      { title: "Performance — Portefólio Tracker" },
+      { title: "Desempenho — Portefólio Tracker" },
       {
         name: "description",
         content:
-          "Análise histórica do portefólio: retorno absoluto e percentual, TWR, MWR, contribuição por ativo, desempenho por classe e drawdown.",
+          "Análise histórica do portefólio: retorno absoluto e percentual, TWR, MWR, contribuição por ativo, desempenho por classe e queda máxima.",
       },
-      { property: "og:title", content: "Performance — Portefólio Tracker" },
+      { property: "og:title", content: "Desempenho — Portefólio Tracker" },
       {
         property: "og:description",
         content: "Retorno, contribuição por ativo e desempenho por classe do teu portefólio.",
@@ -158,7 +158,7 @@ function PerformancePage() {
   if (assets.length === 0 && transactions.length === 0) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Performance" subtitle="Análise histórica do portefólio" />
+        <PageHeader title="Desempenho" subtitle="Análise histórica do portefólio" />
         <EmptyState
           title="Sem histórico"
           description="Ainda não existem transações registadas para analisar o desempenho."
@@ -172,8 +172,8 @@ function PerformancePage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Performance"
-        subtitle="Retorno, contribuição e desempenho histórico — calculado a partir do ledger real"
+        title="Desempenho"
+        subtitle="Retorno, contribuição e evolução histórica, calculados a partir dos teus movimentos reais"
         actions={
           <div className="flex flex-wrap gap-1 rounded-lg border border-border bg-card p-1">
             {PERIODS.map((p) => (
@@ -259,7 +259,7 @@ function PerformancePage() {
 
       <Card
         title="Evolução do capital"
-        note="Capital investido e dividendos vêm do ledger. O valor total (investido + lucro não realizado) vem das fotografias diárias da carteira e do valor de hoje; antes da primeira fotografia não é estimado."
+        note="Capital investido e dividendos vêm dos teus movimentos. O valor total (investido + lucro não realizado) vem das fotografias diárias da carteira e do valor de hoje; antes da primeira fotografia não é estimado."
       >
         <ChartFrame
           label="Evolução do capital investido, do valor total da carteira e dos dividendos acumulados"
@@ -343,7 +343,7 @@ function PerformancePage() {
             title="Ainda sem fotografias"
             description={
               snapScope === "total"
-                ? "A carteira toda começa a ter histórico a partir de hoje, sempre que carregares em 'Atualizar preços'."
+                ? "A carteira toda ganha histórico a partir de hoje: a app guarda uma fotografia por dia, automaticamente."
                 : "Sem histórico importado para ETFs."
             }
           />
@@ -476,7 +476,7 @@ function PerformancePage() {
       </div>
 
       <Card
-        title="Drawdown"
+        title="Queda máxima (drawdown)"
         note="Máxima queda desde um máximo histórico. Requer série real de valor de mercado."
       >
         {dd.maxPct == null ? (

@@ -11,6 +11,7 @@ import {
   assetCurrentValue,
   assetInvested,
   assetPL,
+  isOpenPosition,
 } from "@/lib/portfolio-types";
 import { formatEUR, formatEURCompact, formatPct, formatPercent } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
@@ -44,7 +45,7 @@ function AnalisePage() {
     queryFn: () => fetchAssets(),
   });
 
-  const assets = (assetsRaw ?? []) as Asset[];
+  const assets = ((assetsRaw ?? []) as Asset[]).filter(isOpenPosition);
 
   if (!isLoading && assets.length === 0) {
     return (
@@ -52,7 +53,7 @@ function AnalisePage() {
         <PageHeader title="Análise" subtitle="Exposição, alocação e rentabilidade detalhadas." />
         <EmptyState
           title="Sem dados para analisar"
-          description="Adicione ativos ao seu portefólio para ver a análise detalhada."
+          description="Adiciona ativos à carteira para veres a análise detalhada."
           action={
             <Link to="/etfs">
               <Button>
