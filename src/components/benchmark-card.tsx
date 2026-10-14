@@ -135,14 +135,14 @@ function BenchmarkBody({
           <Line
             type="monotone"
             dataKey={`S&P 500 a ${rate} %`}
-            stroke="var(--color-chart-2)"
+            stroke="var(--color-chart-3)"
             strokeWidth={2}
             dot={false}
           />
           <Line
             type="monotone"
             dataKey="Carteira"
-            stroke="var(--color-primary)"
+            stroke="var(--color-chart-2)"
             strokeWidth={2.5}
             dot={months < 6}
             connectNulls
@@ -150,8 +150,8 @@ function BenchmarkBody({
           <Line
             type="monotone"
             dataKey="Capital investido"
-            stroke="var(--color-muted-foreground)"
-            strokeDasharray="4 4"
+            stroke="var(--color-chart-1)"
+            strokeWidth={2}
             dot={false}
           />
         </LineChart>
