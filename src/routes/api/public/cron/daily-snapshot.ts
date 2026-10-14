@@ -7,7 +7,7 @@ import { authenticateCronRequest } from "@/integrations/supabase/cron-auth";
  * Desempenho terem o valor real da carteira mesmo nos dias em que a app não
  * é aberta. Protegida pelo segredo de cron (Authorization: Bearer …).
  */
-export const Route = createFileRoute("/api/cron/daily-snapshot")({
+export const Route = createFileRoute("/api/public/cron/daily-snapshot")({
   server: {
     handlers: {
       POST: async ({ request }) => {
