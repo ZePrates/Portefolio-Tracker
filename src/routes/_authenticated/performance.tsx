@@ -447,6 +447,7 @@ function PerformancePage() {
                 <thead>
                   <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
                     <th className="py-2">Classe</th>
+                    <th className="py-2 text-right">Investido</th>
                     <th className="py-2 text-right">Valor</th>
                     <th className="py-2 text-right">Resultado</th>
                     <th className="py-2 text-right">Retorno</th>
@@ -456,7 +457,10 @@ function PerformancePage() {
                   {classes.map((c) => (
                     <tr key={c.class} className="border-t border-border/60">
                       <td className="py-2">{c.label}</td>
-                      <td className="py-2 text-right">{formatEUR(c.value, hidden)}</td>
+                      <td className="num py-2 text-right text-muted-foreground">
+                        {formatEUR(c.invested, hidden)}
+                      </td>
+                      <td className="num py-2 text-right">{formatEUR(c.value, hidden)}</td>
                       <td
                         className={cn(
                           "py-2 text-right",

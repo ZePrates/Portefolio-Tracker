@@ -5,6 +5,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { CircleAlert, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { getExposure, syncAllAssetExposure } from "@/lib/exposure.functions";
+import { listAssets } from "@/lib/portfolio.functions";
+import type { Asset } from "@/lib/portfolio-types";
+import { ConcentrationRisks } from "@/components/concentration-risks";
 import type { CompanyExposure, Slice } from "@/lib/exposure-types";
 import {
   exposureEUR,
@@ -30,13 +33,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 export const Route = createFileRoute("/_authenticated/exposicao")({
   head: () => ({
     meta: [
-      { title: "Exposição e peso das empresas — Portefólio Tracker" },
+      { title: "Risco e exposição — Portefólio Tracker" },
       {
         name: "description",
         content:
-          "Peso real das empresas, países e setores na carteira, com posições completas dos ETFs e cobertura das gestoras.",
+          "Riscos de concentração e peso real das empresas, países e setores na carteira, com posições completas dos ETFs e cobertura das gestoras.",
       },
-      { property: "og:title", content: "Exposição e peso das empresas — Portefólio Tracker" },
+      { property: "og:title", content: "Risco e exposição — Portefólio Tracker" },
       {
         property: "og:description",
         content: "Exposição direta e via ETFs, concentração das empresas e cobertura das posições.",
@@ -221,6 +224,9 @@ function ExposicaoPage() {
     queryKey: ["exposure"],
     queryFn: () => fetchExposure(),
   });
+  const fetchAssets = useServerFn(listAssets);
+  const { data: assetsRaw } = useQuery({ queryKey: ["assets"], queryFn: () => fetchAssets() });
+  const assets = useMemo(() => (assetsRaw ?? []) as Asset[], [assetsRaw]);
   const reload = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["exposure"] }),
@@ -269,7 +275,11 @@ function ExposicaoPage() {
   );
   return (
     <div className="min-w-0 space-y-6">
-      <PageHeader title="Exposição" actions={actions} />
+      <PageHeader
+        title="Risco e exposição"
+        subtitle="Concentração real da carteira, contando o que está dentro dos ETFs."
+        actions={actions}
+      />
       {isError ? (
         <ErrorState onRetry={() => void refetch()} />
       ) : isPending ? (
@@ -310,6 +320,12 @@ function ExposicaoPage() {
               sub={`Top 5: ${exposurePct(report.concentration.top5, hidden)}`}
             />
           </div>
+          <ConcentrationRisks
+            assets={assets}
+            report={report}
+            positions={data?.positions}
+            hidden={hidden}
+          />
           <CompanyTable rows={report.companies} hidden={hidden} />
           {etfs.length > 0 && <EtfCoverageTable rows={etfs} hidden={hidden} />}
           <div className="grid min-w-0 gap-6 xl:grid-cols-2">

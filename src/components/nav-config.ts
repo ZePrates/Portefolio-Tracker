@@ -1,19 +1,14 @@
 import {
   Activity,
   Building2,
-  CalendarDays,
-  Calculator,
   Coins,
   DollarSign,
   FileUp,
   Gem,
   Globe,
-  Goal,
   Handshake,
   Layers,
   LayoutDashboard,
-  Lightbulb,
-  PieChart,
   Receipt,
   Target,
   TrendingUp,
@@ -68,54 +63,38 @@ export const ASSETS_NAV: NavItem[] = [
 ];
 
 export const ANALYSIS_NAV: NavItem[] = [
-  { to: "/dividendos", label: "Dividendos", icon: Coins, key: "v", keywords: "rendimento passivo" },
-  { to: "/analise", label: "Análise", icon: PieChart, key: "n", keywords: "concentração classes" },
+  {
+    to: "/dividendos",
+    label: "Dividendos",
+    icon: Coins,
+    key: "v",
+    keywords: "rendimento passivo calendário próximos pagamentos projeção",
+  },
   {
     to: "/performance",
     label: "Desempenho",
     icon: Activity,
     key: "f",
-    keywords: "performance twr xirr rentabilidade",
+    keywords: "performance twr xirr rentabilidade análise classes investido",
   },
   {
     to: "/exposicao",
-    label: "Exposição",
+    label: "Risco e exposição",
     icon: Globe,
     key: "x",
-    keywords: "países setores empresas",
+    keywords: "países setores empresas concentração inteligência riscos alertas",
   },
   {
     to: "/objetivos",
     label: "Objetivos",
     icon: Target,
     key: "o",
-    keywords: "objetivos fire independência financeira alocação alvo",
-  },
-  { to: "/projecoes", label: "Projeções", icon: Goal, key: "j", keywords: "simulação futuro" },
-  {
-    to: "/inteligencia",
-    label: "Inteligência",
-    icon: Lightbulb,
-    key: "i",
-    keywords: "score alertas",
+    keywords:
+      "objetivos fire independência financeira alocação alvo projeções futuro simulador comprar aporte",
   },
 ];
 
 export const TOOLS_NAV: NavItem[] = [
-  {
-    to: "/simulador",
-    label: "Simulador de Compra",
-    icon: Calculator,
-    key: "s",
-    keywords: "comprar",
-  },
-  {
-    to: "/calendario",
-    label: "Calendário de dividendos",
-    icon: CalendarDays,
-    key: "k",
-    keywords: "próximos pagamentos projeção",
-  },
   {
     to: "/irs",
     label: "Resumo fiscal (IRS)",

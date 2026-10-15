@@ -46,7 +46,7 @@ async function syncOne(supabase: SB, userId: string, asset: Asset): Promise<Sync
   const isEtf = asset.class === "etf";
   // Manager holdings are authoritative; legacy fallback sync must never overwrite them.
   if (isEtf)
-    return { ...base, message: "Sincronize este ETF com as gestoras na página Exposição." };
+    return { ...base, message: "Sincroniza este ETF com as gestoras na página Risco e exposição." };
   // Estado já guardado para nunca apagar dados válidos numa falha da fonte.
   const { data: existing } = await supabase
     .from("asset_profiles")

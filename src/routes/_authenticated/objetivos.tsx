@@ -1,4 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { PageTabs } from "@/components/page-tabs";
+import { ProjectionsPanel } from "@/components/projections-panel";
+import { PurchaseSimulator } from "@/components/purchase-simulator";
+import { tabSearch } from "@/lib/tab-search";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
@@ -28,28 +32,44 @@ import { formatEUR, formatNumber, formatPct, formatPp, parseNumberPt } from "@/l
 import { FIRE_DEFAULTS, validateFire, type FireForm } from "@/lib/fire-form";
 import type { AssetClass } from "@/lib/portfolio-types";
 
+const TABS = ["fire", "alocacao", "projecoes", "simulador"] as const;
+type Tab = (typeof TABS)[number];
+
+const DESCRIPTION =
+  "Independência financeira (FIRE), alocação-alvo, projeções e simulação de compras.";
+
 export const Route = createFileRoute("/_authenticated/objetivos")({
   head: () => ({
     meta: [
       { title: "Objetivos — Portefólio Tracker" },
-      {
-        name: "description",
-        content: "Independência financeira (FIRE) e alocação-alvo por classe de ativo.",
-      },
+      { name: "description", content: DESCRIPTION },
+      { property: "og:title", content: "Objetivos — Portefólio Tracker" },
+      { property: "og:description", content: DESCRIPTION },
     ],
   }),
+  validateSearch: tabSearch(TABS),
   component: ObjetivosPage,
 });
 
 function ObjetivosPage() {
+  const { tab = "fire" } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const setTab = (t: Tab) =>
+    void navigate({ search: t === "fire" ? {} : { tab: t }, replace: true });
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Objetivos"
-        subtitle="Independência financeira (FIRE) e alocação-alvo por classe de ativo."
+      <PageHeader title="Objetivos" subtitle={DESCRIPTION} />
+      <PageTabs
+        label="Secções de objetivos"
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { id: "fire", label: "FIRE", content: <FireSection /> },
+          { id: "alocacao", label: "Alocação", content: <AllocationSection /> },
+          { id: "projecoes", label: "Projeções", content: <ProjectionsPanel /> },
+          { id: "simulador", label: "Simular compra", content: <PurchaseSimulator /> },
+        ]}
       />
-      <FireSection />
-      <AllocationSection />
     </div>
   );
 }
