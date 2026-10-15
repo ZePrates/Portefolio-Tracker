@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { etfOverlap } from "./overlap";
+import { etfOverlap, overlapLevel, portfolioOverlap } from "./overlap";
 
 describe("etfOverlap", () => {
   it("uses ISIN before ticker, then ticker before normalized name", () => {
@@ -81,5 +81,56 @@ describe("etfOverlap", () => {
     expect(pairs).toHaveLength(3);
     expect(pairs[0]!.a).toBe("vwce");
     expect(pairs[0]!.b).toBe("vuaa");
+  });
+});
+
+describe("portfolioOverlap", () => {
+  const etf = (assetId: string, value: number, holdings: Array<[string, number, string?]>) => ({
+    assetId,
+    name: assetId.toUpperCase(),
+    class: "etf",
+    value,
+    holdings: holdings.map(([symbol, weight, asset_class]) => ({
+      name: symbol,
+      symbol,
+      weight,
+      asset_class: asset_class ?? "Equity",
+    })),
+  });
+
+  it("compara só ETFs completos, sem liquidez, e classifica cada par", () => {
+    const res = portfolioOverlap(
+      [
+        etf("world", 1000, [
+          ["AAPL", 0.3],
+          ["MSFT", 0.3],
+          ["NVDA", 0.2],
+          ["EUR", 0.2, "Cash"],
+        ]),
+        etf("sp500", 500, [
+          ["AAPL", 0.35],
+          ["MSFT", 0.3],
+          ["XOM", 0.35],
+        ]),
+        etf("small", 200, [["ZZZ", 1]]),
+        etf("partial", 100, [["AAPL", 0.5]]),
+        { assetId: "o", name: "O", class: "reit", value: 50, holdings: [] },
+      ],
+      new Set(["world", "sp500", "small"]),
+    );
+    expect(res.compared).toBe(3);
+    expect(res.skipped).toEqual(["PARTIAL"]);
+    const top = res.pairs[0]!;
+    expect([top.a, top.b]).toEqual(["world", "sp500"]);
+    expect(top.overlap).toBeCloseTo(0.6);
+    expect(top.level).toBe("high");
+    expect([top.aValue, top.bValue]).toEqual([1000, 500]);
+    expect(res.pairs.filter((p) => p.overlap === 0)).toHaveLength(2);
+  });
+
+  it("patamares: 50 % redundante, 25 % alta", () => {
+    expect(overlapLevel(0.5)).toBe("high");
+    expect(overlapLevel(0.3)).toBe("medium");
+    expect(overlapLevel(0.1)).toBe("low");
   });
 });

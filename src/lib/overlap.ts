@@ -4,6 +4,7 @@
  * a fração de A que também está em B (e vice-versa) nas holdings conhecidas.
  */
 
+import { equityHolding } from "@/lib/etf-sheet";
 import { holdingIndex } from "@/lib/holding-identity";
 
 export interface EtfHoldings {
@@ -68,4 +69,79 @@ export function etfOverlap(etfs: EtfHoldings[], topN = 5): OverlapPair[] {
     }
   }
   return pairs.sort((x, y) => y.overlap - x.overlap);
+}
+
+/* ------------------------------------------------------------------ */
+/* Sobreposição na carteira (página Risco)                             */
+/* ------------------------------------------------------------------ */
+
+/** A partir daqui dois ETFs são quase o mesmo investimento. */
+export const OVERLAP_HIGH = 0.5;
+/** A partir daqui a sobreposição já pesa na diversificação. */
+export const OVERLAP_MEDIUM = 0.25;
+
+export type OverlapLevel = "high" | "medium" | "low";
+
+export function overlapLevel(overlap: number): OverlapLevel {
+  if (overlap >= OVERLAP_HIGH) return "high";
+  if (overlap >= OVERLAP_MEDIUM) return "medium";
+  return "low";
+}
+
+export interface PortfolioOverlapPair extends OverlapPair {
+  level: OverlapLevel;
+  /** Valor das duas posições na carteira (EUR). */
+  aValue: number;
+  bValue: number;
+}
+
+export interface PortfolioOverlap {
+  pairs: PortfolioOverlapPair[];
+  /** ETFs comparados (composição completa). */
+  compared: number;
+  /** ETFs deixados de fora por terem composição parcial ou em falta. */
+  skipped: string[];
+}
+
+/**
+ * Sobreposição entre todos os ETFs da carteira com composição completa.
+ * Só conta ações (sem liquidez nem derivados), como na ficha de cada ETF;
+ * os ETFs com listas parciais ficam de fora porque subestimariam o resultado.
+ */
+export function portfolioOverlap(
+  positions: Array<{
+    assetId: string;
+    name: string;
+    class: string;
+    value: number;
+    holdings: Array<{
+      name: string;
+      isin?: string | null;
+      symbol?: string | null;
+      asset_class?: string | null;
+      weight: number;
+    }>;
+  }>,
+  complete: ReadonlySet<string>,
+): PortfolioOverlap {
+  const etfs = positions.filter((p) => p.class === "etf");
+  const compared = etfs.filter((p) => complete.has(p.assetId));
+  const value = new Map(etfs.map((p) => [p.assetId, p.value]));
+  const pairs = etfOverlap(
+    compared.map((p) => ({
+      assetId: p.assetId,
+      name: p.name,
+      holdings: p.holdings.filter(equityHolding),
+    })),
+  ).map((p) => ({
+    ...p,
+    level: overlapLevel(p.overlap),
+    aValue: value.get(p.a) ?? 0,
+    bValue: value.get(p.b) ?? 0,
+  }));
+  return {
+    pairs,
+    compared: compared.length,
+    skipped: etfs.filter((p) => !complete.has(p.assetId)).map((p) => p.name),
+  };
 }
