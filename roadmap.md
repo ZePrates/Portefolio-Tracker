@@ -14,7 +14,7 @@
 - [x] ETFs: composição e exposição exclusivamente pelo JustETF
 - [x] Ações de Crescimento em 2.º na barra lateral, logo abaixo de ETFs (2026-10-08)
 - [x] Mesma ordem no Simulador, Análise, Dashboard e Desempenho (CLASS_ORDER) + teste que a bloqueia
-- [ ] Regra de segurança da tabela de perfis na base externa — SQL entregue, falta o utilizador colá-lo no editor SQL
+- [x] Regra de segurança da tabela de perfis na base externa — confirmada no Supabase a 15/10/2026 (security_profiles só de leitura para autenticados; RLS em todas as tabelas)
 - [x] Exposição: holdings completas, peso por empresa, cobertura por ETF e sincronização com gestoras sem alterações de schema/RLS
 - [x] Corrigir os tipos da base externa sem alterar schema/RLS — pré-visualização compilada sem erros.
-- [ ] Validar exposição e sincronização na carteira real — sem sessão externa disponível.
+- [x] Validar exposição e sincronização na carteira real — 18 de 22 ETFs com lista completa (iShares, Vanguard, Xtrackers) a 15/10/2026; BNP, Global X, VanEck e WisdomTree só com o top 10

@@ -246,7 +246,8 @@ describe("contribuição e classes", () => {
 
   it("múltiplos ativos e classes", () => {
     const rows = performanceByClass(assets, divs, ALL, TODAY);
-    expect(rows.map((r) => r.class).sort()).toEqual(["etf", "metal", "p2p"]);
+    // Mesma ordem de classes que o resto da app (CLASS_ORDER), não por valor.
+    expect(rows.map((r) => r.class)).toEqual(["etf", "metal", "p2p"]);
     const metal = rows.find((r) => r.class === "metal")!;
     expect(metal.unrealized).toBeCloseTo(20, 10);
     const p2p = rows.find((r) => r.class === "p2p")!;
