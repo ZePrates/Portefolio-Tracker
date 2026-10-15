@@ -1,6 +1,7 @@
 import {
   Activity,
   Building2,
+  CalendarCheck,
   Coins,
   DollarSign,
   FileUp,
@@ -95,6 +96,13 @@ export const ANALYSIS_NAV: NavItem[] = [
 ];
 
 export const TOOLS_NAV: NavItem[] = [
+  {
+    to: "/fecho",
+    label: "Fecho do mês",
+    icon: CalendarCheck,
+    key: "k",
+    keywords: "rotina mensal checklist tarefas extrato elementum scramble",
+  },
   {
     to: "/irs",
     label: "Resumo fiscal (IRS)",

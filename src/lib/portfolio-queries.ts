@@ -22,6 +22,7 @@ export const PORTFOLIO_QUERY_KEYS = [
   "dividend-calendar",
   "scramble",
   "tax",
+  "month-close",
 ] as const;
 
 export async function invalidatePortfolio(queryClient: QueryClient): Promise<void> {
