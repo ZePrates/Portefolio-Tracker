@@ -1,0 +1,5 @@
+# Finais de linha LF em todas as máquinas (no Windows o core.autocrlf=true
+# punha CRLF na cópia de trabalho e o Prettier/ESLint acusava milhares de erros).
+* text=auto eol=lf
+*.png binary
+*.ico binary
