@@ -116,6 +116,9 @@ export function ProjectionsPanel() {
     })) ?? [];
   const selectedBase = simulations[1];
 
+  // Modo privado: os montantes ficam mascarados (o campo continua editável).
+  const moneyMask = hidden ? "[-webkit-text-security:disc]" : undefined;
+
   const set = (key: "monthly" | "target") => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => (f ? { ...f, [key]: e.target.value } : f));
 
@@ -141,6 +144,7 @@ export function ProjectionsPanel() {
               autoComplete="off"
               value={form.monthly}
               onChange={set("monthly")}
+              className={moneyMask}
             />
           </Field>
           <Field label="Horizonte">
@@ -161,6 +165,7 @@ export function ProjectionsPanel() {
               autoComplete="off"
               value={form.target}
               onChange={set("target")}
+              className={moneyMask}
             />
           </Field>
         </div>
