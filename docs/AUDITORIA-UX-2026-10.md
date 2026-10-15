@@ -131,6 +131,17 @@ Um branch, um PR por bloco e `tsc` + `eslint` + testes em cada um. Só o bloco 3
 - **Bloco 4 feito** no branch `cleanup/bloco-4-navegacao` (D1, D2, D3, E3, C6): 13 destinos. **Dividendos** com os separadores Recebidos e Calendário. **Desempenho** absorve a Análise (coluna Investido na tabela por classe). **Risco e exposição** absorve a Inteligência: riscos e recomendações com sinal de estado, sem pontuação. **Objetivos** com os separadores FIRE, Alocação, Projeções e Simular compra; as Projeções partem do aporte, do retorno e do número FIRE guardados e usam os campos do design system. As rotas antigas (`/analise`, `/inteligencia`, `/calendario`, `/projecoes`, `/simulador`) redirecionam. Os atalhos `g n`, `g i`, `g k`, `g j` e `g s` deixam de existir. Juntado no PR #49 e publicado.
 - **Bloco 5 feito** no branch `cleanup/bloco-5-limpeza`. **L1:** saem 39 componentes `ui/` sem uso (ficam command, dialog, dropdown-menu, popover, skeleton, tabs e tooltip) e 28 dependências que só eles usavam (`bun remove`, com o `bun.lock` atualizado). **L2:** os cartões feitos à mão já tinham saído com as páginas fundidas no bloco 4; os que restam são listas, esqueletos e avisos, e o aviso de risco da Scramble passa ao estilo de aviso. **L6:** os relatórios de auditoria passam para `docs/`; o `roadmap.md` fica na raiz, porque o Lovable o atualiza. **L7 fica de fora:** o `vite-tsconfig-paths` vem incluído no `@lovable.dev/vite-tanstack-config` e o aviso sai de lá; tirá-lo partiria a configuração. **L5** também fica de fora: falta confirmar com o utilizador qual das pastas de migrações é a fonte de verdade.
 
+- **Supabase (15/10/2026)**, branch `fix/supabase-alinhamento`:
+  - **L5:** fica documentado no README que `supabase/migrations` é a fonte de verdade da base externa e que `drizzle/` é do Lovable.
+  - **Migrações:** havia 6 aplicadas a 13/10 sem ficheiro (pg_net, holdings completas da iShares, `map_gics_sector`). Os ficheiros foram recriados com as versões exatas.
+  - **Segurança:** as 14 tabelas têm RLS. O único aviso é a proteção contra palavras-passe expostas, que se liga no painel.
+  - **Dados:**
+    - 54 cotações de 13/10. A tarefa diária, agendada para as 21:30 UTC, foi criada a 14/10 às 22:41, por isso a primeira execução é a 15/10.
+    - 18 de 22 ETFs com a lista completa.
+    - O iShares World Small Cap tem um erro de *timeout* da última sincronização.
+    - O livro de movimentos bate com as quantidades.
+  - **Desempenho por classe:** passa a seguir a CLASS_ORDER.
+
 ## 7. Decisões que preciso de ti
 
 | # | Decisão | Recomendação |

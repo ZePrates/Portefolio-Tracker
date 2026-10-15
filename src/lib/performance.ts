@@ -610,9 +610,7 @@ export function performanceByClass(
       returnPct: basis > 0 ? (totalResult / basis) * 100 : null,
       count: rows.length,
     };
-  })
-    .filter((r) => r.count > 0)
-    .sort((a, b) => b.value - a.value);
+  }).filter((r) => r.count > 0);
 }
 
 /* ------------------------------------------------------------------ */

@@ -2,25 +2,22 @@
 
 Aplicação pessoal para acompanhar, analisar e projetar uma carteira de investimentos multi-classe de ativos — ações, ETFs, dividendos, REITs, metais preciosos e P2P — pensada para um investidor residente em Portugal (IRS, broker XTB).
 
-**App em produção:** https://asset-replicator-bot.lovable.app
+**App em produção:** https://portefolio-tracker.lovable.app
 
 ## O que faz
 
-- **Dashboard de exposição** — visão global da carteira por classe de ativo e métricas agregadas
-- **Mais-valias por FIFO** — custo por lote, com o câmbio da data de cada movimento (exigido pelo IRS)
-- **Desempenho histórico e projeções** — TWR, XIRR e drawdown a partir de fotografias diárias da carteira
-- **Simulador de decisões** — testa cenários de compra sem alterar a carteira real
-- **Análise de concentração e inteligência** — look-through dos ETFs e risco de concentração
-- **Dividendos auditados** — elegibilidade reconstruída do histórico, retenção na fonte por país, valores líquidos
-- **Câmbios em tempo real** — conversão automática para ativos denominados em moeda estrangeira
+| Página                                                                 | O que mostra                                                                                                                                                         |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Dashboard**                                                          | Valor da carteira, variação no período, rendimento passivo, alocação, FIRE, melhores e piores posições, exposição e avisos aos dados                                 |
+| **ETFs · Ações Crescimento · REITs · Ações Dividendos · Metais · P2P** | Posições por classe, com a ficha de cada ativo (movimentos FIFO, composição dos ETFs, taxas em gramas dos metais, rondas da Scramble)                                |
+| **Dividendos**                                                         | Separadores _Recebidos_ (retenção na fonte por país, valores líquidos, yield sobre o custo) e _Calendário_ (projeção dos próximos pagamentos)                        |
+| **Desempenho**                                                         | TWR, XIRR, evolução do capital, carteira vs. S&P 500, desempenho por classe e queda máxima, a partir das fotografias diárias                                         |
+| **Risco e exposição**                                                  | Riscos de concentração com look-through dos ETFs, peso real por empresa, países, setores, moedas e cobertura das gestoras                                            |
+| **Objetivos**                                                          | Separadores _FIRE_ (patamares, Coast FIRE), _Alocação_ (alvos e rebalanceamento por aportes, sem vender), _Projeções_ (a partir do objetivo FIRE) e _Simular compra_ |
+| **Resumo fiscal (IRS)**                                                | Mais-valias por lote (Anexo G), dividendos e juros (Anexos J e E), estimativa de imposto e simulação de englobamento                                                 |
+| **Importar extrato XTB**                                               | Concilia movimentos com o valor real do broker e confirma dividendos e retenções; idempotente                                                                        |
 
-Lógica e dados já disponíveis (interface na próxima fase):
-
-- **Resumo fiscal anual** — mais-valias por lote (Anexos G/J, códigos G01/G20), dividendos (E11), estimativa a 28% com crédito de imposto estrangeiro e simulação de englobamento
-- **Import do extrato XTB** (Cash Operations, CSV) — concilia movimentos manuais com o valor real do broker, confirma dividendos e retenções; idempotente
-- **Alertas de qualidade de dados** — preços desatualizados, livro ≠ quantidade, ETFs sem composição, dividendos sem retenção, câmbios por confirmar
-- **Alocação-alvo e rebalanceamento** por aportes, sem vender
-- **Progresso FIRE**, **calendário de dividendos projetado**, **sobreposição entre ETFs** e **exportações CSV** em formato PT
+Uma tarefa diária (21:30 UTC, agendada no Lovable) atualiza as cotações e guarda a fotografia da carteira em `/api/public/cron/daily-snapshot`.
 
 > ⚠️ Os cálculos fiscais são uma ajuda ao preenchimento, não aconselhamento fiscal. Confirma sempre no Portal das Finanças.
 
@@ -38,9 +35,17 @@ Lógica e dados já disponíveis (interface na próxima fase):
 | `src/lib/*.functions.ts` | Server functions (cada uma exige sessão; os dados ficam protegidos por RLS)                  |
 | `src/lib/*.server.ts`    | Acesso a fontes externas (Yahoo Finance, justETF, Financial Times) com timeout e retry       |
 | `src/routes/`            | Páginas (TanStack Router)                                                                    |
-| `supabase/migrations/`   | Migrações SQL (cada uma com instruções para reverter no cabeçalho)                           |
+| `supabase/migrations/`   | Migrações da base de dados da app (fonte de verdade; ver abaixo)                             |
 
 Convenções: valores em EUR guardados em `numeric`; datas `YYYY-MM-DD` no fuso de Lisboa (`lib/dates.ts`); números lidos com `parseNumberPt` (aceita `1.234,56`); apresentação com `formatEUR`, `formatPercent` e `formatDatePt` (dd/mm/aaaa).
+
+## Base de dados e migrações
+
+A app usa o projeto Supabase **externo** `azekwmamjovoguauncrg` (definido em `vite.config.ts`), não a base da Lovable Cloud.
+
+- **`supabase/migrations/` é a fonte de verdade** dessa base. Cada ficheiro tem de ter **exatamente** a versão registada no Supabase (`supabase_migrations.schema_migrations`; ver `list_migrations`). O `apply_migration` regista a hora a que a migração é aplicada, por isso o nome do ficheiro faz-se depois, com essa versão. Se faltar um ficheiro, o check do Supabase no GitHub falha com "Remote migration versions not found".
+- **`drizzle/` é gerido pelo Lovable** para a base da Lovable Cloud (`LOVABLE_DB_MIGRATION_URL`), que não guarda os dados da carteira. Não se edita à mão.
+- Todas as tabelas têm RLS: cada utilizador só lê e escreve as suas linhas (`auth.uid() = user_id`). A `security_profiles` é só de leitura para utilizadores autenticados.
 
 ## Desenvolvimento local
 
@@ -74,15 +79,15 @@ Para desenvolver via prompt em vez de código, usa o [editor Lovable](https://lo
 
 Tudo em PT-PT, com formatação europeia (`1 448,40 €`, `12,5 %`, `dd/mm/aaaa`) vinda de `src/lib/format.ts`; nunca formatar valores à mão.
 
-| Peça | Onde | Notas |
-| --- | --- | --- |
-| Tokens (cores, raios, gráficos `chart-1..8`) | `src/styles.css` | `:root` = claro, `.dark` = escuro; usar `var(--color-…)`, sem cores fixas |
-| Tema claro / escuro / automático | `src/components/theme.tsx` | guardado em `localStorage` (`pt-theme`), sem flash inicial |
-| Componentes base | `src/components/ui-bits.tsx` | `Card`, `MetricCard`, `Badge`, `Button`, `Field`, `Modal`, `EmptyState`, `ErrorState`, `useConfirm` (confirmações destrutivas) |
-| Tabelas | `src/components/data-table.tsx` | ordenação, pesquisa, colunas configuráveis, cabeçalho fixo, paginação, cartões em mobile (`renderCard`) |
-| Gráficos | `src/components/chart-kit.tsx` | `ChartFrame` (vazio/loading), `ChartTooltip`, eixos e grelha uniformes |
-| Navegação | `src/components/nav-config.ts` | sidebar, barra inferior mobile, pesquisa global (Ctrl/⌘+K), atalhos (`?`) |
-| Modo privado | `src/components/private-mode.tsx` | esconde valores; passar `hidden` aos formatadores |
-| PWA | `public/manifest.webmanifest` | só instalável; sem service worker nem cache offline de dados financeiros |
+| Peça                                         | Onde                              | Notas                                                                                                                          |
+| -------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Tokens (cores, raios, gráficos `chart-1..8`) | `src/styles.css`                  | `:root` = claro, `.dark` = escuro; usar `var(--color-…)`, sem cores fixas                                                      |
+| Tema claro / escuro / automático             | `src/components/theme.tsx`        | guardado em `localStorage` (`pt-theme`), sem flash inicial                                                                     |
+| Componentes base                             | `src/components/ui-bits.tsx`      | `Card`, `MetricCard`, `Badge`, `Button`, `Field`, `Modal`, `EmptyState`, `ErrorState`, `useConfirm` (confirmações destrutivas) |
+| Tabelas                                      | `src/components/data-table.tsx`   | ordenação, pesquisa, colunas configuráveis, cabeçalho fixo, paginação, cartões em mobile (`renderCard`)                        |
+| Gráficos                                     | `src/components/chart-kit.tsx`    | `ChartFrame` (vazio/loading), `ChartTooltip`, eixos e grelha uniformes                                                         |
+| Navegação                                    | `src/components/nav-config.ts`    | sidebar, barra inferior mobile, pesquisa global (Ctrl/⌘+K), atalhos (`?`)                                                      |
+| Modo privado                                 | `src/components/private-mode.tsx` | esconde valores; passar `hidden` aos formatadores                                                                              |
+| PWA                                          | `public/manifest.webmanifest`     | só instalável; sem service worker nem cache offline de dados financeiros                                                       |
 
 Regras: foco visível sempre; contraste AA; números com a classe `num`; erros de formulário junto ao campo (`Field error`); `min-w-0` em filhos de grelhas para evitar overflow em mobile.
