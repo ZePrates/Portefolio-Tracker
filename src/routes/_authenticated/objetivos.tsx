@@ -6,7 +6,7 @@ import { tabSearch } from "@/lib/tab-search";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
-import { Flame, Scale } from "lucide-react";
+import { Flame, Scale, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import {
   Badge,
@@ -230,7 +230,11 @@ function FireSection() {
                 onChange={set("monthlyContribution")}
               />
             </Field>
-            <Field label="Retorno anual esperado (%)" error={showError("expectedReturnPct")}>
+            <Field
+              label="Retorno anual esperado (%)"
+              error={showError("expectedReturnPct")}
+              hint="Nominal, antes da inflação. As ações globais deram cerca de 7 a 8 % a longo prazo."
+            >
               <TextInput
                 inputMode="decimal"
                 autoComplete="off"
@@ -304,6 +308,23 @@ function FireSection() {
                 }
               />
             </div>
+            {data?.details?.optimistic && data.settings && (
+              <div
+                role="note"
+                className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm"
+              >
+                <p className="flex items-center gap-2 font-medium">
+                  <TriangleAlert aria-hidden className="h-4 w-4 text-warning" />
+                  Previsão otimista
+                </p>
+                <p className="mt-1 text-muted-foreground">
+                  O retorno de {formatPct(data.settings.expectedReturnPct, 1)} ao ano (
+                  {formatPct(progress.realReturnPct, 1)} real) está acima do que as ações globais
+                  deram a longo prazo, cerca de 5 % real. Compara com os cenários abaixo antes de
+                  contares com esta data.
+                </p>
+              </div>
+            )}
             {data?.details && <FireLevels details={data.details} hidden={hidden} />}
           </div>
         )

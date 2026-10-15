@@ -96,4 +96,26 @@ describe("fireDetails", () => {
   it("taxa inválida → sem cálculo de impostos", () => {
     expect(fireDetails(settings, 1000, 1000, "2026-10-07", 0).tax).toBeNull();
   });
+
+  it("cenários: mais retorno chega mais cedo; o teu coincide com a previsão", () => {
+    const d = fireDetails(settings, 150000, 150000, "2026-10-07");
+    expect(d.scenarios.map((s) => s.key)).toEqual(["prudent", "historical", "optimistic", "yours"]);
+    const [prudent, historical, optimistic, yours] = d.scenarios;
+    expect(prudent!.years!).toBeGreaterThan(historical!.years!);
+    expect(historical!.years!).toBeGreaterThan(optimistic!.years!);
+    expect(historical!.nominalReturnPct).toBeCloseTo(7.1);
+    expect(yours!.years).toBe(fireProgress(settings, 150000, 0, "2026-10-07").yearsToFire);
+    expect(d.optimistic).toBe(false);
+  });
+
+  it("assinala um retorno acima do cenário otimista", () => {
+    const d = fireDetails(
+      { ...settings, expectedReturnPct: 15, inflationPct: 3 },
+      150000,
+      150000,
+      "2026-10-07",
+    );
+    expect(d.optimistic).toBe(true);
+    expect(d.scenarios.at(-1)!.realReturnPct).toBeCloseTo(11.65, 1);
+  });
 });

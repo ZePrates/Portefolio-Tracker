@@ -1,6 +1,6 @@
 import type { FireDetails } from "@/lib/fire";
 import { formatMonthPt, formatNumber, formatPct } from "@/lib/format";
-import { MetricCard } from "@/components/ui-bits";
+import { Badge, MetricCard } from "@/components/ui-bits";
 import { privateEUR } from "@/components/private-value";
 
 function when(years: number | null, month: string | null): string {
@@ -66,6 +66,54 @@ export function FireLevels({ details, hidden }: { details: FireDetails; hidden: 
           Cada patamar é um múltiplo do número FIRE: Half/Barista (metade das despesas pagas pela
           carteira), Lean (vida frugal), FIRE e Fat (mais folga).
         </p>
+      </div>
+
+      <div>
+        <h3 className="text-sm font-semibold">Cenários de retorno</h3>
+        <p className="mt-1 text-[12px] text-muted-foreground">
+          Quando chegas ao número FIRE com as mesmas despesas e aportes, mas outro retorno.
+        </p>
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full min-w-[420px] text-sm">
+            <caption className="sr-only">Data do FIRE para vários retornos anuais</caption>
+            <thead>
+              <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+                <th scope="col" className="py-2 pr-3 font-medium">
+                  Cenário
+                </th>
+                <th scope="col" className="px-3 py-2 text-right font-medium">
+                  Real
+                </th>
+                <th scope="col" className="px-3 py-2 text-right font-medium">
+                  Nominal
+                </th>
+                <th scope="col" className="py-2 pl-3 text-right font-medium">
+                  FIRE
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {details.scenarios.map((s) => (
+                <tr
+                  key={s.key}
+                  className={`border-b border-border/60 ${s.key === "yours" ? "font-medium" : ""}`}
+                >
+                  <th scope="row" className="py-2 pr-3 text-left font-medium">
+                    {s.name}
+                    {s.key === "yours" && details.optimistic && (
+                      <Badge tone="warn" className="ml-2">
+                        otimista
+                      </Badge>
+                    )}
+                  </th>
+                  <td className="num px-3 py-2 text-right">{formatPct(s.realReturnPct, 1)}</td>
+                  <td className="num px-3 py-2 text-right">{formatPct(s.nominalReturnPct, 1)}</td>
+                  <td className="num py-2 pl-3 text-right">{when(s.years, s.month)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:gap-4 sm:grid-cols-2">
