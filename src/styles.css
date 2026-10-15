@@ -64,7 +64,7 @@
  * text-success, ...). Para mudar o aspeto basta alterar os valores aqui:
  * `:root` é o tema claro e `.dark` o escuro (o escuro é o predefinido).
  * Todos os pares texto/fundo cumprem WCAG 2.2 AA (>= 4,5:1 texto, >= 3:1
- * gráficos e bordas de campos); ver AUDITORIA-DESIGN.md.
+ * gráficos e bordas de campos); ver docs/AUDITORIA-DESIGN.md.
  */
 :root {
   color-scheme: light;

@@ -64,7 +64,7 @@ bun audit             # vulnerabilidades das dependências
 
 ## Auditoria
 
-O relatório da auditoria de código, dados e funcionalidade está em [AUDITORIA-CODIGO.md](AUDITORIA-CODIGO.md).
+O relatório da auditoria de código, dados e funcionalidade está em [docs/AUDITORIA-CODIGO.md](docs/AUDITORIA-CODIGO.md).
 
 ## Continuar no Lovable
 
