@@ -53,6 +53,8 @@ import {
   formatTimePt,
   sectorNamePt,
 } from "@/lib/format";
+import { isoDateLisbon, todayLisbon } from "@/lib/dates";
+import { priceFreshness } from "@/lib/daily-snapshot";
 import { usePrivateMode } from "@/components/private-mode";
 import { Badge, Button, EmptyState, ErrorState, Modal, PageHeader } from "@/components/ui-bits";
 
@@ -381,7 +383,13 @@ function DashboardPage() {
     const stale = priced.filter(
       (a) => !a.price_updated_at || new Date(a.price_updated_at).getTime() < cutoff,
     ).length;
-    return { latest: latest ? new Date(latest).toISOString() : null, stale };
+    const latestISO = latest ? new Date(latest).toISOString() : null;
+    const age = priceFreshness(
+      latestISO ? isoDateLisbon(new Date(latestISO)) : null,
+      todayLisbon(),
+      STALE_PRICE_DAYS,
+    );
+    return { latest: latestISO, stale, ...age };
   }, [assets]);
 
   const exposure = exposureRaw as
@@ -411,10 +419,9 @@ function DashboardPage() {
 
   const pricesLabel = (() => {
     if (!freshness.latest) return "Sem cotações registadas";
-    const sameDay = formatDatePt(freshness.latest) === formatDatePt(new Date().toISOString());
-    return sameDay
-      ? `Cotações de hoje, ${formatTimePt(freshness.latest)}`
-      : `Cotações de ${formatDatePt(freshness.latest)}`;
+    if (freshness.level === "today") return `Cotações de hoje, ${formatTimePt(freshness.latest)}`;
+    const ago = freshness.days === 1 ? "ontem" : `há ${freshness.days} dias`;
+    return `Cotações de ${formatDatePt(freshness.latest)} (${ago})`;
   })();
   // A faixa só aparece quando há algo a tratar (avisos ou cotações em atraso).
   const showAlertsStrip = alerts.length > 0;
@@ -471,7 +478,11 @@ function DashboardPage() {
                 aria-hidden
                 className={cn(
                   "h-1.5 w-1.5 rounded-full",
-                  freshness.latest ? "bg-success" : "bg-muted-foreground",
+                  freshness.level === "today"
+                    ? "bg-success"
+                    : freshness.level === "none"
+                      ? "bg-muted-foreground"
+                      : "bg-warning",
                 )}
               />
               {pricesLabel}

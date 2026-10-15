@@ -46,3 +46,52 @@ export async function runDailySnapshots(deps: DailySnapshotDeps): Promise<DailyS
   }
   return result;
 }
+
+export interface OpenAppSnapshotPlan {
+  /** Atualizar as cotações antes de gravar (as últimas não são de hoje). */
+  refresh: boolean;
+  /** Gravar (ou regravar) a fotografia de hoje. */
+  snapshot: boolean;
+}
+
+/**
+ * O que fazer ao abrir a app. Se as cotações não são de hoje, atualiza-as
+ * primeiro e regrava a fotografia do dia, para não ficar gravado um valor
+ * com preços de dias anteriores. Usa a cotação mais recente (e não a mais
+ * antiga): um ativo que falhe sempre não faz repetir a atualização.
+ */
+export function planOpenAppSnapshot(input: {
+  today: string;
+  hasTodaySnapshot: boolean;
+  /** Data (YYYY-MM-DD, Lisboa) da cotação mais recente; null sem cotações. */
+  latestPriceDate: string | null;
+  /** Há posições abertas com cotação (tudo exceto P2P). */
+  hasPricedAssets: boolean;
+}): OpenAppSnapshotPlan {
+  const refresh =
+    input.hasPricedAssets &&
+    (input.latestPriceDate === null || input.latestPriceDate < input.today);
+  return { refresh, snapshot: refresh || !input.hasTodaySnapshot };
+}
+
+export type PriceFreshness = "today" | "old" | "stale" | "none";
+
+/**
+ * Frescura das cotações mostrada no Dashboard: de hoje, de dias anteriores
+ * ou desatualizadas (a partir de `staleDays` dias).
+ */
+export function priceFreshness(
+  latestPriceDate: string | null,
+  today: string,
+  staleDays: number,
+): { level: PriceFreshness; days: number } {
+  if (!latestPriceDate) return { level: "none", days: 0 };
+  const days = Math.max(
+    0,
+    Math.round(
+      (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${latestPriceDate}T00:00:00Z`)) / 86_400_000,
+    ),
+  );
+  if (days === 0) return { level: "today", days };
+  return { level: days >= staleDays ? "stale" : "old", days };
+}

@@ -4,7 +4,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware-ext
 import { assetCurrentValue, isOpenPosition, type Asset } from "@/lib/portfolio-types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/external-types";
-import { todayLisbon } from "@/lib/dates";
+import { isoDateLisbon, todayLisbon } from "@/lib/dates";
+import { planOpenAppSnapshot } from "@/lib/daily-snapshot";
 
 export type SB = { from: SupabaseClient<Database>["from"] };
 
@@ -98,24 +99,56 @@ export const listPortfolioSnapshots = createServerFn({ method: "GET" })
   });
 
 /**
- * Garante uma fotografia por dia sem depender do botão "Atualizar preços":
- * chamado ao abrir a app; se já existir a fotografia de hoje não faz nada.
- * Usa os últimos preços guardados (o alerta de preços desatualizados avisa
- * quando estão velhos).
+ * Garante uma fotografia por dia sem depender do botão "Atualizar cotações":
+ * chamado ao abrir a app. Se as cotações não são de hoje, atualiza-as antes
+ * e regrava a fotografia do dia (que podia ter ficado com preços antigos).
+ * Com cotações de hoje e fotografia já gravada, não faz nada.
  */
 export const ensureDailySnapshot = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const today = todayLisbon();
-    const { data } = await context.supabase
-      .from("portfolio_snapshots")
-      .select("id")
-      .eq("snapshot_date", today)
-      .eq("scope", "total")
-      .limit(1);
-    if (data && data.length > 0) return { created: false, date: today };
-    await takeSnapshot(context.supabase as unknown as SB, context.userId);
-    return { created: true, date: today };
+    const [{ data: snap }, { data: priced }] = await Promise.all([
+      context.supabase
+        .from("portfolio_snapshots")
+        .select("id")
+        .eq("snapshot_date", today)
+        .eq("scope", "total")
+        .limit(1),
+      context.supabase
+        .from("assets")
+        .select("price_updated_at")
+        .neq("status", "closed")
+        .neq("class", "p2p"),
+    ]);
+    const latest = (priced ?? []).reduce<string | null>(
+      (acc, a) =>
+        a.price_updated_at && (!acc || a.price_updated_at > acc) ? a.price_updated_at : acc,
+      null,
+    );
+    const plan = planOpenAppSnapshot({
+      today,
+      hasTodaySnapshot: !!snap && snap.length > 0,
+      latestPriceDate: latest ? isoDateLisbon(new Date(latest)) : null,
+      hasPricedAssets: (priced ?? []).length > 0,
+    });
+
+    let pricesUpdated = 0;
+    if (plan.refresh) {
+      try {
+        const { refreshPrices } = await import("@/lib/prices.server");
+        const r = await refreshPrices(
+          context.supabase as unknown as import("@/lib/prices.server").PricesDb,
+          context.userId,
+          { class: null, assetId: null },
+        );
+        pricesUpdated = r.updated;
+      } catch {
+        // Sem cotações novas, a fotografia usa as últimas guardadas.
+      }
+    }
+    if (plan.snapshot) await takeSnapshot(context.supabase as unknown as SB, context.userId);
+    return { created: plan.snapshot, pricesUpdated, date: today };
   });
 
 const historySchema = z.object({
