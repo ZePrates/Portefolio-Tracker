@@ -554,7 +554,7 @@ export function ScramblePanel() {
             </section>
           )}
 
-          <div className="flex gap-3 rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
+          <div className="flex gap-3 rounded-xl border border-warning/20 bg-warning/[0.08] p-4 text-sm text-muted-foreground">
             <ShieldAlert aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
             <p>
               A Scramble não é supervisionada por nenhum regulador financeiro e não tem fundo de
