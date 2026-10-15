@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
+  convertXtbToEur,
+  hasStockTransfers,
   matchXtbSymbol,
   parseXtbCashOperations,
+  parseXtbRows,
+  xtbRowsFromWorkbook,
   parseXtbDate,
   planXtbImport,
   splitCsvLine,
   xtbToYahoo,
 } from "./xtb";
 import { replayLedger } from "./fifo";
+import { readXlsx } from "./xlsx";
+import { buildXlsx } from "./xlsx-test-utils";
 
 const CSV = [
   "ID;Type;Time;Symbol;Comment;Amount",
@@ -224,5 +230,168 @@ describe("planXtbImport", () => {
     });
     expect(plan.dividends[0]).toMatchObject({ action: "confirm", confirmDividendId: "y1" });
     expect(plan.unmatchedSymbols).toEqual(["VWCE.DE"]);
+  });
+});
+
+describe("extrato XTB em Excel (formato novo, várias contas)", () => {
+  const cell = (ref: string, v: string | number) =>
+    typeof v === "number"
+      ? `<c r="${ref}"><v>${v}</v></c>`
+      : `<c r="${ref}" t="inlineStr"><is><t>${v}</t></is></c>`;
+  const row = (n: number, values: Array<string | number | null>) =>
+    `<row r="${n}">${values
+      .map((v, i) => (v == null ? "" : cell(`${String.fromCharCode(65 + i)}${n}`, v)))
+      .join("")}</row>`;
+  const workbook = buildXlsx({
+    "Cash Operations": [
+      row(1, ["Account number", "52821965"]),
+      row(5, ["Type", "Instrument", "Ticker", "Category", "Time", "Amount", "ID", "Comment"]),
+      // 17/12/2025 20:35 UTC: duas execuções da mesma ordem de 4 ações.
+      row(6, [
+        "Stock purchase",
+        "Novo",
+        "NVO.US",
+        "STOCK",
+        46008.85766,
+        -144,
+        "1056064387",
+        "OPEN BUY 3/4 @ 48.00",
+      ]),
+      row(7, [
+        "Stock purchase",
+        "Novo",
+        "NVO.US",
+        "STOCK",
+        46008.85766,
+        -48,
+        "1056064386",
+        "OPEN BUY 1/4 @ 48.00",
+      ]),
+      row(8, [
+        "Stock purchase",
+        "Realty",
+        "O.US",
+        "STOCK",
+        46302.71124,
+        -215,
+        "1470561946",
+        "OPEN BUY O.US 4 @ 53.75",
+      ]),
+      row(9, [
+        "Stock sell",
+        "Sila",
+        "SILA.US",
+        "STOCK",
+        46210.35885,
+        212.66,
+        "1346508071",
+        "CLOSE BUY 7 @ 30.3800",
+      ]),
+      row(10, [
+        "Dividend",
+        "Realty",
+        "O.US",
+        "STOCK",
+        46310.43883,
+        2.17,
+        "1480686038",
+        "O.US USD 0.2715/ SHR",
+      ]),
+      row(11, [
+        "Withholding tax",
+        "Realty",
+        "O.US",
+        "STOCK",
+        46310.43883,
+        -0.33,
+        "1480686039",
+        "O.US USD WHT 15%",
+      ]),
+      row(12, [
+        "Withholding tax",
+        "Agree",
+        "ADC.US",
+        "STOCK",
+        46163.64,
+        1.42,
+        "1275124032",
+        "US Dividends Reclassification 2025",
+      ]),
+      row(13, ["Deposit", null, null, null, 46000.5, 100, "1", "Deposit"]),
+    ].join(""),
+    "Open Positions": [
+      row(1, ["Product", "Metric", "Amount", "Currency"]),
+      row(2, ["My Trades", "Open position value", 3411.91, "USD"]),
+    ].join(""),
+  });
+  const account = xtbRowsFromWorkbook(readXlsx(workbook), "USD_52821965_2006-01-01.xlsx");
+  const parsed = parseXtbRows(account.rows);
+
+  it("lê a conta, a moeda e as datas (hora UTC → dia de Lisboa)", () => {
+    expect(account).toMatchObject({ account: "52821965", currency: "USD", errors: [] });
+    expect(account.rows[0]).toMatchObject({ date: "2025-12-17", symbol: "NVO.US", amount: -144 });
+  });
+
+  it("junta execuções parciais, lê o ticker no comentário e as vendas", () => {
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.trades).toEqual([
+      expect.objectContaining({ sourceId: "1056064386", kind: "buy", quantity: 4, amountEur: 192 }),
+      expect.objectContaining({
+        sourceId: "1470561946",
+        symbol: "O.US",
+        quantity: 4,
+        priceNative: 53.75,
+      }),
+      expect.objectContaining({
+        sourceId: "1346508071",
+        kind: "sell",
+        quantity: 7,
+        amountEur: 212.66,
+      }),
+    ]);
+  });
+
+  it("um reembolso de retenção não conta como imposto", () => {
+    expect(parsed.dividends).toEqual([
+      expect.objectContaining({ symbol: "O.US", grossEur: 2.17, taxEur: 0.33 }),
+    ]);
+    expect(parsed.ignored).toEqual(
+      expect.arrayContaining([
+        { type: "Withholding tax (reembolso)", count: 1 },
+        { type: "Deposit", count: 1 },
+      ]),
+    );
+    expect(hasStockTransfers(parsed)).toBe(false);
+  });
+
+  it("converte uma conta em USD para EUR ao câmbio de cada dia", () => {
+    const eur = convertXtbToEur(parsed, (d) => (d === "2025-12-17" ? 0.85 : 0.9));
+    expect(eur.trades[0]).toMatchObject({
+      amountEur: 192 * 0.85,
+      priceEur: 48 * 0.85,
+      fxRate: 0.85,
+    });
+    expect(eur.dividends[0]!.taxEur).toBeCloseTo(0.33 * 0.9);
+    const missing = convertXtbToEur(parsed, () => null);
+    expect(missing.trades).toEqual([]);
+    expect(missing.errors[0]!.message).toMatch(/Sem câmbio/);
+  });
+
+  it("deteta transferências de títulos entre contas", () => {
+    expect(
+      hasStockTransfers(
+        parseXtbRows([
+          {
+            line: 2,
+            id: "9",
+            type: "Stock transfer fee",
+            date: "2025-05-06",
+            symbol: "O.US",
+            comment: "STC",
+            amount: -25,
+          },
+        ]),
+      ),
+    ).toBe(true);
   });
 });

@@ -13,7 +13,8 @@
  */
 
 import { parseNumberPt } from "@/lib/format";
-import { isValidISODate } from "@/lib/dates";
+import { isValidISODate, isoDateLisbon } from "@/lib/dates";
+import { excelSerialToDate, type XlsxSheets } from "@/lib/xlsx";
 
 export interface XtbTrade {
   sourceId: string;
@@ -94,93 +95,208 @@ export function parseXtbDate(value: string): string | null {
   return null;
 }
 
-const TRADE_RE = /(OPEN|CLOSE)\s+BUY\s+([\d.,]+)(?:\s*\/\s*[\d.,]+)?\s*@\s*([\d.,]+)/i;
+/** "OPEN BUY 5 @ 10", "OPEN BUY 3/4 @ 48.00" (execução parcial) ou "OPEN BUY O.US 4 @ 53.75". */
+const TRADE_RE =
+  /(OPEN|CLOSE)\s+BUY\s+(?:[A-Z][A-Z0-9]*\.[A-Z]+\s+)?([\d.,]+)(?:\s*\/\s*([\d.,]+))?\s*@\s*([\d.,]+)/i;
 const DIV_RE = /\b([A-Z]{3})\s+([\d.,]+)\s*\/\s*SHR/i;
 
 const kindOf = (type: string): "buy" | "sell" | "dividend" | "withholding" | null => {
   const t = type.trim().toLowerCase();
   if (/purchase/.test(t)) return "buy";
-  if (/sale/.test(t)) return "sell";
+  if (/sale|sell/.test(t)) return "sell";
   if (/^divid/.test(t)) return "dividend"; // "DIVIDENT" (sic) no export XTB
   if (/withholding/.test(t)) return "withholding";
   return null;
 };
 
-export function parseXtbCashOperations(csv: string): XtbParseResult {
+/** Uma linha das operações de caixa, já sem o formato do ficheiro (CSV ou Excel). */
+export interface XtbRawRow {
+  /** Linha no ficheiro (para mensagens de erro). */
+  line: number;
+  id: string;
+  type: string;
+  /** Data da operação (YYYY-MM-DD) ou null se for inválida. */
+  date: string | null;
+  symbol: string;
+  comment: string;
+  amount: number;
+}
+
+export interface XtbRowsResult {
+  rows: XtbRawRow[];
+  errors: Array<{ line: number; message: string }>;
+}
+
+/** Lê o CSV "Cash Operations" (formato antigo do export da XTB) para linhas. */
+export function xtbRowsFromCsv(csv: string): XtbRowsResult {
   // Remove o BOM (U+FEFF) que o Excel acrescenta ao exportar CSV.
   const text = csv.charCodeAt(0) === 0xfeff ? csv.slice(1) : csv;
   const lines = text.split(/\r?\n/);
-  const result: XtbParseResult = { trades: [], dividends: [], ignored: [], errors: [] };
+  const out: XtbRowsResult = { rows: [], errors: [] };
 
   const headerIdx = lines.findIndex(
     (l) => /\bid\b/i.test(l) && /\btype\b/i.test(l) && /amount/i.test(l),
   );
   if (headerIdx < 0) {
-    result.errors.push({
+    out.errors.push({
       line: 0,
       message: "Cabeçalho não encontrado (esperado: ID, Type, Time, Symbol, Comment, Amount).",
     });
-    return result;
+    return out;
   }
   const delimiter = detectDelimiter(lines[headerIdx]!);
   const header = splitCsvLine(lines[headerIdx]!, delimiter).map((h) => h.toLowerCase());
-  const col = (name: string) => header.findIndex((h) => h === name || h.startsWith(name));
+  const col = (...names: string[]) =>
+    header.findIndex((h) => names.some((n) => h === n || h.startsWith(n)));
   const idx = {
     id: col("id"),
     type: col("type"),
     time: col("time"),
-    symbol: col("symbol"),
+    symbol: col("symbol", "ticker"),
     comment: col("comment"),
     amount: col("amount"),
   };
   if (Object.values(idx).some((i) => i < 0)) {
-    result.errors.push({
-      line: headerIdx + 1,
-      message: "Faltam colunas obrigatórias no cabeçalho.",
-    });
-    return result;
+    out.errors.push({ line: headerIdx + 1, message: "Faltam colunas obrigatórias no cabeçalho." });
+    return out;
   }
-
-  const ignored = new Map<string, number>();
-  const withholding = new Map<string, number>();
-  const rawDividends: Array<Omit<XtbDividend, "taxEur" | "netEur">> = [];
 
   for (let i = headerIdx + 1; i < lines.length; i++) {
     const line = lines[i]!;
     if (!line.trim()) continue;
     const cells = splitCsvLine(line, delimiter);
     const get = (k: keyof typeof idx) => cells[idx[k]] ?? "";
-    const type = get("type");
+    out.rows.push({
+      line: i + 1,
+      id: get("id"),
+      type: get("type"),
+      date: parseXtbDate(get("time")),
+      symbol: get("symbol").toUpperCase(),
+      comment: get("comment"),
+      amount: parseNumberPt(get("amount")),
+    });
+  }
+  return out;
+}
+
+/** Conta XTB lida de um extrato em Excel (um ficheiro por conta). */
+export interface XtbWorkbookAccount extends XtbRowsResult {
+  account: string | null;
+  /** Moeda da conta: os montantes das operações vêm nesta moeda. */
+  currency: string;
+}
+
+/**
+ * Lê o extrato da XTB em Excel (folhas "Cash Operations" e "Open Positions").
+ * As horas vêm como número de série do Excel em UTC e passam a data de Lisboa.
+ * A moeda da conta vem do resumo das posições abertas ou do nome do ficheiro
+ * ("USD_51628579_….xlsx"); sem nenhuma das duas, assume EUR.
+ */
+export function xtbRowsFromWorkbook(sheets: XlsxSheets, fileName = ""): XtbWorkbookAccount {
+  const out: XtbWorkbookAccount = { rows: [], errors: [], account: null, currency: "EUR" };
+  const cash = Object.entries(sheets).find(([name]) => /cash\s*operations/i.test(name))?.[1];
+  if (!cash) {
+    out.errors.push({ line: 0, message: 'Folha "Cash Operations" não encontrada no Excel.' });
+    return out;
+  }
+  const text = (v: string | null | undefined) => (v ?? "").trim();
+  out.account = text(cash.find((r) => /account number/i.test(text(r[0])))?.[1]) || null;
+
+  const summary = Object.entries(sheets).find(([name]) => /open\s*positions/i.test(name))?.[1];
+  const fromSummary = summary
+    ?.map((r) => text(r[3]).toUpperCase())
+    .find((c) => /^[A-Z]{3}$/.test(c) && c !== "CUR");
+  const fromName = /(?:^|[\\/_-])([A-Z]{3})_\d+/.exec(fileName)?.[1];
+  out.currency = fromSummary ?? fromName ?? "EUR";
+
+  const headerIdx = cash.findIndex(
+    (r) => r.some((c) => /^type$/i.test(text(c))) && r.some((c) => /^amount$/i.test(text(c))),
+  );
+  if (headerIdx < 0) {
+    out.errors.push({ line: 0, message: "Cabeçalho das operações de caixa não encontrado." });
+    return out;
+  }
+  const header = cash[headerIdx]!.map((c) => text(c).toLowerCase());
+  const col = (...names: string[]) => header.findIndex((h) => names.includes(h));
+  const idx = {
+    id: col("id"),
+    type: col("type"),
+    time: col("time"),
+    symbol: col("ticker", "symbol"),
+    comment: col("comment"),
+    amount: col("amount"),
+  };
+  if (Object.values(idx).some((i) => i < 0)) {
+    out.errors.push({ line: headerIdx + 1, message: "Faltam colunas obrigatórias no cabeçalho." });
+    return out;
+  }
+  for (let i = headerIdx + 1; i < cash.length; i++) {
+    const r = cash[i]!;
+    const get = (k: keyof typeof idx) => text(r[idx[k]]);
+    if (!get("type") && !get("id")) continue;
+    const serial = Number(get("time"));
+    const date =
+      get("time") && Number.isFinite(serial)
+        ? isoDateLisbon(excelSerialToDate(serial))
+        : parseXtbDate(get("time"));
+    out.rows.push({
+      line: i + 1,
+      id: get("id"),
+      type: get("type"),
+      date,
+      symbol: get("symbol").toUpperCase(),
+      comment: get("comment"),
+      amount: Number(get("amount")),
+    });
+  }
+  return out;
+}
+
+/**
+ * Converte as linhas em movimentos e dividendos. Os montantes ficam na moeda
+ * da conta (os campos `…Eur` só são euros numa conta em EUR — numa conta em
+ * USD, `convertXtbToEur` converte-os depois).
+ *
+ * Execuções parciais da mesma ordem ("3/4" e "1/4", mesmo título, dia e
+ * preço) juntam-se num único movimento com o ID mais baixo.
+ */
+export function parseXtbRows(rows: XtbRawRow[]): XtbParseResult {
+  const result: XtbParseResult = { trades: [], dividends: [], ignored: [], errors: [] };
+  const ignored = new Map<string, number>();
+  const withholding = new Map<string, number>();
+  const rawDividends: Array<Omit<XtbDividend, "taxEur" | "netEur">> = [];
+  const partial = new Map<string, XtbTrade & { total: number }>();
+
+  for (const row of rows) {
+    const { type, id: sourceId, date, symbol, amount } = row;
     // Linha de totais no fim do export.
-    if (!type || /^total/i.test(get("id")) || /^total/i.test(type)) continue;
+    if (!type || /^total/i.test(sourceId) || /^total/i.test(type)) continue;
     const kind = kindOf(type);
-    if (!kind) {
-      ignored.set(type, (ignored.get(type) ?? 0) + 1);
+    // Retenção positiva = reembolso (ex.: "US Dividends Reclassification"), não imposto pago.
+    const label = kind === "withholding" && amount > 0 ? `${type} (reembolso)` : type;
+    if (!kind || label !== type) {
+      ignored.set(label, (ignored.get(label) ?? 0) + 1);
       continue;
     }
-    const lineNo = i + 1;
-    const date = parseXtbDate(get("time"));
-    const amount = parseNumberPt(get("amount"));
-    const symbol = get("symbol").toUpperCase();
-    const sourceId = get("id");
     if (!date || !Number.isFinite(amount) || !symbol || !sourceId) {
-      result.errors.push({ line: lineNo, message: `Linha inválida (${type}).` });
+      result.errors.push({ line: row.line, message: `Linha inválida (${type}).` });
       continue;
     }
 
     if (kind === "buy" || kind === "sell") {
-      const m = TRADE_RE.exec(get("comment"));
+      const m = TRADE_RE.exec(row.comment);
       const quantity = m ? parseNumberPt(m[2]!) : Number.NaN;
-      const priceNative = m ? parseNumberPt(m[3]!) : Number.NaN;
+      const orderTotal = m?.[3] ? parseNumberPt(m[3]) : null;
+      const priceNative = m ? parseNumberPt(m[4]!) : Number.NaN;
       if (!(quantity > 0) || !(priceNative > 0)) {
         result.errors.push({
-          line: lineNo,
-          message: `Comentário sem quantidade/preço: "${get("comment")}".`,
+          line: row.line,
+          message: `Comentário sem quantidade/preço: "${row.comment}".`,
         });
         continue;
       }
       const amountEur = Math.abs(amount);
-      result.trades.push({
+      const trade: XtbTrade = {
         sourceId,
         kind,
         date,
@@ -190,12 +306,30 @@ export function parseXtbCashOperations(csv: string): XtbParseResult {
         amountEur,
         priceEur: amountEur / quantity,
         fxRate: amountEur / (quantity * priceNative),
-      });
+      };
+      if (orderTotal && orderTotal > quantity) {
+        const key = `${kind}|${symbol}|${date}|${priceNative}|${orderTotal}`;
+        const prev = partial.get(key);
+        if (prev && prev.quantity + quantity <= orderTotal + 1e-9) {
+          prev.quantity += quantity;
+          prev.amountEur += amountEur;
+          prev.priceEur = prev.amountEur / prev.quantity;
+          prev.fxRate = prev.amountEur / (prev.quantity * priceNative);
+          if (Number(sourceId) < Number(prev.sourceId)) prev.sourceId = sourceId;
+          if (prev.quantity >= orderTotal - 1e-9) partial.delete(key);
+          continue;
+        }
+        const entry = { ...trade, total: orderTotal };
+        partial.set(key, entry);
+        result.trades.push(entry);
+        continue;
+      }
+      result.trades.push(trade);
     } else if (kind === "withholding") {
       const key = `${symbol}|${date}`;
       withholding.set(key, (withholding.get(key) ?? 0) + Math.abs(amount));
     } else {
-      const m = DIV_RE.exec(get("comment"));
+      const m = DIV_RE.exec(row.comment);
       rawDividends.push({
         sourceId,
         date,
@@ -206,6 +340,11 @@ export function parseXtbCashOperations(csv: string): XtbParseResult {
       });
     }
   }
+  // O total da ordem só serve para juntar as execuções.
+  result.trades = result.trades.map((t) => {
+    const { total: _total, ...trade } = t as XtbTrade & { total?: number };
+    return trade;
+  });
 
   // Junta cada retenção ao dividendo do mesmo título e data.
   const usedKeys = new Set<string>();
@@ -226,6 +365,60 @@ export function parseXtbCashOperations(csv: string): XtbParseResult {
 
   result.ignored = [...ignored.entries()].map(([type, count]) => ({ type, count }));
   return result;
+}
+
+export function parseXtbCashOperations(csv: string): XtbParseResult {
+  const { rows, errors } = xtbRowsFromCsv(csv);
+  const result = parseXtbRows(rows);
+  result.errors.unshift(...errors);
+  return result;
+}
+
+/**
+ * Converte para EUR um extrato de uma conta noutra moeda, ao câmbio de cada
+ * dia (`rateOn(data)` = euros por 1 unidade da moeda da conta). Operações sem
+ * câmbio conhecido saem para os erros, nunca com um valor inventado.
+ */
+export function convertXtbToEur(
+  parsed: XtbParseResult,
+  rateOn: (date: string) => number | null,
+): XtbParseResult {
+  const errors = [...parsed.errors];
+  const trades: XtbTrade[] = [];
+  for (const t of parsed.trades) {
+    const rate = rateOn(t.date);
+    if (!rate || !(rate > 0)) {
+      errors.push({ line: 0, message: `Sem câmbio para ${t.symbol} em ${t.date}.` });
+      continue;
+    }
+    const amountEur = t.amountEur * rate;
+    trades.push({
+      ...t,
+      amountEur,
+      priceEur: amountEur / t.quantity,
+      fxRate: amountEur / (t.quantity * t.priceNative),
+    });
+  }
+  const dividends: XtbDividend[] = [];
+  for (const d of parsed.dividends) {
+    const rate = rateOn(d.date);
+    if (!rate || !(rate > 0)) {
+      errors.push({ line: 0, message: `Sem câmbio para o dividendo de ${d.symbol} em ${d.date}.` });
+      continue;
+    }
+    dividends.push({
+      ...d,
+      grossEur: d.grossEur * rate,
+      taxEur: d.taxEur * rate,
+      netEur: d.netEur * rate,
+    });
+  }
+  return { ...parsed, trades, dividends, errors };
+}
+
+/** Tipos de operação que indicam transferências de títulos entre contas XTB. */
+export function hasStockTransfers(parsed: XtbParseResult): boolean {
+  return parsed.ignored.some((i) => /transfer.*fee|stc/i.test(i.type));
 }
 
 /* ------------------------------------------------------------------ */

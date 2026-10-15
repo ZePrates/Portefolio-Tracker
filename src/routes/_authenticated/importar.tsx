@@ -19,7 +19,16 @@ import { HistoryImportCard } from "@/components/history-import-card";
 import { HistoryRebuildCard } from "@/components/history-rebuild-card";
 import { usePrivateMode } from "@/components/private-mode";
 import { commitXtbImport, previewXtbImport } from "@/lib/xtb.functions";
-import type { DividendAction, PlannedDividend, PlannedTrade, TradeAction } from "@/lib/xtb";
+import {
+  xtbRowsFromCsv,
+  xtbRowsFromWorkbook,
+  type DividendAction,
+  type PlannedDividend,
+  type PlannedTrade,
+  type TradeAction,
+  type XtbRawRow,
+} from "@/lib/xtb";
+import { readXlsx } from "@/lib/xlsx";
 import { formatDatePt, formatNumber, formatQuantity } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { privateEUR } from "@/components/private-value";
@@ -39,6 +48,37 @@ export const Route = createFileRoute("/_authenticated/importar")({
 });
 
 const MAX_BYTES = 5_000_000;
+
+/** Um extrato lido no browser: as operações de caixa de uma conta. */
+interface StatementFile {
+  name: string;
+  account: string | null;
+  currency: string;
+  rows: XtbRawRow[];
+}
+
+/** Lê um extrato XTB em Excel (.xlsx) ou CSV ("Cash Operations"). */
+async function readStatement(file: File): Promise<StatementFile> {
+  if (file.size > MAX_BYTES) throw new Error(`${file.name}: demasiado grande (máximo 5 MB).`);
+  if (/\.xlsx$/i.test(file.name)) {
+    const sheets = readXlsx(new Uint8Array(await file.arrayBuffer()));
+    const acc = xtbRowsFromWorkbook(sheets, file.name);
+    if (acc.rows.length === 0 && acc.errors.length > 0) {
+      throw new Error(`${file.name}: ${acc.errors[0]!.message}`);
+    }
+    return { name: file.name, account: acc.account, currency: acc.currency, rows: acc.rows };
+  }
+  if (!/\.(csv|txt)$/i.test(file.name) && !file.type.includes("csv")) {
+    throw new Error(`${file.name}: escolhe o Excel (.xlsx) ou o CSV exportado da XTB.`);
+  }
+  const parsed = xtbRowsFromCsv(await file.text());
+  if (parsed.rows.length === 0 && parsed.errors.length > 0) {
+    throw new Error(`${file.name}: ${parsed.errors[0]!.message}`);
+  }
+  // Sem resumo da conta no CSV: a moeda vem do nome ("USD_51628579_….csv") ou é EUR.
+  const currency = /(?:^|[_-])([A-Z]{3})_\d+/.exec(file.name)?.[1] ?? "EUR";
+  return { name: file.name, account: null, currency, rows: parsed.rows };
+}
 
 const TRADE_LABEL: Record<
   TradeAction,
@@ -70,18 +110,17 @@ function ImportarPage() {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const [fileName, setFileName] = useState<string | null>(null);
-  const [csv, setCsv] = useState<string | null>(null);
+  const [files, setFiles] = useState<StatementFile[] | null>(null);
   const [dragging, setDragging] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
 
   const preview = useMutation({
-    mutationFn: (text: string) => previewFn({ data: { csv: text } }),
+    mutationFn: (list: StatementFile[]) => previewFn({ data: { files: list } }),
     onError: (e: Error) => toast.error(e.message),
   });
 
   const commit = useMutation({
-    mutationFn: (text: string) => commitFn({ data: { csv: text } }),
+    mutationFn: (list: StatementFile[]) => commitFn({ data: { files: list } }),
     onSuccess: async (res) => {
       await invalidatePortfolio(queryClient);
       toast.success(
@@ -90,26 +129,22 @@ function ImportarPage() {
         }.`,
       );
       // Volta a pré-visualizar para mostrar que tudo ficou "Já importado".
-      if (csv) preview.mutate(csv);
+      if (files) preview.mutate(files);
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const readFile = async (file: File) => {
+  const readFiles = async (list: File[]) => {
     setFileError(null);
-    if (file.size > MAX_BYTES) {
-      setFileError("O ficheiro é demasiado grande (máximo 5 MB).");
-      return;
+    if (list.length === 0) return;
+    try {
+      const read = await Promise.all(list.map(readStatement));
+      setFiles(read);
+      commit.reset();
+      preview.mutate(read);
+    } catch (e) {
+      setFileError(e instanceof Error ? e.message : "Não foi possível ler o ficheiro.");
     }
-    if (!/\.(csv|txt)$/i.test(file.name) && !file.type.includes("csv")) {
-      setFileError("Escolhe o ficheiro CSV exportado da XTB (Cash Operations).");
-      return;
-    }
-    const text = await file.text();
-    setFileName(file.name);
-    setCsv(text);
-    commit.reset();
-    preview.mutate(text);
   };
 
   const plan = preview.data?.plan;
@@ -121,7 +156,7 @@ function ImportarPage() {
     : 0;
 
   const runCommit = async () => {
-    if (!csv) return;
+    if (!files) return;
     const ok = await confirm({
       title: "Importar este extrato?",
       description: (
@@ -136,7 +171,7 @@ function ImportarPage() {
       ),
       confirmLabel: "Importar",
     });
-    if (ok) commit.mutate(csv);
+    if (ok) commit.mutate(files);
   };
 
   const tradeColumns: Column<PlannedTrade>[] = [
@@ -283,11 +318,11 @@ function ImportarPage() {
         subtitle="Concilia as tuas compras e vendas com o valor real em euros debitado pelo broker e confirma os dividendos recebidos."
       />
 
-      <Card title="1 · Escolhe o ficheiro">
+      <Card title="1 · Escolhe os extratos">
         <p className="mb-3 text-sm text-muted-foreground">
-          Na XTB: <em>Conta → Histórico → Cash Operations → Exportar CSV</em>. O ficheiro é lido no
-          teu browser e só é enviado quando carregas em pré-visualizar ou importar; nada é gravado
-          antes de confirmares.
+          Na XTB, exporta o histórico de cada conta em Excel (ou o CSV das <em>Cash Operations</em>)
+          e escolhe os ficheiros todos de uma vez. As contas em dólares são convertidas ao câmbio de
+          cada dia. Os ficheiros são lidos no teu browser e nada é gravado antes de confirmares.
         </p>
         <label
           htmlFor={inputId}
@@ -299,8 +334,7 @@ function ImportarPage() {
           onDrop={(e) => {
             e.preventDefault();
             setDragging(false);
-            const f = e.dataTransfer.files[0];
-            if (f) void readFile(f);
+            void readFiles([...e.dataTransfer.files]);
           }}
           className={cn(
             "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring",
@@ -309,22 +343,34 @@ function ImportarPage() {
         >
           <FileUp aria-hidden className="h-6 w-6 text-muted-foreground" />
           <span className="text-sm font-medium">
-            {fileName ?? "Arrasta o CSV para aqui ou clica para escolher"}
+            {files
+              ? files.map((f) => f.name).join(", ")
+              : "Arrasta os extratos para aqui ou clica para escolher"}
           </span>
-          <span className="text-xs text-muted-foreground">Máximo 5 MB</span>
+          <span className="text-xs text-muted-foreground">Excel ou CSV · máximo 5 MB cada</span>
           <input
             ref={inputRef}
             id={inputId}
             type="file"
-            accept=".csv,.txt,text/csv"
+            multiple
+            accept=".xlsx,.csv,.txt,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             className="sr-only"
             onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void readFile(f);
+              void readFiles([...(e.target.files ?? [])]);
               e.target.value = "";
             }}
           />
         </label>
+        {files && files.length > 0 && (
+          <ul className="mt-3 space-y-0.5 text-sm text-muted-foreground">
+            {files.map((f) => (
+              <li key={f.name}>
+                {f.account ? `Conta ${f.account}` : f.name} ({f.currency}) · {f.rows.length}{" "}
+                operações
+              </li>
+            ))}
+          </ul>
+        )}
         {fileError && (
           <p role="alert" className="mt-2 text-sm text-destructive">
             {fileError}
@@ -361,7 +407,8 @@ function ImportarPage() {
 
             {(plan.summary.unmatched > 0 ||
               plan.summary.blocked > 0 ||
-              plan.unmatchedSymbols.length > 0) && (
+              plan.unmatchedSymbols.length > 0 ||
+              preview.data.transfers) && (
               <div
                 role="alert"
                 className="mt-4 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm"
@@ -378,6 +425,14 @@ function ImportarPage() {
                         {plan.unmatchedSymbols.join(", ")}
                       </strong>
                       . Cria primeiro o ativo e volta a importar.
+                    </li>
+                  )}
+                  {preview.data.transfers && (
+                    <li>
+                      Houve transferências de títulos entre contas XTB. Os títulos transferidos não
+                      aparecem como compra na conta de destino: a compra conta pela data e custo
+                      originais (na conta de onde saíram). Confirma que não ficam registados duas
+                      vezes.
                     </li>
                   )}
                   {plan.summary.blocked > 0 && (
@@ -462,7 +517,7 @@ function ImportarPage() {
           {plan.trades.length === 0 && plan.dividends.length === 0 && (
             <EmptyState
               title="O ficheiro não tem operações importáveis"
-              description="Confirma que exportaste as Cash Operations (compras, vendas e dividendos) da XTB."
+              description="Confirma que exportaste o histórico das contas (compras, vendas e dividendos) da XTB."
             />
           )}
         </>
