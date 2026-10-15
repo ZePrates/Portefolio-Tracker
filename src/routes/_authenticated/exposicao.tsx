@@ -23,6 +23,7 @@ import {
 import { ExposureBars } from "@/components/exposure-bars";
 import { ExposureTable } from "@/components/exposure-table";
 import { EtfCoverageTable } from "@/components/etf-coverage";
+import { EtfOverlapCard } from "@/components/etf-overlap";
 import { Skeleton } from "@/components/ui/skeleton";
 import { privateExposureEUR } from "@/components/private-value";
 
@@ -324,6 +325,9 @@ function ExposicaoPage() {
             />
           </div>
           <ConcentrationRisks assets={assets} report={report} positions={data?.positions} />
+          {data?.positions && (
+            <EtfOverlapCard positions={data.positions} meta={data.meta} hidden={hidden} />
+          )}
           <CompanyTable rows={report.companies} hidden={hidden} />
           {etfs.length > 0 && <EtfCoverageTable rows={etfs} hidden={hidden} />}
           <div className="grid min-w-0 gap-6 xl:grid-cols-2">
