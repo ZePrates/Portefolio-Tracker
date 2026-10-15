@@ -8,7 +8,9 @@ import { dbError } from "@/lib/errors";
 import { replayLedger } from "@/lib/fifo";
 import { recomputeAsset } from "@/lib/portfolio.functions";
 import {
-  parseXtbCashOperations,
+  convertXtbToEur,
+  hasStockTransfers,
+  parseXtbRows,
   planXtbImport,
   xtbEventId,
   type XtbImportPlan,
@@ -17,19 +19,78 @@ import {
 
 type SB = SupabaseClient<Database>;
 
-const csvInput = z.object({
-  /** Conteúdo do CSV "Cash Operations" exportado da XTB. */
-  csv: z
-    .string()
-    .min(1, "Ficheiro vazio.")
-    .max(5_000_000, "Ficheiro demasiado grande (máx. 5 MB)."),
+/** Extratos já lidos no browser (CSV ou Excel): as operações de caixa de cada conta. */
+const filesInput = z.object({
+  files: z
+    .array(
+      z.object({
+        name: z.string().max(200),
+        /** Moeda da conta: os montantes das operações vêm nesta moeda. */
+        currency: z.string().regex(/^[A-Z]{3}$/),
+        rows: z
+          .array(
+            z.object({
+              line: z.number().int(),
+              id: z.string().max(40),
+              type: z.string().max(80),
+              date: z.string().nullable(),
+              symbol: z.string().max(40),
+              comment: z.string().max(300),
+              amount: z.number(),
+            }),
+          )
+          .max(20_000),
+      }),
+    )
+    .min(1, "Escolhe pelo menos um extrato.")
+    .max(10),
 });
+type FilesInput = z.infer<typeof filesInput>;
+
+/**
+ * Junta os extratos de várias contas num só resultado. As contas que não são
+ * em EUR são convertidas ao câmbio de cada dia (o mesmo critério dos
+ * movimentos manuais), porque a XTB não mostra quantos euros custaram.
+ */
+async function parseFiles(files: FilesInput["files"]) {
+  const { getRateOnDate } = await import("@/lib/yahoo.server");
+  const merged: XtbParseResult = { trades: [], dividends: [], ignored: [], errors: [] };
+  const ignored = new Map<string, number>();
+  const foreignIds = new Set<string>();
+  let transfers = false;
+  for (const file of files) {
+    let parsed = parseXtbRows(file.rows);
+    transfers ||= hasStockTransfers(parsed);
+    if (file.currency !== "EUR") {
+      const cache = new Map<string, number | null>();
+      const dates = [...new Set([...parsed.trades, ...parsed.dividends].map((x) => x.date))].sort();
+      const rates = new Map<string, number | null>();
+      for (const d of dates) rates.set(d, await getRateOnDate(file.currency, d, cache));
+      parsed = convertXtbToEur(parsed, (d) => rates.get(d) ?? null);
+      for (const t of parsed.trades) foreignIds.add(t.sourceId);
+    }
+    merged.trades.push(...parsed.trades);
+    merged.dividends.push(...parsed.dividends);
+    for (const i of parsed.ignored) ignored.set(i.type, (ignored.get(i.type) ?? 0) + i.count);
+    merged.errors.push(
+      ...parsed.errors.map((e) => ({ ...e, message: `${file.name}: ${e.message}` })),
+    );
+  }
+  merged.ignored = [...ignored.entries()].map(([type, count]) => ({ type, count }));
+  return { parsed: merged, transfers, foreignIds };
+}
 
 async function buildPlan(
   sb: SB,
-  csv: string,
-): Promise<{ parsed: XtbParseResult; plan: XtbImportPlan; assetNames: Map<string, string> }> {
-  const parsed = parseXtbCashOperations(csv);
+  files: FilesInput["files"],
+): Promise<{
+  parsed: XtbParseResult;
+  plan: XtbImportPlan;
+  assetNames: Map<string, string>;
+  transfers: boolean;
+  foreignIds: Set<string>;
+}> {
+  const { parsed, transfers, foreignIds } = await parseFiles(files);
   const [assetsRes, txRes, divRes] = await Promise.all([
     sb.from("assets").select("id, name, ticker, price_source"),
     sb
@@ -61,16 +122,18 @@ async function buildPlan(
     parsed,
     plan,
     assetNames: new Map((assetsRes.data ?? []).map((a) => [a.id, a.name])),
+    transfers,
+    foreignIds,
   };
 }
 
 /** Pré-visualização do import (não grava nada). */
 export const previewXtbImport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => csvInput.parse(input))
+  .inputValidator((input) => filesInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { parsed, plan } = await buildPlan(context.supabase, data.csv);
-    return { plan, ignored: parsed.ignored, errors: parsed.errors };
+    const { parsed, plan, transfers } = await buildPlan(context.supabase, data.files);
+    return { plan, ignored: parsed.ignored, errors: parsed.errors, transfers };
   });
 
 /**
@@ -81,11 +144,11 @@ export const previewXtbImport = createServerFn({ method: "POST" })
  */
 export const commitXtbImport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => csvInput.parse(input))
+  .inputValidator((input) => filesInput.parse(input))
   .handler(async ({ data, context }) => {
     const sb = context.supabase;
     const userId = context.userId;
-    const { parsed, plan, assetNames } = await buildPlan(sb, data.csv);
+    const { parsed, plan, assetNames, foreignIds } = await buildPlan(sb, data.files);
     if (parsed.errors.length > 0 && parsed.trades.length + parsed.dividends.length === 0) {
       throw new Error(parsed.errors[0]!.message);
     }
@@ -104,7 +167,8 @@ export const commitXtbImport = createServerFn({ method: "POST" })
         fee: 0,
         fee_native: 0,
         fx_rate: t.fxRate,
-        fx_source: "broker",
+        // Conta em EUR: câmbio real do broker; noutra moeda, câmbio do dia.
+        fx_source: foreignIds.has(t.sourceId) ? "historical" : "broker",
         total: t.amountEur,
         traded_at: t.date,
         source: "xtb",
