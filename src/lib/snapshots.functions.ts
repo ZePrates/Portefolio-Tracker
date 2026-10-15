@@ -134,8 +134,9 @@ const historySchema = z.object({
 
 /**
  * Importa histórico mensal (ex.: folha de Excel) como fotografias de um
- * âmbito. Nunca sobrepõe fotografias gravadas pela app nesse dia; reimportar
- * atualiza as importações anteriores.
+ * âmbito. Nunca sobrepõe fotografias gravadas pela app nem as do histórico
+ * reconstruído (calculadas com os fechos reais); reimportar atualiza as
+ * importações anteriores.
  */
 export const importSnapshotHistory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -147,7 +148,7 @@ export const importSnapshotHistory = createServerFn({ method: "POST" })
       .from("portfolio_snapshots")
       .select("snapshot_date")
       .eq("scope", data.scope)
-      .eq("source", "app")
+      .in("source", ["app", "rebuild"])
       .in(
         "snapshot_date",
         rows.map((r) => r.date),

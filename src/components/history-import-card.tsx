@@ -39,7 +39,9 @@ export function HistoryImportCard() {
       await queryClient.invalidateQueries({ queryKey: ["portfolio-snapshots"] });
       toast.success(
         `${r.imported} meses importados` +
-          (r.skipped ? ` · ${r.skipped} ignorados (já há fotografia da app nesse dia)` : "") +
+          (r.skipped
+            ? ` · ${r.skipped} ignorados (já há fotografia da app ou do histórico reconstruído nesse dia)`
+            : "") +
           ".",
       );
       setParsed(null);
@@ -58,7 +60,7 @@ export function HistoryImportCard() {
   return (
     <Card
       title="Histórico mensal dos ETFs"
-      description="Para teres a linha da carteira desde o início nos gráficos de Desempenho. CSV com uma linha por mês: data;investido;valor (ex.: 19/05/2025;4768,87;5199,68). Não substitui fotografias que a app já guardou."
+      description="Para teres a linha da carteira desde o início nos gráficos de Desempenho. CSV com uma linha por mês: data;investido;valor (ex.: 19/05/2025;4768,87;5199,68). Não substitui fotografias que a app já guardou nem o histórico reconstruído (acima), que é mais exato."
     >
       <label
         htmlFor={inputId}
