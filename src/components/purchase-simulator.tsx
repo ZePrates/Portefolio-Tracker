@@ -26,7 +26,8 @@ import {
   TextInput,
 } from "@/components/ui-bits";
 import { usePrivateMode } from "@/components/private-mode";
-import { formatEUR, formatPct, formatPp, parseNumberOr } from "@/lib/format";
+import { formatPct, formatPp, parseNumberOr } from "@/lib/format";
+import { privateEUR } from "@/components/private-value";
 
 /** Simulador de compra (separador de Objetivos). Não grava nada na carteira. */
 export function PurchaseSimulator() {
@@ -77,10 +78,9 @@ export function PurchaseSimulator() {
       ),
     [assets, amount, assetClass, assetId, selected, positions, targets],
   );
-  const money = (v: number) => formatEUR(v, hidden);
-  const pct = (v: number) => formatPct(v, 1, hidden);
-  const company = (s: ConcentrationSnapshot) =>
-    hidden || !s.largestCompanyLabel ? undefined : s.largestCompanyLabel;
+  const money = (v: number) => privateEUR(v, hidden);
+  const pct = (v: number) => formatPct(v, 1);
+  const company = (s: ConcentrationSnapshot) => s.largestCompanyLabel ?? undefined;
 
   return (
     <div className="space-y-6">
@@ -183,11 +183,11 @@ export function PurchaseSimulator() {
                   <span
                     className={x.deltaPct > 0 ? "num text-primary" : "num text-muted-foreground"}
                   >
-                    {formatPp(x.deltaPct, 1, hidden)}
+                    {formatPp(x.deltaPct, 1)}
                   </span>
                   {x.targetPct != null && (
                     <span className="num col-span-3 text-xs text-muted-foreground sm:col-span-1 sm:text-right sm:text-sm">
-                      alvo {formatPct(x.targetPct, 0, hidden)}
+                      alvo {formatPct(x.targetPct, 0)}
                     </span>
                   )}
                 </div>
@@ -203,7 +203,7 @@ export function PurchaseSimulator() {
             >
               <ul className="list-disc space-y-1 pl-5 text-sm">
                 {result.alerts.map((a) => (
-                  <li key={a}>{hidden ? "Valor escondido no modo privado." : a}</li>
+                  <li key={a}>{a}</li>
                 ))}
               </ul>
             </Card>
@@ -216,7 +216,7 @@ export function PurchaseSimulator() {
             >
               <ul className="list-disc space-y-1 pl-5 text-sm">
                 {result.notes.map((n) => (
-                  <li key={n}>{hidden ? "Valor escondido no modo privado." : n}</li>
+                  <li key={n}>{n}</li>
                 ))}
               </ul>
             </Card>

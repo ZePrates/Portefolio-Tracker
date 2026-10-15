@@ -1,25 +1,24 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getExposure, type AssetExposureMeta } from "@/lib/exposure.functions";
-import { exposureEUR, exposurePct } from "@/lib/exposure-display";
+import { exposurePct } from "@/lib/exposure-display";
 import { formatDatePt } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
 import { Badge, ErrorState } from "@/components/ui-bits";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ExposureTable } from "@/components/exposure-table";
+import { privateExposureEUR } from "@/components/private-value";
 
 export function HoldingsStatus({
   status,
   count,
   coverage,
   error,
-  hidden = false,
 }: {
   status: string | null;
   count: number;
   coverage: number;
   error: string | null;
-  hidden?: boolean;
 }) {
   if (status === "error")
     return (
@@ -49,7 +48,7 @@ export function HoldingsStatus({
     return (
       <div className="flex flex-wrap items-center gap-2">
         <Badge tone="warn">Parcial — top 10</Badge>
-        <span className="num text-xs text-muted-foreground">{exposurePct(coverage, hidden)}</span>
+        <span className="num text-xs text-muted-foreground">{exposurePct(coverage)}</span>
       </div>
     );
   return <Badge>Não disponível</Badge>;
@@ -101,7 +100,7 @@ export function EtfCoverageTable({ rows, hidden }: { rows: AssetExposureMeta[]; 
             label: "Valor",
             numeric: true,
             value: (r) => r.value,
-            cell: (r) => exposureEUR(r.value, hidden),
+            cell: (r) => privateExposureEUR(r.value, hidden),
           },
           {
             id: "status",
@@ -114,7 +113,6 @@ export function EtfCoverageTable({ rows, hidden }: { rows: AssetExposureMeta[]; 
                   count={r.holdingsCount}
                   coverage={r.coverage}
                   error={r.holdingsError}
-                  hidden={hidden}
                 />
               </div>
             ),

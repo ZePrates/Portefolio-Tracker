@@ -12,7 +12,7 @@ import {
   goalProjection,
   projectPortfolio,
 } from "@/lib/projections";
-import { formatEUR, formatEURCompact, formatNumber, formatPct, parseNumberOr } from "@/lib/format";
+import { formatEURCompact, formatNumber, formatPct, parseNumberOr } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
 import {
   Button,
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui-bits";
 import { AXIS_LINE, AXIS_TICK, ChartFrame, ChartTooltip, GRID_PROPS } from "@/components/chart-kit";
 import { cn } from "@/lib/utils";
+import { privateEUR } from "@/components/private-value";
 
 /** Diferença, em pontos percentuais, entre o cenário base e os outros dois. */
 const SPREAD = 3;
@@ -179,14 +180,14 @@ export function ProjectionsPanel() {
       </Card>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <MetricCard label="Valor atual (real)" value={formatEUR(currentValue, hidden)} />
+        <MetricCard label="Valor atual (real)" value={privateEUR(currentValue, hidden)} />
         <MetricCard
           label="Aporte mensal (simulação)"
-          value={formatEUR(monthlyContribution, hidden)}
+          value={privateEUR(monthlyContribution, hidden)}
         />
         <MetricCard
           label={`Valor base em ${form.horizon} ${form.horizon === 1 ? "ano" : "anos"}`}
-          value={formatEUR(selectedBase?.projection.final.value ?? 0, hidden)}
+          value={privateEUR(selectedBase?.projection.final.value ?? 0, hidden)}
         />
       </div>
 
@@ -230,7 +231,7 @@ export function ProjectionsPanel() {
                     const n = Number(m);
                     return `${Math.floor(n / 12)} anos${n % 12 ? ` e ${n % 12} meses` : ""}`;
                   }}
-                  valueFormatter={(v) => formatEUR(v, hidden)}
+                  valueFormatter={(v) => privateEUR(v, hidden)}
                 />
               }
             />
@@ -277,13 +278,13 @@ export function ProjectionsPanel() {
               <div>
                 <dt className="text-xs text-muted-foreground">Valor final</dt>
                 <dd className="num mt-1 font-semibold">
-                  {formatEUR(scenario.projection.final.value, hidden)}
+                  {privateEUR(scenario.projection.final.value, hidden)}
                 </dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">Capital aportado</dt>
                 <dd className="num mt-1 font-semibold">
-                  {formatEUR(scenario.projection.final.invested, hidden)}
+                  {privateEUR(scenario.projection.final.invested, hidden)}
                 </dd>
               </div>
               <div className="col-span-2">
@@ -294,7 +295,7 @@ export function ProjectionsPanel() {
                     scenario.projection.final.gains >= 0 ? "text-success" : "text-destructive",
                   )}
                 >
-                  {formatEUR(scenario.projection.final.gains, hidden)}
+                  {privateEUR(scenario.projection.final.gains, hidden)}
                 </dd>
               </div>
             </dl>
@@ -305,7 +306,12 @@ export function ProjectionsPanel() {
       <Card
         title="Objetivo"
         icon={<Target aria-hidden className="h-4 w-4 text-primary" />}
-        description={`Primeiro momento em que a simulação atinge ${formatEUR(target, hidden)}. O cálculo considera até 30 anos.`}
+        description={
+          <>
+            Primeiro momento em que a simulação atinge {privateEUR(target, hidden)}. O cálculo
+            considera até 30 anos.
+          </>
+        }
       >
         <div className="grid gap-3 md:grid-cols-3">
           {simulations.map((scenario) => (

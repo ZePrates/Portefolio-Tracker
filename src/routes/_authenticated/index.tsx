@@ -536,7 +536,6 @@ function DashboardPage() {
           companies={exposure?.report.companies
             .map((s) => ({ label: s.name, pct: s.pct }))
             .slice(0, 5)}
-          hidden={hidden}
         />
       </div>
     </div>

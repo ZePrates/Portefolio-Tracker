@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { invalidatePortfolio } from "@/lib/portfolio-queries";
 import { useServerFn } from "@tanstack/react-start";
 import { useId, useState } from "react";
+import type { ReactNode } from "react";
 import { FileUp, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -25,8 +26,9 @@ import {
   type ScrambleImportPlan,
   type ScrambleRound,
 } from "@/lib/scramble";
-import { formatDatePt, formatEUR, formatPct, formatSignedEUR } from "@/lib/format";
+import { formatDatePt, formatPct } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { privateEUR, privateSignedEUR } from "@/components/private-value";
 
 const MAX_BYTES = 2_000_000;
 
@@ -210,9 +212,20 @@ export function ScramblePanel() {
                 <p className="text-xs text-muted-foreground">
                   {formatDatePt(f.plan.period.from)} – {formatDatePt(f.plan.period.to)} ·{" "}
                   {f.plan.rows} movimentos
-                  {f.plan.kind === "cash"
-                    ? ` · depósitos ${formatEUR(f.plan.summary.deposits, hidden)} · juros ${formatEUR(f.plan.summary.interest, hidden)} · bónus ${formatEUR(f.plan.summary.bonus, hidden)}`
-                    : ` · ${f.plan.summary.rounds.length} rondas · investido ${formatEUR(f.plan.summary.invested, hidden)}`}
+                  {f.plan.kind === "cash" ? (
+                    <>
+                      {" "}
+                      · depósitos {privateEUR(f.plan.summary.deposits, hidden)} · juros{" "}
+                      {privateEUR(f.plan.summary.interest, hidden)} · bónus{" "}
+                      {privateEUR(f.plan.summary.bonus, hidden)}
+                    </>
+                  ) : (
+                    <>
+                      {" "}
+                      · {f.plan.summary.rounds.length} rondas · investido{" "}
+                      {privateEUR(f.plan.summary.invested, hidden)}
+                    </>
+                  )}
                   {f.plan.replaced > 0 && ` · substitui ${f.plan.replaced} já guardados`}
                 </p>
               ) : (
@@ -265,14 +278,14 @@ export function ScramblePanel() {
       header: "Investido",
       align: "right",
       sortValue: (r) => r.invested,
-      cell: (r) => formatEUR(r.invested, hidden),
+      cell: (r) => privateEUR(r.invested, hidden),
     },
     {
       id: "outstanding",
       header: "Em dívida",
       align: "right",
       sortValue: (r) => r.outstanding,
-      cell: (r) => formatEUR(r.outstanding, hidden),
+      cell: (r) => privateEUR(r.outstanding, hidden),
     },
     {
       id: "interest",
@@ -281,13 +294,13 @@ export function ScramblePanel() {
       sortValue: (r) => r.interestExpected,
       cell: (r) =>
         r.status === "matured" ? (
-          formatEUR(r.interestReceived, hidden)
+          privateEUR(r.interestReceived, hidden)
         ) : (
           <span>
             <span className="text-muted-foreground">≈ </span>
-            {formatEUR(r.interestExpected, hidden)}
+            {privateEUR(r.interestExpected, hidden)}
             <span className="block text-xs text-muted-foreground">
-              corridos {formatEUR(r.interestAccrued, hidden)}
+              corridos {privateEUR(r.interestAccrued, hidden)}
             </span>
           </span>
         ),
@@ -311,8 +324,8 @@ export function ScramblePanel() {
           </p>
         </div>
         <div className="shrink-0 text-right">
-          <p className="num font-semibold">{formatEUR(r.outstanding, hidden)}</p>
-          <p className="num text-xs text-muted-foreground">de {formatEUR(r.invested, hidden)}</p>
+          <p className="num font-semibold">{privateEUR(r.outstanding, hidden)}</p>
+          <p className="num text-xs text-muted-foreground">de {privateEUR(r.invested, hidden)}</p>
         </div>
       </div>
       <div className="flex items-center justify-between gap-3">
@@ -344,7 +357,7 @@ export function ScramblePanel() {
       sortValue: (r) => r.amount,
       cell: (r) => (
         <span className={r.amount > 0 ? "text-success" : undefined}>
-          {formatSignedEUR(r.amount, hidden)}
+          {privateSignedEUR(r.amount, hidden)}
         </span>
       ),
     },
@@ -354,7 +367,7 @@ export function ScramblePanel() {
       align: "right",
       defaultHidden: true,
       sortValue: (r) => r.balance ?? 0,
-      cell: (r) => (r.balance == null ? "—" : formatEUR(r.balance, hidden)),
+      cell: (r) => (r.balance == null ? "—" : privateEUR(r.balance, hidden)),
     },
   ];
 
@@ -365,7 +378,7 @@ export function ScramblePanel() {
         <p className="text-xs text-muted-foreground">{formatDatePt(r.date)}</p>
       </div>
       <p className={cn("num shrink-0 font-semibold", r.amount > 0 && "text-success")}>
-        {formatSignedEUR(r.amount, hidden)}
+        {privateSignedEUR(r.amount, hidden)}
       </p>
     </div>
   );
@@ -415,18 +428,27 @@ export function ScramblePanel() {
           <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
             <MetricCard
               label="Saldo total"
-              value={formatEUR(s.totalValue, hidden)}
-              sub={`em dívida ${formatEUR(s.outstanding, hidden)} · caixa ${formatEUR(s.cash, hidden)}`}
+              value={privateEUR(s.totalValue, hidden)}
+              sub={
+                <>
+                  em dívida {privateEUR(s.outstanding, hidden)} · caixa {privateEUR(s.cash, hidden)}
+                </>
+              }
             />
             <MetricCard
               label="Ganho"
-              value={formatSignedEUR(s.gain, hidden)}
-              sub={`juros ${formatEUR(s.interestReceived, hidden)} · bónus ${formatEUR(s.bonusReceived, hidden)}`}
+              value={privateSignedEUR(s.gain, hidden)}
+              sub={
+                <>
+                  juros {privateEUR(s.interestReceived, hidden)} · bónus{" "}
+                  {privateEUR(s.bonusReceived, hidden)}
+                </>
+              }
               tone={s.gain > 0 ? "positive" : s.gain < 0 ? "negative" : "default"}
             />
             <MetricCard
               label="Juros por receber"
-              value={formatEUR(s.interestAccrued, hidden)}
+              value={privateEUR(s.interestAccrued, hidden)}
               sub={`estimativa · ${formatPct(s.monthlyRate * 100, 2)}/mês${
                 s.monthlyRateSource === "history" ? " (efetiva)" : " (taxa base)"
               }`}
@@ -465,11 +487,11 @@ export function ScramblePanel() {
                       </span>
                       <span className="shrink-0 text-right">
                         <span className="num block text-[13.5px] font-medium">
-                          {formatEUR(u.principal + u.interest, hidden)}
+                          {privateEUR(u.principal + u.interest, hidden)}
                         </span>
                         {u.interest > 0 && (
                           <span className="num block text-xs text-success">
-                            +{formatEUR(u.interest, hidden)} juros
+                            +{privateEUR(u.interest, hidden)} juros
                           </span>
                         )}
                       </span>
@@ -484,8 +506,8 @@ export function ScramblePanel() {
               description="Para o IRS: os juros vão para o Anexo J (quadro 8A, código E21)."
             >
               <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                <Stat label="Depositado" value={formatEUR(s.netDeposits, hidden)} />
-                <Stat label="Investido em rondas" value={formatEUR(s.investedTotal, hidden)} />
+                <Stat label="Depositado" value={privateEUR(s.netDeposits, hidden)} />
+                <Stat label="Investido em rondas" value={privateEUR(s.investedTotal, hidden)} />
                 <Stat label="Rondas ativas" value={String(s.activeRounds)} />
                 <Stat
                   label="Último movimento"
@@ -507,10 +529,10 @@ export function ScramblePanel() {
                     {s.interestByYear.map((y) => (
                       <tr key={y.year} className="border-t border-border">
                         <td className="py-1.5">{y.year}</td>
-                        <td className="num py-1.5 text-right">{formatEUR(y.interest, hidden)}</td>
-                        <td className="num py-1.5 text-right">{formatEUR(y.bonus, hidden)}</td>
+                        <td className="num py-1.5 text-right">{privateEUR(y.interest, hidden)}</td>
+                        <td className="num py-1.5 text-right">{privateEUR(y.bonus, hidden)}</td>
                         <td className="num py-1.5 text-right">
-                          {formatEUR(y.interest * 0.28, hidden)}
+                          {privateEUR(y.interest * 0.28, hidden)}
                         </td>
                       </tr>
                     ))}
@@ -568,7 +590,7 @@ export function ScramblePanel() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="min-w-0">
       <dt className="text-xs text-muted-foreground">{label}</dt>

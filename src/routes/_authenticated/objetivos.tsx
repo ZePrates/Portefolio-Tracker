@@ -28,9 +28,10 @@ import {
   saveFireSettings,
   setAllocationTargets,
 } from "@/lib/goals.functions";
-import { formatEUR, formatNumber, formatPct, formatPp, parseNumberPt } from "@/lib/format";
+import { formatNumber, formatPct, formatPp, parseNumberPt } from "@/lib/format";
 import { FIRE_DEFAULTS, validateFire, type FireForm } from "@/lib/fire-form";
 import type { AssetClass } from "@/lib/portfolio-types";
+import { privateEUR } from "@/components/private-value";
 
 const TABS = ["fire", "alocacao", "projecoes", "simulador"] as const;
 type Tab = (typeof TABS)[number];
@@ -262,9 +263,7 @@ function FireSection() {
           <div className="space-y-5">
             <div>
               <div className="flex items-baseline justify-between gap-3">
-                <p className="num text-3xl font-bold">
-                  {formatPct(progress.progressPct, 1, hidden)}
-                </p>
+                <p className="num text-3xl font-bold">{formatPct(progress.progressPct, 1)}</p>
                 <p className="text-xs text-muted-foreground">do número FIRE</p>
               </div>
               <div
@@ -272,21 +271,21 @@ function FireSection() {
                 aria-label="Progresso FIRE"
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-valuenow={hidden ? undefined : Math.min(100, Math.round(progress.progressPct))}
+                aria-valuenow={Math.min(100, Math.round(progress.progressPct))}
                 className="mt-2 h-2.5 overflow-hidden rounded-full bg-secondary"
               >
                 <div
                   className="h-full rounded-full bg-primary transition-[width]"
-                  style={{ width: hidden ? "0%" : `${Math.min(100, progress.progressPct)}%` }}
+                  style={{ width: `${Math.min(100, progress.progressPct)}%` }}
                 />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
-              <MetricCard label="Número FIRE" value={formatEUR(progress.fireNumber, hidden)} />
-              <MetricCard label="Falta" value={formatEUR(progress.remaining, hidden)} />
+              <MetricCard label="Número FIRE" value={privateEUR(progress.fireNumber, hidden)} />
+              <MetricCard label="Falta" value={privateEUR(progress.remaining, hidden)} />
               <MetricCard
                 label="Despesas cobertas"
-                value={formatPct(progress.passiveCoveragePct, 1, hidden)}
+                value={formatPct(progress.passiveCoveragePct, 1)}
                 sub="dividendos e juros P2P líquidos (12 m) ÷ despesas"
               />
               <MetricCard
@@ -429,7 +428,7 @@ function AllocationSection() {
                       {r.label}
                     </span>
                   </th>
-                  <td className="num px-3 py-2 text-right">{formatPct(r.currentPct, 1, hidden)}</td>
+                  <td className="num px-3 py-2 text-right">{formatPct(r.currentPct, 1)}</td>
                   <td className="px-3 py-2 text-right">
                     <TextInput
                       aria-label={`Alvo para ${r.label} (%)`}
@@ -444,14 +443,14 @@ function AllocationSection() {
                     />
                   </td>
                   <td className="num px-3 py-2 text-right">
-                    {has && hasTargets ? formatPp(r.driftPct, 1, hidden) : "—"}
+                    {has && hasTargets ? formatPp(r.driftPct, 1) : "—"}
                   </td>
                   <td className="num py-2 pl-3 text-right">
                     {has && hasTargets ? (
                       Math.abs(r.driftPct) >= 5 ? (
                         <Badge tone="warn">
                           {r.driftValue > 0 ? "Acima: " : "Abaixo: "}
-                          {formatEUR(Math.abs(r.driftValue), hidden)}
+                          {privateEUR(Math.abs(r.driftValue), hidden)}
                         </Badge>
                       ) : (
                         <Badge>No alvo</Badge>
@@ -511,7 +510,7 @@ function AllocationSection() {
               data.contribution.map((s) => (
                 <li key={s.key} className="flex items-center justify-between gap-3 text-sm">
                   <span>{s.label}</span>
-                  <span className="num font-medium">{formatEUR(s.amount, hidden)}</span>
+                  <span className="num font-medium">{privateEUR(s.amount, hidden)}</span>
                 </li>
               ))
             )}

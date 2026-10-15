@@ -5,16 +5,10 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { PeriodKey, PortfolioSummary } from "@/lib/dashboard";
 import type { HeroPoint, PeriodChange } from "@/lib/dashboard-period";
-import {
-  formatDatePt,
-  formatEUR,
-  formatEURCompact,
-  formatPercent,
-  formatPeriodKey,
-  formatSignedEUR,
-} from "@/lib/format";
+import { formatDatePt, formatEURCompact, formatPercent, formatPeriodKey } from "@/lib/format";
 import { AXIS_LINE, AXIS_TICK, ChartFrame, ChartTooltip, GRID_PROPS } from "@/components/chart-kit";
 import { Skeleton } from "@/components/ui/skeleton";
+import { privateEUR, privateSignedEUR } from "@/components/private-value";
 
 const COMPACT_MARGIN = { top: 4, right: 0, bottom: 0, left: 0 };
 const DEFAULT_MARGIN = { top: 5, right: 5, bottom: 5, left: 5 };
@@ -178,7 +172,7 @@ export function DashboardHero({
           content={
             <ChartTooltip
               labelFormatter={(l) => formatPeriodKey(l, true)}
-              valueFormatter={(v) => formatEUR(v, hidden)}
+              valueFormatter={(v) => privateEUR(v, hidden)}
             />
           }
         />
@@ -217,7 +211,7 @@ export function DashboardHero({
 
         <p className="mt-5 text-[13px] text-muted-foreground">Valor da carteira</p>
         <p className="num mt-1 break-words text-4xl font-semibold leading-[42px] tracking-[-0.02em] lg:text-[44px] lg:leading-[48px]">
-          {formatEUR(summary.currentValue, hidden)}
+          {privateEUR(summary.currentValue, hidden)}
         </p>
 
         <div className="mt-3 flex min-h-6 flex-wrap items-center gap-x-2 gap-y-1">
@@ -229,7 +223,7 @@ export function DashboardHero({
                   up ? "text-success" : "text-destructive",
                 )}
               >
-                {formatSignedEUR(change.amount, hidden)}
+                {privateSignedEUR(change.amount, hidden)}
               </span>
               {change.pct !== null && (
                 <span
@@ -242,7 +236,7 @@ export function DashboardHero({
                 >
                   <PillIcon aria-hidden className="h-3 w-3" />
                   <span className="sr-only">{up ? "Subida de " : "Descida de "}</span>
-                  {formatPercent(change.pct, hidden)}
+                  {formatPercent(change.pct)}
                 </span>
               )}
               <span className="text-[13px] text-muted-foreground">{sinceLabel}</span>
@@ -255,20 +249,18 @@ export function DashboardHero({
         </div>
 
         <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-border pt-[18px] max-lg:rounded-lg max-lg:border max-lg:gap-0 max-lg:p-0 max-lg:[&>div]:p-3 max-lg:[&>div:nth-child(-n+2)]:border-b max-lg:[&>div:nth-child(odd)]:border-r max-lg:[&>div]:border-border">
-          <Metric label="Capital investido">{formatEUR(summary.costBasis, hidden)}</Metric>
+          <Metric label="Capital investido">{privateEUR(summary.costBasis, hidden)}</Metric>
           <Metric label="Não realizado">
             <span className={summary.unrealizedPL < 0 ? "text-destructive" : "text-success"}>
-              {formatSignedEUR(summary.unrealizedPL, hidden)}
+              {privateSignedEUR(summary.unrealizedPL, hidden)}
             </span>
           </Metric>
           <Metric label="Realizado">
             <span className="sr-only">no período: </span>
-            {formatSignedEUR(realizedPeriod, hidden)}
+            {privateSignedEUR(realizedPeriod, hidden)}
           </Metric>
           <Metric label="Rentabilidade total">
-            {summary.totalReturnPct === null
-              ? "Sem dados"
-              : formatPercent(summary.totalReturnPct, hidden)}
+            {summary.totalReturnPct === null ? "Sem dados" : formatPercent(summary.totalReturnPct)}
           </Metric>
         </dl>
       </div>

@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 import { Trash2 } from "lucide-react";
 import type { MetalSummary } from "@/lib/metals";
-import { formatDatePt, formatEUR, formatNumber, formatPct, formatQuantity } from "@/lib/format";
+import { formatDatePt, formatNumber, formatPct, formatQuantity } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { privateEUR, privateText } from "@/components/private-value";
 
 export interface MetalExpenseRow {
   id: string;
@@ -21,10 +22,10 @@ const tone = (v: number) =>
 
 /** Preço por grama com 4 casas (os metais mexem-se ao cêntimo de cêntimo). */
 const perGram = (v: number, hidden: boolean) =>
-  hidden ? formatEUR(v, true) : `${formatNumber(v, 4)}${NBSP}€/g`;
+  privateText(`${formatNumber(v, 4)}${NBSP}€/g`, hidden, `00,0000${NBSP}€/g`);
 
 const grams = (v: number, hidden = false) =>
-  hidden ? formatEUR(v, true) : `${formatNumber(v, 2)}${NBSP}g`;
+  privateText(`${formatNumber(v, 2)}${NBSP}g`, hidden, `000,00${NBSP}g`);
 
 /**
  * Ficha de um metal em custódia: quanto se pagou (ágio incluído), quanto
@@ -57,22 +58,26 @@ export function MetalPositionPanel({
         <Stat
           label="No cofre"
           value={grams(s.gramsHeld, hidden)}
-          sub={`${grams(s.gramsBought, hidden)} comprados − ${grams(s.gramsDeducted, hidden)} em taxas`}
+          sub={
+            <>
+              {grams(s.gramsBought, hidden)} comprados − {grams(s.gramsDeducted, hidden)} em taxas
+            </>
+          }
         />
         <Stat
           label="Pago (ágio incluído)"
-          value={formatEUR(s.invested, hidden)}
-          sub={`custo real ${perGram(s.avgCostPerGram, hidden)}`}
+          value={privateEUR(s.invested, hidden)}
+          sub={<>custo real {perGram(s.avgCostPerGram, hidden)}</>}
         />
         <Stat
           label="Valor de recompra"
-          value={formatEUR(s.valueAtBuyback, hidden)}
-          sub={`ao spot ${formatEUR(s.valueAtSpot, hidden)}`}
+          value={privateEUR(s.valueAtBuyback, hidden)}
+          sub={<>ao spot {privateEUR(s.valueAtSpot, hidden)}</>}
         />
         <Stat
           label="Ganho/perda não realizado"
-          value={formatEUR(s.unrealizedPL, hidden)}
-          sub={formatPct(s.unrealizedPct * 100, 1, hidden)}
+          value={privateEUR(s.unrealizedPL, hidden)}
+          sub={formatPct(s.unrealizedPct * 100, 1)}
           className={tone(s.unrealizedPL)}
         />
       </div>
@@ -89,28 +94,28 @@ export function MetalPositionPanel({
           <div className="space-y-1 rounded-lg border border-border p-3 text-sm">
             <Row
               label="Variação do preço desde cada compra"
-              value={formatEUR(s.breakdown.priceEffect, hidden)}
+              value={privateEUR(s.breakdown.priceEffect, hidden)}
               className={tone(s.breakdown.priceEffect)}
             />
             <Row
               label="Ágio pago nas compras"
-              value={formatEUR(s.breakdown.premium, hidden)}
+              value={privateEUR(s.breakdown.premium, hidden)}
               className={tone(s.breakdown.premium)}
             />
             <Row
-              label={`Armazenamento (${grams(s.gramsDeducted, hidden)} ao preço de hoje)`}
-              value={formatEUR(s.breakdown.storage, hidden)}
+              label={<>Armazenamento ({grams(s.gramsDeducted, hidden)} ao preço de hoje)</>}
+              value={privateEUR(s.breakdown.storage, hidden)}
               className={tone(s.breakdown.storage)}
             />
             <Row
               label={`Desconto de recompra (${formatNumber(discountPct, 2)} %)`}
-              value={formatEUR(s.breakdown.spread, hidden)}
+              value={privateEUR(s.breakdown.spread, hidden)}
               className={tone(s.breakdown.spread)}
             />
             <div className="border-t border-border pt-1">
               <Row
                 label="Total"
-                value={formatEUR(s.unrealizedPL, hidden)}
+                value={privateEUR(s.unrealizedPL, hidden)}
                 className={cn("font-medium", tone(s.unrealizedPL))}
               />
             </div>
@@ -141,7 +146,7 @@ export function MetalPositionPanel({
                 {s.lots.map((l) => (
                   <tr key={l.id} className="border-b border-border/60 last:border-0">
                     <td className="px-3 py-2">{formatDatePt(l.traded_at)}</td>
-                    <td className="px-3 py-2 text-right">{formatEUR(l.paid, hidden)}</td>
+                    <td className="px-3 py-2 text-right">{privateEUR(l.paid, hidden)}</td>
                     <td className="px-3 py-2 text-right">{formatNumber(l.paidPerGram, 4)}</td>
                     <td className="px-3 py-2 text-right">{formatNumber(l.spotAtPurchase, 4)}</td>
                     <td className="px-3 py-2 text-right">
@@ -153,9 +158,9 @@ export function MetalPositionPanel({
                     >
                       {formatNumber(l.gramsNow, 2)}
                     </td>
-                    <td className="px-3 py-2 text-right">{formatEUR(l.valueNow, hidden)}</td>
+                    <td className="px-3 py-2 text-right">{privateEUR(l.valueNow, hidden)}</td>
                     <td className={cn("px-3 py-2 text-right", tone(l.pl))}>
-                      {formatEUR(l.pl, hidden)}
+                      {privateEUR(l.pl, hidden)}
                     </td>
                   </tr>
                 ))}
@@ -171,7 +176,7 @@ export function MetalPositionPanel({
 
       <section>
         <SectionTitle>
-          Taxas de armazenamento · {formatEUR(s.storageBilled, hidden)} ·{" "}
+          Taxas de armazenamento · {privateEUR(s.storageBilled, hidden)} ·{" "}
           {grams(s.gramsDeducted, hidden)}
         </SectionTitle>
         {expenses.length === 0 ? (
@@ -202,7 +207,7 @@ export function MetalPositionPanel({
                     <td className="px-3 py-2 text-right">
                       {e.price_per_gram != null ? formatNumber(Number(e.price_per_gram), 4) : "—"}
                     </td>
-                    <td className="px-3 py-2 text-right">{formatEUR(Number(e.amount), hidden)}</td>
+                    <td className="px-3 py-2 text-right">{privateEUR(Number(e.amount), hidden)}</td>
                     <td className="px-3 py-2">
                       <div className="flex justify-end">
                         <button
@@ -242,8 +247,8 @@ function Stat({
   className,
 }: {
   label: string;
-  value: string;
-  sub?: string;
+  value: ReactNode;
+  sub?: ReactNode;
   className?: string;
 }) {
   return (
@@ -255,7 +260,15 @@ function Stat({
   );
 }
 
-function Row({ label, value, className }: { label: string; value: string; className?: string }) {
+function Row({
+  label,
+  value,
+  className,
+}: {
+  label: ReactNode;
+  value: ReactNode;
+  className?: string;
+}) {
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="text-muted-foreground">{label}</span>

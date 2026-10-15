@@ -104,9 +104,9 @@ describe("formatEUR / formatPercent", () => {
     expect(plain(formatPercent(12345.6))).toBe("+12 345,60 %");
   });
 
-  it("modo privado esconde valores", () => {
+  it("modo privado esconde montantes, não percentagens", () => {
     expect(formatEUR(10, true)).toBe("••••");
-    expect(formatPercent(10, true)).toBe("••••");
+    expect(plain(formatPercent(10))).toBe("+10,00 %");
   });
 });
 
@@ -140,8 +140,7 @@ describe("formatação PT-PT de interface", () => {
     expect(formatQuantity(3)).toBe("3");
   });
 
-  it("modo privado e valores inválidos", () => {
-    expect(formatPct(1, 1, true)).toBe("••••");
+  it("valores inválidos", () => {
     expect(formatNumber(Number.NaN)).toBe("—");
     expect(formatCompact(Number.NaN)).toBe("—");
   });

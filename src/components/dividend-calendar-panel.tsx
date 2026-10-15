@@ -9,15 +9,9 @@ import { AXIS_LINE, AXIS_TICK, ChartFrame, ChartTooltip, GRID_PROPS } from "@/co
 import { usePrivateMode } from "@/components/private-mode";
 import { getDividendCalendar } from "@/lib/insights.functions";
 import type { ProjectedDividend } from "@/lib/dividend-calendar";
-import {
-  formatCompact,
-  formatDatePt,
-  formatEUR,
-  formatMoney,
-  formatPeriodKey,
-  formatQuantity,
-} from "@/lib/format";
+import { formatCompact, formatDatePt, formatPeriodKey, formatQuantity } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { privateEUR, privateMoney } from "@/components/private-value";
 
 const HORIZONS = [6, 12, 24] as const;
 
@@ -67,14 +61,14 @@ export function DividendCalendarPanel() {
       align: "right",
       defaultHidden: true,
       sortValue: (e) => e.perShareNative,
-      cell: (e) => formatMoney(e.perShareNative, e.currency, hidden),
+      cell: (e) => privateMoney(e.perShareNative, e.currency, hidden),
     },
     {
       id: "gross",
       header: "Bruto",
       align: "right",
       sortValue: (e) => e.gross,
-      cell: (e) => formatEUR(e.gross, hidden),
+      cell: (e) => privateEUR(e.gross, hidden),
     },
     {
       id: "net",
@@ -82,7 +76,7 @@ export function DividendCalendarPanel() {
       align: "right",
       required: true,
       sortValue: (e) => e.net,
-      cell: (e) => <span className="font-medium">{formatEUR(e.net, hidden)}</span>,
+      cell: (e) => <span className="font-medium">{privateEUR(e.net, hidden)}</span>,
     },
   ];
 
@@ -95,8 +89,8 @@ export function DividendCalendarPanel() {
         </p>
       </div>
       <div className="shrink-0 text-right">
-        <p className="num font-semibold">{formatEUR(e.net, hidden)}</p>
-        <p className="num text-xs text-muted-foreground">bruto {formatEUR(e.gross, hidden)}</p>
+        <p className="num font-semibold">{privateEUR(e.net, hidden)}</p>
+        <p className="num text-xs text-muted-foreground">bruto {privateEUR(e.gross, hidden)}</p>
       </div>
     </div>
   );
@@ -136,10 +130,10 @@ export function DividendCalendarPanel() {
           <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-3">
             <MetricCard
               label={`Líquido previsto (${months} meses)`}
-              value={formatEUR(data.totalNet, hidden)}
+              value={privateEUR(data.totalNet, hidden)}
               className="col-span-2 lg:col-span-1"
             />
-            <MetricCard label="Bruto previsto" value={formatEUR(data.totalGross, hidden)} />
+            <MetricCard label="Bruto previsto" value={privateEUR(data.totalGross, hidden)} />
             <MetricCard label="Pagamentos previstos" value={String(data.events.length)} />
           </div>
 
@@ -175,7 +169,7 @@ export function DividendCalendarPanel() {
                   content={
                     <ChartTooltip
                       labelFormatter={(l) => formatPeriodKey(l)}
-                      valueFormatter={(v) => formatEUR(v, hidden)}
+                      valueFormatter={(v) => privateEUR(v, hidden)}
                     />
                   }
                 />

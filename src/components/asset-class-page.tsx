@@ -44,8 +44,6 @@ import { syncDividendsForAsset } from "@/lib/dividends.functions";
 
 import {
   formatDatePt,
-  formatEUR,
-  formatMoney,
   formatNumber,
   formatPercent,
   formatQuantity,
@@ -83,6 +81,7 @@ import {
   isSecurityClass,
   paysDividendsClass,
 } from "@/lib/asset-class";
+import { privateEUR, privateMoney } from "@/components/private-value";
 
 interface Props {
   assetClass: AssetClass;
@@ -535,10 +534,10 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
   /** Valor em EUR com a moeda original por baixo (ativos em moeda estrangeira). */
   const withNative = (eur: number, native: number | null | undefined, cur: string) => (
     <>
-      {formatEUR(eur, hidden)}
+      {privateEUR(eur, hidden)}
       {cur !== "EUR" && native != null && (
         <span className="block whitespace-nowrap text-xs text-muted-foreground">
-          {formatMoney(native, cur, hidden)}
+          {privateMoney(native, cur, hidden)}
         </span>
       )}
     </>
@@ -680,7 +679,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         const p = assetPL(a);
         return (
           <span className="flex flex-col items-end">
-            <Delta value={p.abs}>{formatEUR(p.abs, hidden)}</Delta>
+            <Delta value={p.abs}>{privateEUR(p.abs, hidden)}</Delta>
             <span
               className={cn(
                 "text-xs",
@@ -691,7 +690,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
                     : "text-muted-foreground",
               )}
             >
-              {formatPercent(p.pct, hidden)}
+              {formatPercent(p.pct)}
             </span>
           </span>
         );
@@ -706,7 +705,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
             sortValue: (a) => sortValue(a, "yield"),
             cell: (a) => (
               <span className="font-medium text-primary">
-                {a.annual_yield == null ? "—" : formatPercent(a.annual_yield, hidden)}
+                {a.annual_yield == null ? "—" : formatPercent(a.annual_yield)}
               </span>
             ),
           },
@@ -735,15 +734,15 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">{assetName(a)}</div>
           <div className="shrink-0 text-right">
-            <p className="num font-semibold">{formatEUR(assetCurrentValue(a), hidden)}</p>
+            <p className="num font-semibold">{privateEUR(assetCurrentValue(a), hidden)}</p>
             <Delta value={p.abs} className="justify-end text-xs">
-              {formatEUR(p.abs, hidden)} · {formatPercent(p.pct, hidden)}
+              {privateEUR(p.abs, hidden)} · {formatPercent(p.pct)}
             </Delta>
           </div>
         </div>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
           <Pair label={quantityLabel} value={quantityText(a)} />
-          <Pair label="Investido" value={formatEUR(assetInvested(a), hidden)} />
+          <Pair label="Investido" value={privateEUR(assetInvested(a), hidden)} />
           {isQuantityAsset(assetClass) && (
             <>
               <Pair
@@ -759,7 +758,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
           {showYield && (
             <Pair
               label="Yield"
-              value={a.annual_yield == null ? "—" : formatPercent(a.annual_yield, hidden)}
+              value={a.annual_yield == null ? "—" : formatPercent(a.annual_yield)}
             />
           )}
         </dl>
@@ -782,7 +781,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
       align: "right",
       sortValue: (a) => assetRealizedPL(a),
       cell: (a) => (
-        <Delta value={assetRealizedPL(a)}>{formatEUR(assetRealizedPL(a), hidden)}</Delta>
+        <Delta value={assetRealizedPL(a)}>{privateEUR(assetRealizedPL(a), hidden)}</Delta>
       ),
     },
     {
@@ -791,7 +790,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
       align: "right",
       sortValue: (a) => a.total_fees ?? 0,
       cell: (a) => (
-        <span className="text-muted-foreground">{formatEUR(a.total_fees ?? 0, hidden)}</span>
+        <span className="text-muted-foreground">{privateEUR(a.total_fees ?? 0, hidden)}</span>
       ),
     },
     {
@@ -814,11 +813,11 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">{assetName(a)}</div>
         <Delta value={assetRealizedPL(a)} className="shrink-0">
-          {formatEUR(assetRealizedPL(a), hidden)}
+          {privateEUR(assetRealizedPL(a), hidden)}
         </Delta>
       </div>
       <p className="text-xs text-muted-foreground">
-        Fecho {formatDatePt(a.closed_at)} · comissões {formatEUR(a.total_fees ?? 0, hidden)}
+        Fecho {formatDatePt(a.closed_at)} · comissões {privateEUR(a.total_fees ?? 0, hidden)}
       </p>
       <div className="flex justify-end border-t border-border/60 pt-2">{moreMenu(a, true)}</div>
     </div>
@@ -858,17 +857,17 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
             : "xl:grid-cols-5",
         )}
       >
-        <MetricCard label="Valor atual" value={formatEUR(totals.current, hidden)} />
-        <MetricCard label="Total investido" value={formatEUR(totals.invested, hidden)} />
+        <MetricCard label="Valor atual" value={privateEUR(totals.current, hidden)} />
+        <MetricCard label="Total investido" value={privateEUR(totals.invested, hidden)} />
         <MetricCard
           label="P/L não realizado"
-          value={formatEUR(pl, hidden)}
-          sub={formatPercent(plPct, hidden)}
+          value={privateEUR(pl, hidden)}
+          sub={formatPercent(plPct)}
           tone={pl > 0 ? "positive" : pl < 0 ? "negative" : "default"}
         />
         <MetricCard
           label="P/L realizado"
-          value={formatEUR(realizedTotal, hidden)}
+          value={privateEUR(realizedTotal, hidden)}
           sub={
             closedAssets.length > 0
               ? `${closedAssets.length} posições fechadas`
@@ -880,7 +879,7 @@ export function AssetClassPage({ assetClass, title, subtitle, emptyLabel }: Prop
         {(assetClass === "reit" || assetClass === "acao_dividendo") && (
           <MetricCard
             label="Yield médio"
-            value={averageYield == null ? "—" : formatPercent(averageYield, hidden)}
+            value={averageYield == null ? "—" : formatPercent(averageYield)}
             sub={yields.length > 0 ? `${yields.length} ativos com dados` : "Dados não disponíveis"}
           />
         )}

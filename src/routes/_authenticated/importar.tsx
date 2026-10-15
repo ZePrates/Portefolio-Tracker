@@ -19,8 +19,9 @@ import { HistoryImportCard } from "@/components/history-import-card";
 import { usePrivateMode } from "@/components/private-mode";
 import { commitXtbImport, previewXtbImport } from "@/lib/xtb.functions";
 import type { DividendAction, PlannedDividend, PlannedTrade, TradeAction } from "@/lib/xtb";
-import { formatDatePt, formatEUR, formatNumber, formatQuantity } from "@/lib/format";
+import { formatDatePt, formatNumber, formatQuantity } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { privateEUR } from "@/components/private-value";
 
 export const Route = createFileRoute("/_authenticated/importar")({
   head: () => ({
@@ -170,7 +171,7 @@ function ImportarPage() {
       header: "Valor (EUR)",
       align: "right",
       sortValue: (p) => p.trade.amountEur,
-      cell: (p) => formatEUR(p.trade.amountEur, hidden),
+      cell: (p) => privateEUR(p.trade.amountEur, hidden),
     },
     {
       id: "fx",
@@ -204,7 +205,7 @@ function ImportarPage() {
             {formatQuantity(p.trade.quantity)} un.
           </p>
         </div>
-        <p className="num shrink-0 font-semibold">{formatEUR(p.trade.amountEur, hidden)}</p>
+        <p className="num shrink-0 font-semibold">{privateEUR(p.trade.amountEur, hidden)}</p>
       </div>
       <Badge tone={TRADE_LABEL[p.action].tone}>{TRADE_LABEL[p.action].label}</Badge>
       {p.reason && <p className="text-xs text-muted-foreground">{p.reason}</p>}
@@ -230,21 +231,21 @@ function ImportarPage() {
       header: "Bruto",
       align: "right",
       sortValue: (p) => p.dividend.grossEur,
-      cell: (p) => formatEUR(p.dividend.grossEur, hidden),
+      cell: (p) => privateEUR(p.dividend.grossEur, hidden),
     },
     {
       id: "tax",
       header: "Imposto",
       align: "right",
       sortValue: (p) => p.dividend.taxEur,
-      cell: (p) => formatEUR(p.dividend.taxEur, hidden),
+      cell: (p) => privateEUR(p.dividend.taxEur, hidden),
     },
     {
       id: "net",
       header: "Líquido",
       align: "right",
       sortValue: (p) => p.dividend.netEur,
-      cell: (p) => formatEUR(p.dividend.netEur, hidden),
+      cell: (p) => privateEUR(p.dividend.netEur, hidden),
     },
     {
       id: "action",
@@ -266,9 +267,9 @@ function ImportarPage() {
         </div>
       </div>
       <div className="shrink-0 text-right">
-        <p className="num font-semibold">{formatEUR(p.dividend.grossEur, hidden)}</p>
+        <p className="num font-semibold">{privateEUR(p.dividend.grossEur, hidden)}</p>
         <p className="num text-xs text-muted-foreground">
-          líquido {formatEUR(p.dividend.netEur, hidden)}
+          líquido {privateEUR(p.dividend.netEur, hidden)}
         </p>
       </div>
     </div>

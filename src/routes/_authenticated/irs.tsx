@@ -22,7 +22,8 @@ import { getTaxReport } from "@/lib/tax.functions";
 import type { CapitalGainLine, DividendTaxLine } from "@/lib/tax-report";
 import { taxReportCsv } from "@/lib/csv";
 import { downloadTextFile } from "@/lib/download";
-import { formatDatePt, formatEUR, formatPct, formatQuantity, parseNumberPt } from "@/lib/format";
+import { formatDatePt, formatPct, formatQuantity, parseNumberPt } from "@/lib/format";
+import { privateEUR } from "@/components/private-value";
 
 export const Route = createFileRoute("/_authenticated/irs")({
   head: () => ({
@@ -101,14 +102,14 @@ function IrsPage() {
       header: "Valor aquisição",
       align: "right",
       sortValue: (l) => l.acquisitionValue,
-      cell: (l) => formatEUR(l.acquisitionValue, hidden),
+      cell: (l) => privateEUR(l.acquisitionValue, hidden),
     },
     {
       id: "realValue",
       header: "Valor realização",
       align: "right",
       sortValue: (l) => l.realizationValue,
-      cell: (l) => formatEUR(l.realizationValue, hidden),
+      cell: (l) => privateEUR(l.realizationValue, hidden),
     },
     {
       id: "expenses",
@@ -116,7 +117,7 @@ function IrsPage() {
       align: "right",
       defaultHidden: true,
       sortValue: (l) => l.expenses,
-      cell: (l) => formatEUR(l.expenses, hidden),
+      cell: (l) => privateEUR(l.expenses, hidden),
     },
     {
       id: "gain",
@@ -126,7 +127,7 @@ function IrsPage() {
       sortValue: (l) => l.gain,
       cell: (l) => (
         <span className="flex flex-col items-end">
-          <Delta value={l.gain}>{formatEUR(l.gain, hidden)}</Delta>
+          <Delta value={l.gain}>{privateEUR(l.gain, hidden)}</Delta>
           {l.shortTerm && <Badge tone="warn">&lt; 365 dias</Badge>}
         </span>
       ),
@@ -144,20 +145,20 @@ function IrsPage() {
           </p>
         </div>
         <Delta value={l.gain} className="shrink-0">
-          {formatEUR(l.gain, hidden)}
+          {privateEUR(l.gain, hidden)}
         </Delta>
       </div>
       <dl className="grid grid-cols-2 gap-2 text-xs">
         <div>
           <dt className="text-muted-foreground">Aquisição</dt>
           <dd className="num font-medium">
-            {formatDatePt(l.acquisitionDate)} · {formatEUR(l.acquisitionValue, hidden)}
+            {formatDatePt(l.acquisitionDate)} · {privateEUR(l.acquisitionValue, hidden)}
           </dd>
         </div>
         <div>
           <dt className="text-muted-foreground">Realização</dt>
           <dd className="num font-medium">
-            {formatDatePt(l.realizationDate)} · {formatEUR(l.realizationValue, hidden)}
+            {formatDatePt(l.realizationDate)} · {privateEUR(l.realizationValue, hidden)}
           </dd>
         </div>
       </dl>
@@ -187,14 +188,14 @@ function IrsPage() {
       header: "Bruto",
       align: "right",
       sortValue: (l) => l.gross,
-      cell: (l) => formatEUR(l.gross, hidden),
+      cell: (l) => privateEUR(l.gross, hidden),
     },
     {
       id: "tax",
       header: "Imposto retido",
       align: "right",
       sortValue: (l) => l.taxWithheld,
-      cell: (l) => formatEUR(l.taxWithheld, hidden),
+      cell: (l) => privateEUR(l.taxWithheld, hidden),
     },
     {
       id: "net",
@@ -203,7 +204,7 @@ function IrsPage() {
       sortValue: (l) => l.net,
       cell: (l) => (
         <span>
-          {formatEUR(l.net, hidden)}
+          {privateEUR(l.net, hidden)}
           {l.hasEstimatedDates && (
             <span className="block">
               <Badge tone="warn">datas estimadas</Badge>
@@ -225,9 +226,9 @@ function IrsPage() {
           </p>
         </div>
         <div className="shrink-0 text-right">
-          <p className="num font-semibold">{formatEUR(l.gross, hidden)}</p>
+          <p className="num font-semibold">{privateEUR(l.gross, hidden)}</p>
           <p className="num text-xs text-muted-foreground">
-            retido {formatEUR(l.taxWithheld, hidden)}
+            retido {privateEUR(l.taxWithheld, hidden)}
           </p>
         </div>
       </div>
@@ -292,28 +293,35 @@ function IrsPage() {
           <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
             <MetricCard
               label="Mais-valias líquidas"
-              value={formatEUR(t.netGains, hidden)}
-              sub={`realização ${formatEUR(t.realizationValue, hidden)}`}
+              value={privateEUR(t.netGains, hidden)}
+              sub={<>realização {privateEUR(t.realizationValue, hidden)}</>}
               tone={t.netGains > 0 ? "positive" : t.netGains < 0 ? "negative" : "default"}
             />
             <MetricCard
               label="Dividendos brutos"
-              value={formatEUR(t.dividendsGross, hidden)}
-              sub={`líquidos ${formatEUR(t.dividendsNet, hidden)}`}
+              value={privateEUR(t.dividendsGross, hidden)}
+              sub={<>líquidos {privateEUR(t.dividendsNet, hidden)}</>}
             />
             <MetricCard
               label="Imposto retido na fonte"
-              value={formatEUR(t.dividendsTaxWithheld, hidden)}
+              value={privateEUR(t.dividendsTaxWithheld, hidden)}
               sub="dividendos"
             />
             <MetricCard
               label="Estimativa de imposto"
-              value={formatEUR(data.autonomous.total, hidden)}
-              sub={`tributação autónoma a 28 %${
-                data.aggregated
-                  ? ` · englobamento ${formatPct(data.aggregated.marginalRate * 100, 1)}: ${formatEUR(data.aggregated.total, hidden)}`
-                  : ""
-              }`}
+              value={privateEUR(data.autonomous.total, hidden)}
+              sub={
+                <>
+                  tributação autónoma a 28 %
+                  {data.aggregated && (
+                    <>
+                      {" "}
+                      · englobamento {formatPct(data.aggregated.marginalRate * 100, 1)}:{" "}
+                      {privateEUR(data.aggregated.total, hidden)}
+                    </>
+                  )}
+                </>
+              }
             />
           </div>
 
@@ -400,9 +408,9 @@ function IrsPage() {
                       </p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="num font-semibold">{formatEUR(l.gross, hidden)}</p>
+                      <p className="num font-semibold">{privateEUR(l.gross, hidden)}</p>
                       <p className="num text-xs text-muted-foreground">
-                        imposto a 28 % {formatEUR(l.gross * 0.28, hidden)}
+                        imposto a 28 % {privateEUR(l.gross * 0.28, hidden)}
                       </p>
                     </div>
                   </li>
@@ -418,7 +426,7 @@ function IrsPage() {
                         Fora do total de juros: confirma o enquadramento antes de declarar.
                       </p>
                     </div>
-                    <p className="num shrink-0 font-semibold">{formatEUR(b.amount, hidden)}</p>
+                    <p className="num shrink-0 font-semibold">{privateEUR(b.amount, hidden)}</p>
                   </li>
                 ))}
               </ul>

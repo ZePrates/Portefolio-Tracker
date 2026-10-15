@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { invalidatePortfolio } from "@/lib/portfolio-queries";
 import { useServerFn } from "@tanstack/react-start";
@@ -26,15 +27,7 @@ import {
   totalReceived,
   totalScheduled,
 } from "@/lib/dividends";
-import {
-  formatDatePt,
-  formatEUR,
-  formatMoney,
-  formatNumber,
-  formatPct,
-  formatQuantity,
-  parseNumberOr,
-} from "@/lib/format";
+import { formatDatePt, formatEUR, formatNumber, formatQuantity, parseNumberOr } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
 import { Button, Field, Modal, TextInput, useConfirm } from "@/components/ui-bits";
 import { validateExpenseAmount, validateTradeForm } from "@/lib/trade-form";
@@ -45,13 +38,13 @@ import { ExposureTable } from "@/components/exposure-table";
 import { HoldingsStatus } from "@/components/etf-coverage";
 import {
   exposureCountry,
-  exposureEUR,
   exposurePct,
   exposureSector,
   mergeDisplayDimensions,
   readableCompanyName,
 } from "@/lib/exposure-display";
 import { syncManagerHoldings, syncSummaryText } from "@/lib/holdings-sync";
+import { privateEUR, privateMoney, privateExposureEUR } from "@/components/private-value";
 
 interface Props {
   asset: Asset | null;
@@ -502,22 +495,22 @@ export function AssetPositionModal({ asset, onClose }: Props) {
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <Stat label="Quantidade" value={formatQuantity(pos.quantity)} />
-                <Stat label="Custo (FIFO)" value={formatEUR(pos.costBasis, hidden)} />
+                <Stat label="Custo (FIFO)" value={privateEUR(pos.costBasis, hidden)} />
                 <Stat
                   label="P/L não realizado"
-                  value={formatEUR(pos.unrealizedPL, hidden)}
+                  value={privateEUR(pos.unrealizedPL, hidden)}
                   className={tone(pos.unrealizedPL)}
                 />
                 <Stat
                   label="P/L realizado"
-                  value={formatEUR(pos.realizedPL, hidden)}
+                  value={privateEUR(pos.realizedPL, hidden)}
                   className={tone(pos.realizedPL)}
                 />
               </div>
             )}
             {metal && pos.realizedPL !== 0 && (
               <p className="text-xs text-muted-foreground">
-                P/L realizado em vendas: {formatEUR(pos.realizedPL, hidden)}
+                P/L realizado em vendas: {privateEUR(pos.realizedPL, hidden)}
               </p>
             )}
 
@@ -663,7 +656,7 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                       <p className="text-xs text-muted-foreground">
                         {formatNumber(metalSplit.paidPerGram, 4)} €/g pago = spot{" "}
                         {formatNumber(metalSplit.spot, 4)} €/g + ágio{" "}
-                        {formatEUR(metalSplit.premium, hidden)}
+                        {privateEUR(metalSplit.premium, hidden)}
                       </p>
                     )}
                   </>
@@ -728,14 +721,14 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                     <Row label="Quantidade a vender" value={String(num(quantity))} />
                     <Row
                       label={`Preço de venda (${currency})`}
-                      value={formatMoney(num(price), currency, hidden)}
+                      value={privateMoney(num(price), currency, hidden)}
                     />
-                    <Row label="Receita bruta" value={formatEUR(preview.proceeds, hidden)} />
-                    <Row label="Custo (FIFO)" value={formatEUR(preview.costBasis, hidden)} />
-                    <Row label="Comissão" value={formatEUR(preview.fee, hidden)} />
+                    <Row label="Receita bruta" value={privateEUR(preview.proceeds, hidden)} />
+                    <Row label="Custo (FIFO)" value={privateEUR(preview.costBasis, hidden)} />
+                    <Row label="Comissão" value={privateEUR(preview.fee, hidden)} />
                     <Row
                       label="Lucro/prejuízo realizado"
-                      value={formatEUR(preview.realizedPL, hidden)}
+                      value={privateEUR(preview.realizedPL, hidden)}
                       className={tone(preview.realizedPL)}
                     />
                     <Row
@@ -783,12 +776,12 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                     <div className="rounded-lg border border-border p-3">
                       <div className="text-xs text-muted-foreground">Recebidos</div>
                       <div className="font-medium text-success">
-                        {formatEUR(divStats.received, hidden)}
+                        {privateEUR(divStats.received, hidden)}
                       </div>
                     </div>
                     <div className="rounded-lg border border-border p-3">
                       <div className="text-xs text-muted-foreground">Previstos</div>
-                      <div className="font-medium">{formatEUR(divStats.scheduled, hidden)}</div>
+                      <div className="font-medium">{privateEUR(divStats.scheduled, hidden)}</div>
                     </div>
                     <div className="rounded-lg border border-border p-3">
                       <div className="text-xs text-muted-foreground">Último</div>
@@ -813,7 +806,7 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                         <li key={d.id} className="flex justify-between">
                           <span>{d.payment_date ?? d.paid_at}</span>
                           <span>
-                            {formatEUR(grossOf(d as never), hidden)}{" "}
+                            {privateEUR(grossOf(d as never), hidden)}{" "}
                             {isReceived(d as never) ? "" : "(previsto)"}
                           </span>
                         </li>
@@ -850,7 +843,7 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                               </td>
                               <td className="px-3 py-2 text-right">{formatQuantity(l.quantity)}</td>
                               <td className="px-3 py-2 text-right">
-                                {formatEUR(l.unitCost, hidden)}
+                                {privateEUR(l.unitCost, hidden)}
                               </td>
                             </tr>
                           ))}
@@ -966,10 +959,10 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                               {formatQuantity(Number(t.quantity))}
                             </td>
                             <td className="px-3 py-2 text-right">
-                              {formatEUR(Number(t.price), hidden)}
+                              {privateEUR(Number(t.price), hidden)}
                             </td>
                             <td className="px-3 py-2 text-right">
-                              {formatEUR(Number(t.fee ?? 0), hidden)}
+                              {privateEUR(Number(t.fee ?? 0), hidden)}
                             </td>
                             <td
                               className={cn(
@@ -978,7 +971,7 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                               )}
                             >
                               {t.realized_pl != null
-                                ? formatEUR(Number(t.realized_pl), hidden)
+                                ? privateEUR(Number(t.realized_pl), hidden)
                                 : "—"}
                             </td>
                             <td className="px-3 py-2">
@@ -1018,7 +1011,15 @@ export function AssetPositionModal({ asset, onClose }: Props) {
   );
 }
 
-function Stat({ label, value, className }: { label: string; value: string; className?: string }) {
+function Stat({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: ReactNode;
+  className?: string;
+}) {
   return (
     <div className="rounded-lg border border-border bg-background/50 p-3">
       <p className="text-xs text-muted-foreground">{label}</p>
@@ -1027,7 +1028,7 @@ function Stat({ label, value, className }: { label: string; value: string; class
   );
 }
 
-function Row({ label, value, className }: { label: string; value: string; className?: string }) {
+function Row({ label, value, className }: { label: string; value: ReactNode; className?: string }) {
   return (
     <div className="flex justify-between gap-4">
       <span className="text-muted-foreground">{label}</span>
@@ -1107,11 +1108,10 @@ function UnderlyingExposure({
               count={d.holdings.length}
               coverage={d.coverage}
               error={d.holdingsError}
-              hidden={hidden}
             />
           )}
           <p className="text-xs text-muted-foreground">
-            Cobertura: {exposurePct(d.coverage, hidden)} · {formatDatePt(d.asOfDate)} ·{" "}
+            Cobertura: {exposurePct(d.coverage)} · {formatDatePt(d.asOfDate)} ·{" "}
             {d.source ?? "Não disponível"}
           </p>
           {d.profile && (
@@ -1124,11 +1124,7 @@ function UnderlyingExposure({
               />
               <Stat
                 label="Yield"
-                value={
-                  d.profile.dividendYield == null
-                    ? "—"
-                    : exposurePct(d.profile.dividendYield, hidden)
-                }
+                value={d.profile.dividendYield == null ? "—" : exposurePct(d.profile.dividendYield)}
               />
             </div>
           )}
@@ -1139,7 +1135,7 @@ function UnderlyingExposure({
                   <span>
                     {DIM_LABELS[x.dimension] ?? x.dimension}: {x.value}
                   </span>
-                  <span className="num whitespace-nowrap">{exposurePct(x.pct, hidden)}</span>
+                  <span className="num whitespace-nowrap">{exposurePct(x.pct)}</span>
                 </li>
               ))}
             </ul>
@@ -1180,14 +1176,14 @@ function UnderlyingExposure({
                   label: "Valor",
                   numeric: true,
                   value: (h) => h.amount,
-                  cell: (h) => exposureEUR(h.amount, hidden),
+                  cell: (h) => privateExposureEUR(h.amount, hidden),
                 },
                 {
                   id: "pct",
                   label: "Peso",
                   numeric: true,
                   value: (h) => h.pct,
-                  cell: (h) => exposurePct(h.pct, hidden),
+                  cell: (h) => exposurePct(h.pct),
                 },
               ]}
             />
