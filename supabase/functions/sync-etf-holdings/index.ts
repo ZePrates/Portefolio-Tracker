@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { parseDwsGrid } from "./dws.ts";
 
 // Sincroniza holdings completas dos ETFs a partir das fontes oficiais das gestoras.
 // iShares (CSV), Vanguard (GraphQL oficial), Xtrackers/DWS (Excel), Global X (CSV), VanEck (Excel).
@@ -146,26 +147,7 @@ async function xtrackersSync(sb: SupabaseClient, assetId: string, isin: string |
   const wb = XLSX.read(new Uint8Array(await r.arrayBuffer()), { type: "array" });
   const sheet = wb.Sheets[wb.SheetNames[0]];
   const grid: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: null });
-  const hIdx = grid.findIndex((row) => row.some((c) => /^name$/i.test(String(c ?? "").trim())) && row.some((c) => /weight/i.test(String(c ?? ""))));
-  if (hIdx < 0) throw new Error("Formato do Excel DWS não reconhecido");
-  const head = grid[hIdx].map((c) => String(c ?? "").trim().toLowerCase());
-  const col = (re: RegExp) => head.findIndex((h) => re.test(h));
-  const cName = col(/^name$/), cIsin = col(/isin/), cW = col(/weight/), cCountry = col(/country/), cCur = col(/currency/), cSector = col(/industry|sector/), cType = col(/type/), cExch = col(/exchange/);
-  const dateText = grid.slice(0, hIdx).flat().map((c) => String(c ?? "")).join(" ");
-  const dm = dateText.match(/(\d{2})[./](\d{2})[./](\d{4})/);
-  const asOf = dm ? `${dm[3]}-${dm[2]}-${dm[1]}` : new Date().toISOString().slice(0, 10);
-  let rows: Row[] = grid.slice(hIdx + 1).filter((x) => x[cName] && x[cW] != null).map((x) => ({
-    name: String(x[cName]),
-    isin: cIsin >= 0 ? (x[cIsin] ? String(x[cIsin]) : null) : null,
-    weight: Number(String(x[cW]).replace("%", "").replace(",", ".")),
-    country: cCountry >= 0 ? (x[cCountry] ? String(x[cCountry]) : null) : null,
-    currency: cCur >= 0 ? (x[cCur] ? String(x[cCur]) : null) : null,
-    sector: cSector >= 0 ? (x[cSector] ? String(x[cSector]) : null) : null,
-    asset_class: cType >= 0 && x[cType] && !/equity|share|stock/i.test(String(x[cType])) ? "Cash and/or Derivatives" : "Equity",
-    exchange: cExch >= 0 ? (x[cExch] ? String(x[cExch]) : null) : null,
-  }));
-  const total = rows.reduce((s, x) => s + (x.weight > 0 ? x.weight : 0), 0);
-  if (total > 1.5) rows = rows.map((x) => ({ ...x, weight: x.weight / 100 }));
+  const { asOf, rows } = parseDwsGrid(grid);
   const { data, error } = await sb.rpc("import_etf_holdings", { p_asset_id: assetId, p_source: "xtrackers", p_as_of: asOf, p_rows: rows, p_provider_ref: null });
   if (error) throw new Error(error.message);
   return data as Result;
