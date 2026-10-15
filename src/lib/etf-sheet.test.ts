@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canCompareEtfs, equityHolding } from "./etf-sheet";
+import { canCompareEtfs, equityHolding, managerName } from "./etf-sheet";
 describe("ETF sheet overlap eligibility", () => {
   it("compares only two full lists", () => {
     expect(canCompareEtfs("full", "full")).toBe(true);
@@ -12,5 +12,14 @@ describe("ETF sheet overlap eligibility", () => {
     expect(equityHolding({ assetClass: "Cash and/or Derivatives" })).toBe(false);
     expect(equityHolding({ assetClass: "Equity" })).toBe(true);
     expect(equityHolding({ assetClass: null })).toBe(true);
+  });
+});
+
+describe("managerName", () => {
+  it("reconhece as gestoras com lista completa", () => {
+    expect(managerName("globalx")).toBe("Global X");
+    expect(managerName("vaneck")).toBe("VanEck");
+    expect(managerName(null, "xtrackers")).toBe("Xtrackers");
+    expect(managerName("outra")).toBe("outra");
   });
 });

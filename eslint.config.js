@@ -15,6 +15,8 @@ export default tseslint.config(
       "src/routeTree.gen.ts",
       "src/integrations/supabase/types.ts",
       "src/integrations/supabase/previewAuthStorage.ts",
+      // Edge Functions do Supabase: código Deno, publicado à parte.
+      "supabase/functions",
     ],
   },
   {

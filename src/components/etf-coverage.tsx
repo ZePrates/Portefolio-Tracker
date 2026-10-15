@@ -61,6 +61,10 @@ const sourceName = (source: string | null) => {
     (
       {
         ishares: "iShares",
+        vanguard: "Vanguard",
+        xtrackers: "Xtrackers",
+        globalx: "Global X",
+        vaneck: "VanEck",
         justetf: "justETF",
         "justetf+ft": "justETF + Financial Times",
         ft: "Financial Times",

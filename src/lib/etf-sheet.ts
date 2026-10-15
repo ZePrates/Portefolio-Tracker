@@ -27,5 +27,7 @@ export const managerName = (slug?: string | null, source?: string | null) => {
   if (value.includes("ishares")) return "iShares";
   if (value.includes("vanguard")) return "Vanguard";
   if (value.includes("xtrackers")) return "Xtrackers";
+  if (value.includes("globalx")) return "Global X";
+  if (value.includes("vaneck")) return "VanEck";
   return slug || "Outra gestora";
 };
