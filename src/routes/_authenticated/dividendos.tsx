@@ -1,4 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { PageTabs } from "@/components/page-tabs";
+import { DividendCalendarPanel } from "@/components/dividend-calendar-panel";
+import { tabSearch } from "@/lib/tab-search";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { invalidatePortfolio } from "@/lib/portfolio-queries";
@@ -63,6 +66,9 @@ import { DataTable, type Column } from "@/components/data-table";
 import { AXIS_LINE, AXIS_TICK, ChartFrame, ChartTooltip, GRID_PROPS } from "@/components/chart-kit";
 import { Skeleton } from "@/components/ui/skeleton";
 
+const TABS = ["recebidos", "calendario"] as const;
+type Tab = (typeof TABS)[number];
+
 export const Route = createFileRoute("/_authenticated/dividendos")({
   head: () => ({
     meta: [
@@ -70,7 +76,7 @@ export const Route = createFileRoute("/_authenticated/dividendos")({
       {
         name: "description",
         content:
-          "Dividendos efetivamente recebidos, previstos, histórico mensal e yield sobre o custo do teu portefólio.",
+          "Dividendos recebidos, anunciados e projetados: histórico mensal, calendário dos próximos pagamentos e yield sobre o custo.",
       },
       { property: "og:title", content: "Dividendos — Portefólio Tracker" },
       {
@@ -81,12 +87,17 @@ export const Route = createFileRoute("/_authenticated/dividendos")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+  validateSearch: tabSearch(TABS),
   component: DividendosPage,
 });
 
 const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
 function DividendosPage() {
+  const { tab = "recebidos" } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const setTab = (t: Tab) =>
+    void navigate({ search: t === "recebidos" ? {} : { tab: t }, replace: true });
   const { hidden } = usePrivateMode();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
@@ -433,38 +444,8 @@ function DividendosPage() {
     </div>
   );
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Dividendos"
-        subtitle="Dividendos efetivamente recebidos, calculados sobre a posição elegível em cada data ex-dividendo."
-        actions={
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={sync} loading={syncing}>
-              {!syncing && <RefreshCw aria-hidden className="h-4 w-4" />}
-              Atualizar dividendos
-            </Button>
-            <Button onClick={openForm}>
-              <Plus aria-hidden className="h-4 w-4" />
-              Registar dividendo
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <IconButton label="Mais ações" className="border border-border">
-                  <Ellipsis aria-hidden className="h-4 w-4" />
-                </IconButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem disabled={auditing} onSelect={() => void runAudit()}>
-                  <ShieldCheck aria-hidden />
-                  Verificar dividendos
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        }
-      />
-
+  const receivedView = (
+    <>
       <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
         <MetricCard label={`Recebidos em ${year}`} value={formatEUR(stats.receivedYear, hidden)} />
         <MetricCard
@@ -551,7 +532,18 @@ function DividendosPage() {
           )}
         </Card>
 
-        <Card title="Próximos pagamentos">
+        <Card
+          title="Anunciados, por receber"
+          action={
+            <button
+              type="button"
+              onClick={() => setTab("calendario")}
+              className="font-medium text-primary hover:underline"
+            >
+              Ver projeção
+            </button>
+          }
+        >
           {upcoming.length === 0 ? (
             <p className="text-sm text-muted-foreground">Sem pagamentos anunciados.</p>
           ) : (
@@ -647,6 +639,50 @@ function DividendosPage() {
           />
         </section>
       )}
+    </>
+  );
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Dividendos"
+        subtitle="Recebidos, anunciados e projetados, calculados sobre a posição elegível em cada data ex-dividendo."
+        actions={
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={sync} loading={syncing}>
+              {!syncing && <RefreshCw aria-hidden className="h-4 w-4" />}
+              Atualizar dividendos
+            </Button>
+            <Button onClick={openForm}>
+              <Plus aria-hidden className="h-4 w-4" />
+              Registar dividendo
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <IconButton label="Mais ações" className="border border-border">
+                  <Ellipsis aria-hidden className="h-4 w-4" />
+                </IconButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem disabled={auditing} onSelect={() => void runAudit()}>
+                  <ShieldCheck aria-hidden />
+                  Verificar dividendos
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        }
+      />
+
+      <PageTabs
+        label="Vistas de dividendos"
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { id: "recebidos", label: "Recebidos", content: receivedView },
+          { id: "calendario", label: "Calendário", content: <DividendCalendarPanel /> },
+        ]}
+      />
 
       <Modal open={open} onClose={() => setOpen(false)} title="Registar dividendo">
         <form
