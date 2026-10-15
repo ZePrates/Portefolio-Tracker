@@ -16,6 +16,7 @@ import {
 } from "@/components/ui-bits";
 import { DataTable, type Column } from "@/components/data-table";
 import { HistoryImportCard } from "@/components/history-import-card";
+import { HistoryRebuildCard } from "@/components/history-rebuild-card";
 import { usePrivateMode } from "@/components/private-mode";
 import { commitXtbImport, previewXtbImport } from "@/lib/xtb.functions";
 import type { DividendAction, PlannedDividend, PlannedTrade, TradeAction } from "@/lib/xtb";
@@ -467,6 +468,7 @@ function ImportarPage() {
         </>
       )}
 
+      <HistoryRebuildCard />
       <HistoryImportCard />
     </div>
   );

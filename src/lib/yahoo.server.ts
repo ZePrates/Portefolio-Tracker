@@ -9,6 +9,7 @@ export interface YahooQuote {
 }
 
 export { toYahooSymbol, yahooSymbolFor } from "@/lib/yahoo";
+import { parseYahooHistory, type YahooChartJson, type YahooHistory } from "@/lib/yahoo";
 
 export async function fetchYahoo(symbol: string, range = "1d"): Promise<YahooQuote | null> {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
@@ -125,4 +126,26 @@ export async function getRateOnDate(
   }
   cache.set(key, rate);
   return rate;
+}
+
+/** Fechos diários de um símbolo entre duas datas (YYYY-MM-DD, inclusive). */
+export async function fetchYahooHistory(
+  symbol: string,
+  from: string,
+  to: string,
+): Promise<YahooHistory | null> {
+  const p1 = Math.floor(Date.parse(`${from}T00:00:00Z`) / 1000) - 10 * 86400;
+  const p2 = Math.floor(Date.parse(`${to}T00:00:00Z`) / 1000) + 2 * 86400;
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+    symbol,
+  )}?interval=1d&period1=${p1}&period2=${p2}`;
+  try {
+    const res = await fetchWithTimeout(url, {
+      headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    return parseYahooHistory((await res.json()) as YahooChartJson);
+  } catch {
+    return null;
+  }
 }
