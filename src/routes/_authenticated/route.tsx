@@ -8,6 +8,7 @@ import { PrivateModeProvider } from "@/components/private-mode";
 import { ConfirmProvider } from "@/components/ui-bits";
 import { AppShellProvider } from "@/components/app-shell";
 import { ensureDailySnapshot } from "@/lib/snapshots.functions";
+import { invalidatePortfolio } from "@/lib/portfolio-queries";
 
 /** Uma tentativa de fotografia diária por sessão do browser. */
 let dailySnapshotRequested = false;
@@ -33,7 +34,10 @@ function AuthenticatedLayout() {
     dailySnapshotRequested = true;
     snapshotFn()
       .then((r) => {
-        if (r.created) void queryClient.invalidateQueries({ queryKey: ["portfolio-snapshots"] });
+        // Cotações novas mudam valores em toda a app; só a fotografia, só os gráficos.
+        if (r.pricesUpdated > 0) void invalidatePortfolio(queryClient);
+        else if (r.created)
+          void queryClient.invalidateQueries({ queryKey: ["portfolio-snapshots"] });
       })
       .catch(() => {
         // Best-effort: a fotografia diária nunca bloqueia a app.
