@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import type { ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Copy, RefreshCw, Layers, ArrowUpRight } from "lucide-react";
@@ -6,7 +7,6 @@ import { toast } from "sonner";
 import { getAssetExposure, getExposure, type AssetExposureDetail } from "@/lib/exposure.functions";
 import type { Asset } from "@/lib/portfolio-types";
 import {
-  exposureEUR,
   exposurePct,
   exposureSector,
   mergeDisplaySlices,
@@ -23,6 +23,7 @@ import { HoldingsStatus } from "@/components/etf-coverage";
 import { ExposureBars } from "@/components/exposure-bars";
 import { ExposureTable } from "@/components/exposure-table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { privateExposureEUR } from "@/components/private-value";
 
 export function EtfPositionSheet({
   asset,
@@ -193,7 +194,7 @@ export function EtfSheetContent({
     }
   };
   const pct = (denominator?: number) =>
-    denominator && denominator > 0 ? exposurePct((d.value / denominator) * 100, hidden) : "—";
+    denominator && denominator > 0 ? exposurePct((d.value / denominator) * 100) : "—";
   return (
     <div className="min-w-0 space-y-7">
       <header className="space-y-4 border-b border-border pb-5">
@@ -229,14 +230,13 @@ export function EtfSheetContent({
             count={d.profile?.holdingsCount ?? d.holdings.length}
             coverage={d.coverage}
             error={d.holdingsError}
-            hidden={hidden}
           />
           <span className="text-xs text-muted-foreground">Dados de {formatDatePt(d.asOfDate)}</span>
         </div>
         <div className="grid gap-4 sm:grid-cols-[1.2fr_1fr_1fr]">
           <div>
             <p className="text-xs text-muted-foreground">Valor da posição</p>
-            <p className="num mt-1 text-3xl font-semibold">{exposureEUR(d.value, hidden)}</p>
+            <p className="num mt-1 text-3xl font-semibold">{privateExposureEUR(d.value, hidden)}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Peso na carteira / nos ETFs</p>
@@ -249,9 +249,9 @@ export function EtfSheetContent({
             <p
               className={`num mt-2 text-lg font-medium ${unrealized >= 0 ? "text-success" : "text-destructive"}`}
             >
-              {exposureEUR(unrealized, hidden)}{" "}
+              {privateExposureEUR(unrealized, hidden)}{" "}
               <span className="text-sm">
-                ({costBasis > 0 ? exposurePct((unrealized / costBasis) * 100, hidden) : "—"})
+                ({costBasis > 0 ? exposurePct((unrealized / costBasis) * 100) : "—"})
               </span>
             </p>
           </div>
@@ -270,10 +270,10 @@ export function EtfSheetContent({
           label="Posições"
           value={(d.profile?.holdingsCount ?? d.holdings.length).toLocaleString("pt-PT")}
         />
-        <Kpi label="Top 10" value={exposurePct(top10, hidden)} />
+        <Kpi label="Top 10" value={exposurePct(top10)} />
         <Kpi
           label="Maior posição"
-          value={largest ? exposurePct(largest.pct, hidden) : "—"}
+          value={largest ? exposurePct(largest.pct) : "—"}
           sub={largest ? readableCompanyName(largest.name) : undefined}
         />
         <Kpi
@@ -288,10 +288,10 @@ export function EtfSheetContent({
         />
         <Kpi
           label="Setor dominante"
-          value={dominant ? exposurePct(dominant.pct, hidden) : "—"}
+          value={dominant ? exposurePct(dominant.pct) : "—"}
           sub={dominant?.value}
         />
-        {cash > 0 && <Kpi label="Liquidez / derivados" value={exposurePct(cash, hidden)} />}
+        {cash > 0 && <Kpi label="Liquidez / derivados" value={exposurePct(cash)} />}
       </div>
       <div className="grid min-w-0 gap-7 lg:grid-cols-2">
         <ExposureBars title="Setores" slices={sectors} kind="sector" basis="ETF" hidden={hidden} />
@@ -368,22 +368,21 @@ export function EtfSheetContent({
               label: "% ETF",
               numeric: true,
               value: (h) => h.pct,
-              cell: (h) => exposurePct(h.pct, hidden),
+              cell: (h) => exposurePct(h.pct),
             },
             {
               id: "amount",
               label: "Valor",
               numeric: true,
               value: (h) => h.amount,
-              cell: (h) => exposureEUR(h.amount, hidden),
+              cell: (h) => privateExposureEUR(h.amount, hidden),
             },
             {
               id: "portfolio",
               label: "% carteira",
               numeric: true,
               value: (h) => h.pct,
-              cell: (h) =>
-                total && total > 0 ? exposurePct((h.amount / total) * 100, hidden) : "—",
+              cell: (h) => (total && total > 0 ? exposurePct((h.amount / total) * 100) : "—"),
             },
           ]}
         />
@@ -419,14 +418,12 @@ export function EtfSheetContent({
                         {p.commonCount.toLocaleString("pt-PT")} empresas em comum
                       </span>
                     </span>
-                    <span className="num shrink-0 font-medium">
-                      {exposurePct(p.overlap * 100, hidden)}
-                    </span>
+                    <span className="num shrink-0 font-medium">{exposurePct(p.overlap * 100)}</span>
                   </div>
                   <div aria-hidden className="mt-2 h-2 overflow-hidden rounded-sm bg-secondary">
                     <div
                       className="h-full bg-primary"
-                      style={{ width: `${hidden ? 0 : Math.min(100, p.overlap * 100)}%` }}
+                      style={{ width: `${Math.min(100, p.overlap * 100)}%` }}
                     />
                   </div>
                 </li>
@@ -441,7 +438,7 @@ export function EtfSheetContent({
     </div>
   );
 }
-function Kpi({ label, value, sub }: { label: string; value: string; sub?: string | undefined }) {
+function Kpi({ label, value, sub }: { label: string; value: ReactNode; sub?: ReactNode }) {
   return (
     <div className="min-w-0 rounded-md border border-border bg-secondary/30 p-3">
       <p className="text-xs text-muted-foreground">{label}</p>

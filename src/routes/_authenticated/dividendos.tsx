@@ -36,8 +36,6 @@ import {
   yieldOnCost,
 } from "@/lib/dividends";
 import {
-  formatEUR,
-  formatMoney,
   formatCompact,
   formatDatePt,
   formatPercent,
@@ -65,6 +63,7 @@ import {
 import { DataTable, type Column } from "@/components/data-table";
 import { AXIS_LINE, AXIS_TICK, ChartFrame, ChartTooltip, GRID_PROPS } from "@/components/chart-kit";
 import { Skeleton } from "@/components/ui/skeleton";
+import { privateEUR, privateMoney } from "@/components/private-value";
 
 const TABS = ["recebidos", "calendario"] as const;
 type Tab = (typeof TABS)[number];
@@ -374,7 +373,7 @@ function DividendosPage() {
         <span className="text-muted-foreground">
           {d.per_share_native == null
             ? "—"
-            : formatMoney(d.per_share_native, (d.currency ?? "EUR").toUpperCase(), hidden)}
+            : privateMoney(d.per_share_native, (d.currency ?? "EUR").toUpperCase(), hidden)}
         </span>
       ),
     },
@@ -387,10 +386,10 @@ function DividendosPage() {
         const cur = (d.currency ?? "EUR").toUpperCase();
         return (
           <span className="font-medium text-success">
-            {formatEUR(d.gross_amount ?? d.amount, hidden)}
+            {privateEUR(d.gross_amount ?? d.amount, hidden)}
             {cur !== "EUR" && d.amount_native != null && (
               <span className="block text-xs font-normal text-muted-foreground">
-                {formatMoney(d.amount_native, cur, hidden)}
+                {privateMoney(d.amount_native, cur, hidden)}
               </span>
             )}
           </span>
@@ -402,7 +401,7 @@ function DividendosPage() {
       header: "Líquido",
       align: "right",
       sortValue: (d) => d.net_amount ?? d.gross_amount ?? d.amount,
-      cell: (d) => formatEUR(d.net_amount ?? d.gross_amount ?? d.amount, hidden),
+      cell: (d) => privateEUR(d.net_amount ?? d.gross_amount ?? d.amount, hidden),
     },
     {
       id: "status",
@@ -430,10 +429,10 @@ function DividendosPage() {
         </div>
         <div className="shrink-0 text-right">
           <p className="num font-semibold text-success">
-            {formatEUR(d.gross_amount ?? d.amount, hidden)}
+            {privateEUR(d.gross_amount ?? d.amount, hidden)}
           </p>
           <p className="num text-xs text-muted-foreground">
-            líquido {formatEUR(d.net_amount ?? d.gross_amount ?? d.amount, hidden)}
+            líquido {privateEUR(d.net_amount ?? d.gross_amount ?? d.amount, hidden)}
           </p>
         </div>
       </div>
@@ -447,20 +446,20 @@ function DividendosPage() {
   const receivedView = (
     <>
       <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
-        <MetricCard label={`Recebidos em ${year}`} value={formatEUR(stats.receivedYear, hidden)} />
+        <MetricCard label={`Recebidos em ${year}`} value={privateEUR(stats.receivedYear, hidden)} />
         <MetricCard
           label="Total recebido"
-          value={formatEUR(stats.received, hidden)}
+          value={privateEUR(stats.received, hidden)}
           sub="Desde o início"
         />
         <MetricCard
           label="Previstos"
-          value={formatEUR(stats.scheduled, hidden)}
+          value={privateEUR(stats.scheduled, hidden)}
           sub="Anunciados, ainda não pagos"
         />
         <MetricCard
           label="Yield sobre o custo"
-          value={stats.yoc == null ? "—" : formatPercent(stats.yoc, hidden)}
+          value={stats.yoc == null ? "—" : formatPercent(stats.yoc)}
           sub="Últimos 12 meses / custo"
         />
       </div>
@@ -469,7 +468,7 @@ function DividendosPage() {
         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
           {Object.entries(stats.byCurrency).map(([cur, total]) => (
             <Badge key={cur} className="px-3 py-1 text-xs">
-              {cur}: {formatMoney(total, cur, hidden)}
+              {cur}: {privateMoney(total, cur, hidden)}
             </Badge>
           ))}
         </div>
@@ -494,7 +493,7 @@ function DividendosPage() {
             />
             <Tooltip
               cursor={{ fill: "var(--color-accent)", opacity: 0.4 }}
-              content={<ChartTooltip valueFormatter={(v) => formatEUR(v, hidden)} />}
+              content={<ChartTooltip valueFormatter={(v) => privateEUR(v, hidden)} />}
             />
             <Bar
               dataKey="total"
@@ -524,7 +523,7 @@ function DividendosPage() {
                     </span>
                   </span>
                   <span className="num shrink-0 font-medium text-success">
-                    {formatEUR(a.total, hidden)}
+                    {privateEUR(a.total, hidden)}
                   </span>
                 </li>
               ))}
@@ -558,7 +557,7 @@ function DividendosPage() {
                     </span>
                   </span>
                   <span className="num shrink-0 font-medium">
-                    {formatEUR(grossOf(d as never), hidden)}
+                    {privateEUR(grossOf(d as never), hidden)}
                   </span>
                 </li>
               ))}

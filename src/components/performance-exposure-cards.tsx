@@ -4,10 +4,11 @@ import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import type { AssetPerformance } from "@/lib/dashboard";
-import { formatPct, formatPercent, formatSignedEUR } from "@/lib/format";
+import { formatPct, formatPercent } from "@/lib/format";
 import { Card } from "@/components/ui-bits";
 import { CLASS_ROUTES } from "@/components/nav-config";
 import { sectorColor } from "@/lib/exposure-visuals";
+import { privateSignedEUR } from "@/components/private-value";
 
 /** Abas segmentadas (Radix Tabs: `role="tablist"`, setas esquerda/direita). */
 function SegmentedList({ label, items }: { label: string; items: Array<[string, string]> }) {
@@ -59,11 +60,11 @@ function PerfRows({ rows, hidden }: { rows: AssetPerformance[]; hidden: boolean 
                 {r.name}
               </Link>
               <p className="num text-[12px] text-muted-foreground">
-                {formatPct(r.weight, 1, hidden)} da carteira
+                {formatPct(r.weight, 1)} da carteira
               </p>
             </div>
             <span className="num shrink-0 text-[13px] text-muted-foreground">
-              {formatSignedEUR(r.unrealized, hidden)}
+              {privateSignedEUR(r.unrealized, hidden)}
             </span>
             <span
               className={cn(
@@ -73,7 +74,7 @@ function PerfRows({ rows, hidden }: { rows: AssetPerformance[]; hidden: boolean 
             >
               <Icon aria-hidden className="h-3 w-3" />
               <span className="sr-only">{up ? "Subida de " : "Descida de "}</span>
-              {formatPercent(pct, hidden)}
+              {formatPercent(pct)}
             </span>
           </li>
         );
@@ -128,15 +129,7 @@ export interface ExposureRow {
   pct: number;
 }
 
-function ExposureRows({
-  rows,
-  hidden,
-  sectors = false,
-}: {
-  rows: ExposureRow[];
-  hidden: boolean;
-  sectors?: boolean;
-}) {
+function ExposureRows({ rows, sectors = false }: { rows: ExposureRow[]; sectors?: boolean }) {
   if (rows.length === 0) return <EmptyRows label="Sem dados" />;
   const max = Math.max(...rows.map((r) => r.pct), 0);
   return (
@@ -153,14 +146,12 @@ function ExposureRows({
             <span
               className="block h-full rounded-full bg-muted-foreground/70"
               style={{
-                width: hidden || max <= 0 ? 0 : `${(r.pct / max) * 100}%`,
+                width: max <= 0 ? 0 : `${(r.pct / max) * 100}%`,
                 ...(sectors ? { backgroundColor: sectorColor(r.label) } : {}),
               }}
             />
           </span>
-          <span className="num text-right text-muted-foreground">
-            {formatPct(r.pct, 1, hidden)}
-          </span>
+          <span className="num text-right text-muted-foreground">{formatPct(r.pct, 1)}</span>
         </li>
       ))}
     </ul>
@@ -171,13 +162,11 @@ export function ExposureCard({
   countries,
   sectors,
   companies,
-  hidden,
 }: {
   /** `undefined` quando ainda não há composição calculada. */
   countries: ExposureRow[] | undefined;
   sectors: ExposureRow[] | undefined;
   companies: ExposureRow[] | undefined;
-  hidden: boolean;
 }) {
   const [tab, setTab] = useState("countries");
   const empty = !countries || countries.length === 0;
@@ -203,13 +192,13 @@ export function ExposureCard({
         ) : (
           <>
             <Tabs.Content value="countries">
-              <ExposureRows rows={countries} hidden={hidden} />
+              <ExposureRows rows={countries} />
             </Tabs.Content>
             <Tabs.Content value="sectors">
-              <ExposureRows rows={sectors ?? []} hidden={hidden} sectors />
+              <ExposureRows rows={sectors ?? []} sectors />
             </Tabs.Content>
             <Tabs.Content value="companies">
-              <ExposureRows rows={companies ?? []} hidden={hidden} />
+              <ExposureRows rows={companies ?? []} />
             </Tabs.Content>
             <Link
               to="/exposicao"

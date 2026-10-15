@@ -32,11 +32,12 @@ import {
 } from "@/lib/performance";
 import { assetCurrentValue, isOpenPosition, type Asset } from "@/lib/portfolio-types";
 import type { DividendRecord } from "@/lib/dividends";
-import { formatEUR, formatEURCompact, formatPct, formatPeriodKey } from "@/lib/format";
+import { formatEURCompact, formatPct, formatPeriodKey } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
 import { Button, Card as UiCard, EmptyState, MetricCard, PageHeader } from "@/components/ui-bits";
 import { AXIS_LINE, AXIS_TICK, ChartFrame, ChartTooltip, GRID_PROPS } from "@/components/chart-kit";
 import { cn } from "@/lib/utils";
+import { privateEUR } from "@/components/private-value";
 
 export const Route = createFileRoute("/_authenticated/performance")({
   head: () => ({
@@ -80,8 +81,7 @@ function Card({
   );
 }
 
-const pct = (v: number | null, hidden: boolean) =>
-  hidden ? "••••" : v == null ? "Dados não disponíveis" : formatPct(v, 2);
+const pct = (v: number | null) => (v == null ? "Dados não disponíveis" : formatPct(v, 2));
 
 function PerformancePage() {
   const { hidden } = usePrivateMode();
@@ -196,25 +196,25 @@ function PerformancePage() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           label="Resultado do período"
-          value={formatEUR(perf.absolute, hidden)}
-          sub={`Retorno simples: ${pct(perf.simplePct, hidden)}`}
+          value={privateEUR(perf.absolute, hidden)}
+          sub={`Retorno simples: ${pct(perf.simplePct)}`}
           tone={tone(perf.absolute)}
         />
         <MetricCard
           label="Não realizado"
-          value={formatEUR(perf.unrealized, hidden)}
+          value={privateEUR(perf.unrealized, hidden)}
           sub="Posições abertas"
           tone={tone(perf.unrealized)}
         />
         <MetricCard
           label="Realizado"
-          value={formatEUR(perf.realized, hidden)}
+          value={privateEUR(perf.realized, hidden)}
           sub="Vendas (FIFO)"
           tone={tone(perf.realized)}
         />
         <MetricCard
           label="Dividendos"
-          value={formatEUR(perf.dividends, hidden)}
+          value={privateEUR(perf.dividends, hidden)}
           sub="Recebidos no período"
           tone={tone(perf.dividends)}
         />
@@ -226,7 +226,7 @@ function PerformancePage() {
           note={METHODOLOGY_LABELS["twr"] + " — neutraliza o efeito de aportes e levantamentos."}
         >
           {perf.twr.totalPct != null ? (
-            <p className="text-2xl font-bold">{pct(perf.twr.totalPct, hidden)}</p>
+            <p className="text-2xl font-bold">{pct(perf.twr.totalPct)}</p>
           ) : (
             <p className="text-sm text-muted-foreground">
               Dados não disponíveis — {perf.twr.unavailable ?? "histórico insuficiente"}. São
@@ -239,7 +239,7 @@ function PerformancePage() {
           note={METHODOLOGY_LABELS["mwr"] + " — considera o momento de cada aporte."}
         >
           {perf.mwr.annualizedPct != null ? (
-            <p className="text-2xl font-bold">{pct(perf.mwr.annualizedPct, hidden)}</p>
+            <p className="text-2xl font-bold">{pct(perf.mwr.annualizedPct)}</p>
           ) : (
             <p className="text-sm text-muted-foreground">
               Dados não disponíveis — {perf.mwr.unavailable ?? "fluxos insuficientes"}.
@@ -288,7 +288,7 @@ function PerformancePage() {
               content={
                 <ChartTooltip
                   labelFormatter={(l) => formatPeriodKey(l, true)}
-                  valueFormatter={(v) => formatEUR(v, hidden)}
+                  valueFormatter={(v) => privateEUR(v, hidden)}
                 />
               }
             />
@@ -373,7 +373,7 @@ function PerformancePage() {
                 content={
                   <ChartTooltip
                     labelFormatter={(l) => formatPeriodKey(l, true)}
-                    valueFormatter={(v) => formatEUR(v, hidden)}
+                    valueFormatter={(v) => privateEUR(v, hidden)}
                   />
                 }
               />
@@ -425,12 +425,12 @@ function PerformancePage() {
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-medium">{c.name}</span>
                     <span className={cn(c.total >= 0 ? "text-success" : "text-destructive")}>
-                      {formatEUR(c.total, hidden)}
+                      {privateEUR(c.total, hidden)}
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Valorização {formatEUR(c.appreciation, hidden)} · Realizado{" "}
-                    {formatEUR(c.realized, hidden)} · Dividendos {formatEUR(c.dividends, hidden)}
+                    Valorização {privateEUR(c.appreciation, hidden)} · Realizado{" "}
+                    {privateEUR(c.realized, hidden)} · Dividendos {privateEUR(c.dividends, hidden)}
                   </p>
                 </li>
               ))}
@@ -458,18 +458,18 @@ function PerformancePage() {
                     <tr key={c.class} className="border-t border-border/60">
                       <td className="py-2">{c.label}</td>
                       <td className="num py-2 text-right text-muted-foreground">
-                        {formatEUR(c.invested, hidden)}
+                        {privateEUR(c.invested, hidden)}
                       </td>
-                      <td className="num py-2 text-right">{formatEUR(c.value, hidden)}</td>
+                      <td className="num py-2 text-right">{privateEUR(c.value, hidden)}</td>
                       <td
                         className={cn(
                           "py-2 text-right",
                           c.totalResult >= 0 ? "text-success" : "text-destructive",
                         )}
                       >
-                        {formatEUR(c.totalResult, hidden)}
+                        {privateEUR(c.totalResult, hidden)}
                       </td>
-                      <td className="py-2 text-right">{pct(c.returnPct, hidden)}</td>
+                      <td className="py-2 text-right">{pct(c.returnPct)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -491,7 +491,7 @@ function PerformancePage() {
           <div className="flex items-center gap-3">
             <Activity className="h-4 w-4 text-muted-foreground" />
             <p className="text-sm">
-              Máximo: {pct(dd.maxPct, hidden)} · Atual: {pct(dd.currentPct, hidden)}
+              Máximo: {pct(dd.maxPct)} · Atual: {pct(dd.currentPct)}
             </p>
           </div>
         )}

@@ -1,7 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import type { FireProgress } from "@/lib/fire";
-import { formatEUR, formatMonthPt, formatPct } from "@/lib/format";
+import { formatMonthPt, formatPct } from "@/lib/format";
 import { Card } from "@/components/ui-bits";
+import { privateEUR } from "@/components/private-value";
 
 const MARKS = [25, 50, 75] as const;
 
@@ -36,10 +37,10 @@ export function FireCard({ progress, hidden }: { progress: FireProgress | null; 
       ) : (
         <div>
           <p className="num text-4xl font-semibold leading-10 tracking-[-0.02em]">
-            {formatPct(progress.progressPct, 1, hidden)}
+            {formatPct(progress.progressPct, 1)}
           </p>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            de <span className="num">{formatEUR(progress.fireNumber, hidden)}</span>
+            de <span className="num">{privateEUR(progress.fireNumber, hidden)}</span>
           </p>
 
           <div className="relative mt-4">
@@ -48,13 +49,10 @@ export function FireCard({ progress, hidden }: { progress: FireProgress | null; 
               aria-label="Progresso FIRE"
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-valuenow={hidden ? undefined : Math.round(pct)}
+              aria-valuenow={Math.round(pct)}
               className="h-2 overflow-hidden rounded-full bg-foreground/10"
             >
-              <div
-                className="h-full rounded-full bg-primary"
-                style={{ width: hidden ? "0%" : `${pct}%` }}
-              />
+              <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
             </div>
             {MARKS.map((m) => (
               <span
@@ -67,14 +65,12 @@ export function FireCard({ progress, hidden }: { progress: FireProgress | null; 
           </div>
 
           <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-border pt-4">
-            <Metric label="Falta">{formatEUR(progress.remaining, hidden)}</Metric>
+            <Metric label="Falta">{privateEUR(progress.remaining, hidden)}</Metric>
             {progress.fireMonth && (
-              <Metric label="Data estimada">
-                {hidden ? formatEUR(0, true) : formatMonthPt(progress.fireMonth)}
-              </Metric>
+              <Metric label="Data estimada">{formatMonthPt(progress.fireMonth)}</Metric>
             )}
             <Metric label="Despesas cobertas por dividendos">
-              {formatPct(progress.passiveCoveragePct, 1, hidden)}
+              {formatPct(progress.passiveCoveragePct, 1)}
             </Metric>
           </dl>
         </div>

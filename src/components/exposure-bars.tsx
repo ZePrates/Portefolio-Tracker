@@ -3,13 +3,13 @@ import { ArrowDownWideNarrow, ArrowUpAZ, ChevronDown } from "lucide-react";
 import { Button, IconButton } from "@/components/ui-bits";
 import type { Slice } from "@/lib/exposure-types";
 import {
-  exposureEUR,
   exposurePct,
   exposureSector,
   mergeDisplaySlices,
   sortExposureRows,
 } from "@/lib/exposure-display";
 import { countryFlag, countryLabel, regionSlices, sectorColor } from "@/lib/exposure-visuals";
+import { privateExposureEUR } from "@/components/private-value";
 
 export function ExposureBars({
   title,
@@ -99,16 +99,16 @@ export function ExposureBars({
                   )}
                   {row.value}
                 </span>
-                <span className="num text-right">{exposurePct(row.pct, hidden)}</span>
+                <span className="num text-right">{exposurePct(row.pct)}</span>
                 <span className="num whitespace-nowrap text-right text-muted-foreground">
-                  {exposureEUR(row.amount, hidden)}
+                  {privateExposureEUR(row.amount, hidden)}
                 </span>
               </div>
               <div aria-hidden className="mt-2 h-2 overflow-hidden rounded-sm bg-secondary">
                 <div
                   className="h-full rounded-sm bg-primary transition-[width] motion-reduce:transition-none"
                   style={{
-                    width: `${hidden ? 0 : Math.max(0, Math.min(100, row.pct))}%`,
+                    width: `${Math.max(0, Math.min(100, row.pct))}%`,
                     ...(kind === "sector" ? { backgroundColor: sectorColor(row.value) } : {}),
                   }}
                 />
@@ -126,7 +126,7 @@ export function ExposureBars({
                         <li className="flex justify-between gap-3" key={c.assetId}>
                           <span className="min-w-0">{c.name}</span>
                           <span className="num whitespace-nowrap">
-                            {exposureEUR(c.amount, hidden)}
+                            {privateExposureEUR(c.amount, hidden)}
                           </span>
                         </li>
                       ))}

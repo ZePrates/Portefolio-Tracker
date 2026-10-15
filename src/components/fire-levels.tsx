@@ -1,11 +1,11 @@
 import type { FireDetails } from "@/lib/fire";
-import { formatEUR, formatMonthPt, formatNumber, formatPct } from "@/lib/format";
+import { formatMonthPt, formatNumber, formatPct } from "@/lib/format";
 import { MetricCard } from "@/components/ui-bits";
+import { privateEUR } from "@/components/private-value";
 
-function when(years: number | null, month: string | null, hidden: boolean): string {
+function when(years: number | null, month: string | null): string {
   if (years === 0) return "Atingido";
   if (years == null || !month) return "Fora de alcance";
-  if (hidden) return formatEUR(0, true);
   return `${formatMonthPt(month)} · ${formatNumber(years, 1)} anos`;
 }
 
@@ -40,24 +40,24 @@ export function FireLevels({ details, hidden }: { details: FireDetails; hidden: 
                   {formatNumber(l.multiple, 1)}×
                 </span>
               </div>
-              <p className="num mt-1 text-[15px] font-medium">{formatEUR(l.target, hidden)}</p>
+              <p className="num mt-1 text-[15px] font-medium">{privateEUR(l.target, hidden)}</p>
               <div
                 role="progressbar"
                 aria-label={`Progresso ${l.name}`}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-valuenow={hidden ? undefined : Math.round(l.progressPct)}
+                aria-valuenow={Math.round(l.progressPct)}
                 className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary"
               >
                 <div
                   className="h-full rounded-full bg-primary"
-                  style={{ width: hidden ? "0%" : `${l.progressPct}%` }}
+                  style={{ width: `${l.progressPct}%` }}
                 />
               </div>
               <p className="mt-2 text-[12px] text-muted-foreground">
                 {l.reached
                   ? "✓ Atingido"
-                  : `${formatPct(l.progressPct, 0, hidden)} · ${when(l.years, l.month, hidden)}`}
+                  : `${formatPct(l.progressPct, 0)} · ${when(l.years, l.month)}`}
               </p>
             </li>
           ))}
@@ -71,22 +71,14 @@ export function FireLevels({ details, hidden }: { details: FireDetails; hidden: 
       <div className="grid grid-cols-1 gap-3 md:gap-4 sm:grid-cols-2">
         <MetricCard
           label="Coast FIRE · se parares de investir hoje"
-          value={when(details.coast.years, details.coast.month, hidden)}
+          value={when(details.coast.years, details.coast.month)}
           sub="só com o crescimento real da carteira atual, sem mais aportes"
         />
         {tax && (
           <MetricCard
             label={`FIRE com impostos (${formatPct(tax.rate * 100, 0)} sobre mais-valias)`}
-            value={formatEUR(tax.fireNumber, hidden)}
-            sub={`${when(tax.yearsToFire, tax.fireMonth, hidden)} · hoje ${formatPct(
-              tax.gainSharePct,
-              0,
-              hidden,
-            )} da carteira é mais-valia → imposto efetivo de ${formatPct(
-              tax.effectiveRatePct,
-              1,
-              hidden,
-            )} por levantamento`}
+            value={privateEUR(tax.fireNumber, hidden)}
+            sub={`${when(tax.yearsToFire, tax.fireMonth)} · hoje ${formatPct(tax.gainSharePct, 0)} da carteira é mais-valia → imposto efetivo de ${formatPct(tax.effectiveRatePct, 1)} por levantamento`}
           />
         )}
       </div>

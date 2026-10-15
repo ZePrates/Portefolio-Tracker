@@ -124,7 +124,6 @@ const CLASS_OF_ROUTE = Object.fromEntries(
 
 /** Carteira: quadrado com a cor da classe e o peso na carteira à direita. */
 function ClassNavLinks({ items }: { items: NavItem[] }) {
-  const { hidden } = usePrivateMode();
   const fetchAssets = useServerFn(listAssets);
   const { data } = useQuery({ queryKey: ["assets"], queryFn: () => fetchAssets() });
   const weights = useMemo(
@@ -147,7 +146,7 @@ function ClassNavLinks({ items }: { items: NavItem[] }) {
               <span className="min-w-0 flex-1 truncate">{item.label}</span>
               {pct !== undefined && (
                 <span className="num text-xs font-normal text-muted-foreground">
-                  {formatPct(pct, 0, hidden)}
+                  {formatPct(pct, 0)}
                 </span>
               )}
             </Link>

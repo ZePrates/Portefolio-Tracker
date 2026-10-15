@@ -3,15 +3,10 @@ import { Bar, BarChart, Cell, Tooltip, XAxis } from "recharts";
 import { useMemo } from "react";
 import type { ProjectedDividend } from "@/lib/dividend-calendar";
 import { todayISO } from "@/lib/dashboard";
-import {
-  formatDayMonthPt,
-  formatEUR,
-  formatMonthPt,
-  formatPct,
-  formatPeriodKey,
-} from "@/lib/format";
+import { formatDayMonthPt, formatMonthPt, formatPct, formatPeriodKey } from "@/lib/format";
 import { Card } from "@/components/ui-bits";
 import { AXIS_LINE, AXIS_TICK, ChartFrame, ChartTooltip } from "@/components/chart-kit";
+import { privateEUR } from "@/components/private-value";
 
 const MONTHS_SHOWN = 12;
 const UPCOMING_SHOWN = 4;
@@ -102,12 +97,12 @@ export function PassiveIncomeCard({
       <div className="grid gap-7 lg:grid-cols-[200px_1fr_280px]">
         <dl className="hidden space-y-4 md:block">
           <Metric label="Últimos 12 meses" big>
-            {formatEUR(last12, hidden)}
+            {privateEUR(last12, hidden)}
           </Metric>
           <Metric label="Yield sobre custo">
-            {yieldOnCost === null ? "Sem dados" : formatPct(yieldOnCost, 1, hidden)}
+            {yieldOnCost === null ? "Sem dados" : formatPct(yieldOnCost, 1)}
           </Metric>
-          <Metric label="Desde o início">{formatEUR(sinceStart, hidden)}</Metric>
+          <Metric label="Desde o início">{privateEUR(sinceStart, hidden)}</Metric>
         </dl>
 
         <div className="hidden min-w-0 md:block">
@@ -131,7 +126,7 @@ export function PassiveIncomeCard({
                 content={
                   <ChartTooltip
                     labelFormatter={(l) => formatPeriodKey(l)}
-                    valueFormatter={(v) => formatEUR(v, hidden)}
+                    valueFormatter={(v) => privateEUR(v, hidden)}
                   />
                 }
               />
@@ -175,7 +170,7 @@ export function PassiveIncomeCard({
                     {e.assetName}
                   </span>
                   <span className="num shrink-0 text-[13.5px] font-medium">
-                    {formatEUR(e.net, hidden)}
+                    {privateEUR(e.net, hidden)}
                   </span>
                 </li>
               ))}

@@ -14,12 +14,10 @@ export function ConcentrationRisks({
   assets,
   report,
   positions,
-  hidden,
 }: {
   assets: Asset[];
   report: ExposureReport | undefined;
   positions: PositionInput[] | undefined;
-  hidden: boolean;
 }) {
   const intel = portfolioIntelligence(assets, report, positions);
   const n = intel.risks.length;
@@ -30,7 +28,6 @@ export function ConcentrationRisks({
           tone: n >= 3 ? ("loss" as const) : ("warn" as const),
           label: `${n} ${n === 1 ? "risco" : "riscos"}`,
         };
-  const text = (s: string) => (hidden ? "Detalhe escondido no modo privado." : s);
 
   return (
     <Card
@@ -51,7 +48,7 @@ export function ConcentrationRisks({
               {intel.risks.map((r) => (
                 <li key={r} className="flex items-start gap-2">
                   <TriangleAlert aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-                  <span>{text(r)}</span>
+                  <span>{r}</span>
                 </li>
               ))}
             </ul>
@@ -61,7 +58,7 @@ export function ConcentrationRisks({
           <h3 className="mb-2 text-xs font-medium text-muted-foreground">O que fazer</h3>
           <ul className="list-disc space-y-1.5 pl-5 text-sm">
             {intel.recommendations.map((r) => (
-              <li key={r}>{text(r)}</li>
+              <li key={r}>{r}</li>
             ))}
           </ul>
         </div>

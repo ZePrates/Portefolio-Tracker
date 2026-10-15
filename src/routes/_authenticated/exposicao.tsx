@@ -9,12 +9,7 @@ import { listAssets } from "@/lib/portfolio.functions";
 import type { Asset } from "@/lib/portfolio-types";
 import { ConcentrationRisks } from "@/components/concentration-risks";
 import type { CompanyExposure, Slice } from "@/lib/exposure-types";
-import {
-  exposureEUR,
-  exposurePct,
-  exposureSector,
-  mergeDisplaySlices,
-} from "@/lib/exposure-display";
+import { exposurePct, exposureSector, mergeDisplaySlices } from "@/lib/exposure-display";
 import { syncManagerHoldings, syncSummaryText } from "@/lib/holdings-sync";
 import { usePrivateMode } from "@/components/private-mode";
 import {
@@ -29,6 +24,7 @@ import { ExposureBars } from "@/components/exposure-bars";
 import { ExposureTable } from "@/components/exposure-table";
 import { EtfCoverageTable } from "@/components/etf-coverage";
 import { Skeleton } from "@/components/ui/skeleton";
+import { privateExposureEUR } from "@/components/private-value";
 
 export const Route = createFileRoute("/_authenticated/exposicao")({
   head: () => ({
@@ -85,7 +81,9 @@ function SliceSection({
                   {r.contributors.map((c) => (
                     <li key={c.assetId} className="flex justify-between gap-3">
                       <span>{c.name}</span>
-                      <span className="num whitespace-nowrap">{exposureEUR(c.amount, hidden)}</span>
+                      <span className="num whitespace-nowrap">
+                        {privateExposureEUR(c.amount, hidden)}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -97,7 +95,7 @@ function SliceSection({
             label: "Valor",
             numeric: true,
             value: (r) => r.amount,
-            cell: (r) => exposureEUR(r.amount, hidden),
+            cell: (r) => privateExposureEUR(r.amount, hidden),
           },
           {
             id: "pct",
@@ -112,10 +110,10 @@ function SliceSection({
                 >
                   <div
                     className="h-full rounded-full bg-primary"
-                    style={{ width: `${hidden ? 0 : Math.min(100, r.pct)}%` }}
+                    style={{ width: `${Math.min(100, r.pct)}%` }}
                   />
                 </div>
-                <span className="w-16">{exposurePct(r.pct, hidden)}</span>
+                <span className="w-16">{exposurePct(r.pct)}</span>
               </div>
             ),
           },
@@ -162,21 +160,23 @@ function CompanyTable({ rows, hidden }: { rows: CompanyExposure[]; hidden: boole
             label: "Via ETFs",
             numeric: true,
             value: (r) => r.indirect,
-            cell: (r) => exposureEUR(r.indirect, hidden),
+            cell: (r) => privateExposureEUR(r.indirect, hidden),
           },
           {
             id: "direct",
             label: "Direto",
             numeric: true,
             value: (r) => r.direct,
-            cell: (r) => exposureEUR(r.direct, hidden),
+            cell: (r) => privateExposureEUR(r.direct, hidden),
           },
           {
             id: "total",
             label: "Total",
             numeric: true,
             value: (r) => r.amount,
-            cell: (r) => <span className="font-medium">{exposureEUR(r.amount, hidden)}</span>,
+            cell: (r) => (
+              <span className="font-medium">{privateExposureEUR(r.amount, hidden)}</span>
+            ),
           },
           {
             id: "etfs",
@@ -192,7 +192,7 @@ function CompanyTable({ rows, hidden }: { rows: CompanyExposure[]; hidden: boole
                     {etfs.map((etf) => (
                       <li key={etf.assetId}>
                         <p className="whitespace-normal">{etf.name}</p>
-                        <p className="num">{exposureEUR(etf.amount, hidden)}</p>
+                        <p className="num">{privateExposureEUR(etf.amount, hidden)}</p>
                       </li>
                     ))}
                   </ul>
@@ -207,7 +207,7 @@ function CompanyTable({ rows, hidden }: { rows: CompanyExposure[]; hidden: boole
             label: "% carteira",
             numeric: true,
             value: (r) => r.pct,
-            cell: (r) => exposurePct(r.pct, hidden),
+            cell: (r) => exposurePct(r.pct),
           },
         ]}
       />
@@ -307,25 +307,23 @@ function ExposicaoPage() {
             </div>
           )}
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-            <MetricCard label="Valor do portefólio" value={exposureEUR(report.total, hidden)} />
-            <MetricCard label="Cobertura geográfica" value={exposurePct(report.coverage, hidden)} />
+            <MetricCard
+              label="Valor do portefólio"
+              value={privateExposureEUR(report.total, hidden)}
+            />
+            <MetricCard label="Cobertura geográfica" value={exposurePct(report.coverage)} />
             <MetricCard
               label="Maior empresa"
-              value={exposurePct(report.concentration.largest, hidden)}
+              value={exposurePct(report.concentration.largest)}
               sub={report.companies[0]?.name ?? "—"}
             />
             <MetricCard
               label="Top 10 empresas"
-              value={exposurePct(report.concentration.top10, hidden)}
-              sub={`Top 5: ${exposurePct(report.concentration.top5, hidden)}`}
+              value={exposurePct(report.concentration.top10)}
+              sub={`Top 5: ${exposurePct(report.concentration.top5)}`}
             />
           </div>
-          <ConcentrationRisks
-            assets={assets}
-            report={report}
-            positions={data?.positions}
-            hidden={hidden}
-          />
+          <ConcentrationRisks assets={assets} report={report} positions={data?.positions} />
           <CompanyTable rows={report.companies} hidden={hidden} />
           {etfs.length > 0 && <EtfCoverageTable rows={etfs} hidden={hidden} />}
           <div className="grid min-w-0 gap-6 xl:grid-cols-2">

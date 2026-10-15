@@ -61,8 +61,7 @@ export function formatMoney(value: number, currency = "EUR", hidden = false): st
   }
 }
 
-export function formatPercent(value: number, hidden = false): string {
-  if (hidden) return HIDDEN;
+export function formatPercent(value: number): string {
   const v = value ?? 0;
   if (!Number.isFinite(v)) return EMPTY;
   const sign = v > 0 ? "+" : "";
@@ -81,15 +80,13 @@ export function formatNumber(value: number, decimals = 2, hidden = false): strin
 }
 
 /** Percentagem sem sinal ("62,1 %"). Para variações com sinal usa formatPercent. */
-export function formatPct(value: number, decimals = 1, hidden = false): string {
-  if (hidden) return HIDDEN;
+export function formatPct(value: number, decimals = 1): string {
   if (!Number.isFinite(value)) return EMPTY;
   return `${formatNumber(value, decimals)}${NBSP}%`;
 }
 
 /** Pontos percentuais com sinal ("+2,5 pp"). */
-export function formatPp(value: number, decimals = 1, hidden = false): string {
-  if (hidden) return HIDDEN;
+export function formatPp(value: number, decimals = 1): string {
   if (!Number.isFinite(value)) return EMPTY;
   const sign = value > 0 ? "+" : "";
   return `${sign}${formatNumber(value, decimals)}${NBSP}pp`;

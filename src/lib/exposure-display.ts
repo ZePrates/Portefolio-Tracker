@@ -36,8 +36,7 @@ export function readableCompanyName(name: string): string {
     .join(" ");
 }
 
-export const exposurePct = (value: number, hidden = false) =>
-  formatPct(value, Math.abs(value) < 1 ? 2 : 1, hidden);
+export const exposurePct = (value: number) => formatPct(value, Math.abs(value) < 1 ? 2 : 1);
 
 export function exposureEUR(value: number, hidden = false): string {
   if (hidden) return "••••";

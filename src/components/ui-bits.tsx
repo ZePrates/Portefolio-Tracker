@@ -77,7 +77,7 @@ export function Card({
   headingLevel = 2,
 }: {
   title?: string | undefined;
-  description?: string | undefined;
+  description?: ReactNode;
   icon?: ReactNode;
   action?: ReactNode;
   children?: ReactNode;
@@ -151,8 +151,8 @@ export function MetricCard({
   className,
 }: {
   label: string;
-  value: string;
-  sub?: string;
+  value: ReactNode;
+  sub?: ReactNode;
   tone?: Tone;
   loading?: boolean;
   className?: string;

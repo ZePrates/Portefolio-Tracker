@@ -7,7 +7,8 @@ import { usePrivateMode } from "@/components/private-mode";
 import { importSnapshotHistory } from "@/lib/snapshots.functions";
 import { parseHistoryCsv, type HistoryParse } from "@/lib/snapshot-import";
 import { todayISO } from "@/lib/dashboard";
-import { formatDatePt, formatEUR } from "@/lib/format";
+import { formatDatePt } from "@/lib/format";
+import { privateEUR } from "@/components/private-value";
 
 const MAX_BYTES = 1024 * 1024;
 
@@ -82,7 +83,7 @@ export function HistoryImportCard() {
           {first && last && (
             <p>
               {rows.length} meses, de {formatDatePt(first.date)} a {formatDatePt(last.date)} ·
-              último valor {formatEUR(last.value, hidden)} com {formatEUR(last.invested, hidden)}{" "}
+              último valor {privateEUR(last.value, hidden)} com {privateEUR(last.invested, hidden)}{" "}
               investidos.
             </p>
           )}

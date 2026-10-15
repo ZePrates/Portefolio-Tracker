@@ -2,10 +2,11 @@ import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { CLASS_LABELS } from "@/lib/portfolio-types";
 import type { AllocationSlice } from "@/lib/dashboard";
-import { formatEUR, formatPct, formatPp } from "@/lib/format";
+import { formatPct, formatPp } from "@/lib/format";
 import { Card } from "@/components/ui-bits";
 import { CLASS_COLOR } from "@/components/chart-kit";
 import { CLASS_ROUTES } from "@/components/nav-config";
+import { privateEUR } from "@/components/private-value";
 
 /** Abaixo deste desvio (em pontos percentuais) a classe considera-se "no alvo". */
 const ON_TARGET_PP = 0.3;
@@ -14,7 +15,7 @@ const WARN_PP = 1;
 /** Desvio que enche a mini-barra (cada lado). */
 const MINI_BAR_FULL_PP = 5;
 
-function DriftCell({ drift, hidden }: { drift: number; hidden: boolean }) {
+function DriftCell({ drift }: { drift: number }) {
   const onTarget = Math.abs(drift) < ON_TARGET_PP;
   const half = Math.min(1, Math.abs(drift) / MINI_BAR_FULL_PP) * 50;
   return (
@@ -23,7 +24,7 @@ function DriftCell({ drift, hidden }: { drift: number; hidden: boolean }) {
         aria-hidden
         className="relative hidden h-1 w-11 shrink-0 rounded-full bg-foreground/10 sm:block"
       >
-        {!hidden && !onTarget && (
+        {!onTarget && (
           <span
             className="absolute inset-y-0 rounded-full bg-foreground/50"
             style={
@@ -36,10 +37,10 @@ function DriftCell({ drift, hidden }: { drift: number; hidden: boolean }) {
       <span
         className={cn(
           "num whitespace-nowrap text-[13px]",
-          !hidden && Math.abs(drift) >= WARN_PP ? "text-warning" : "text-foreground/80",
+          Math.abs(drift) >= WARN_PP ? "text-warning" : "text-foreground/80",
         )}
       >
-        {hidden ? formatPp(0, 1, true) : onTarget ? "no alvo" : formatPp(drift, 1)}
+        {onTarget ? "no alvo" : formatPp(drift, 1)}
       </span>
     </span>
   );
@@ -76,7 +77,7 @@ export function AllocationCard({
           <div
             role="img"
             aria-label={`Alocação por classe: ${allocation
-              .map((c) => `${CLASS_LABELS[c.class]} ${hidden ? "" : formatPct(c.pct, 1)}`)
+              .map((c) => `${CLASS_LABELS[c.class]} ${formatPct(c.pct, 1)}`)
               .join(", ")}`}
             className="flex h-2.5 gap-0.5 overflow-hidden rounded-full bg-foreground/5"
           >
@@ -84,7 +85,7 @@ export function AllocationCard({
               <span
                 key={c.class}
                 className="h-full rounded-full"
-                style={{ width: hidden ? 0 : `${c.pct}%`, background: CLASS_COLOR[c.class] }}
+                style={{ width: `${c.pct}%`, background: CLASS_COLOR[c.class] }}
               />
             ))}
           </div>
@@ -125,14 +126,14 @@ export function AllocationCard({
                     </Link>
                   </td>
                   <td className="num hidden py-[9px] pr-3 text-right sm:table-cell">
-                    {formatEUR(c.value, hidden)}
+                    {privateEUR(c.value, hidden)}
                   </td>
                   <td className="num py-[9px] pr-3 text-right text-muted-foreground">
-                    {formatPct(c.pct, 1, hidden)}
+                    {formatPct(c.pct, 1)}
                   </td>
                   {hasTargets && (
                     <td className="py-[9px] text-right">
-                      <DriftCell drift={drifts.get(c.class) ?? 0} hidden={hidden} />
+                      <DriftCell drift={drifts.get(c.class) ?? 0} />
                     </td>
                   )}
                 </tr>

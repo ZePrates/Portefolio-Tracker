@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { ResponsiveContainer } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -62,7 +62,7 @@ export function ChartTooltip({
   payload?: TooltipEntry[];
   label?: string | number;
   labelFormatter?: (label: string) => string;
-  valueFormatter: (value: number, name: string) => string;
+  valueFormatter: (value: number, name: string) => ReactNode;
 }) {
   if (!active || !payload || payload.length === 0) return null;
   const title = label != null && label !== "" ? String(label) : null;

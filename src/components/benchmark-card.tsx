@@ -4,15 +4,10 @@ import {
   type BenchmarkComparison,
   type BenchmarkScope,
 } from "@/lib/benchmark";
-import {
-  formatEUR,
-  formatEURCompact,
-  formatNumber,
-  formatPct,
-  formatPeriodKey,
-} from "@/lib/format";
+import { formatEURCompact, formatNumber, formatPct, formatPeriodKey } from "@/lib/format";
 import { AXIS_LINE, AXIS_TICK, ChartFrame, ChartTooltip, GRID_PROPS } from "@/components/chart-kit";
 import { Button, Card, EmptyState, MetricCard } from "@/components/ui-bits";
+import { privateEUR } from "@/components/private-value";
 
 /** Carteira vs. S&P 500 hipotético com os mesmos aportes, nas mesmas datas. */
 export function BenchmarkCard({
@@ -83,18 +78,23 @@ function BenchmarkBody({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:gap-4">
         <MetricCard
           label="Carteira"
-          value={formatEUR(c.portfolio, hidden)}
-          sub={`valor atual + ${formatEUR(c.dividends, hidden)} de dividendos recebidos`}
+          value={privateEUR(c.portfolio, hidden)}
+          sub={<>valor atual + {privateEUR(c.dividends, hidden)} de dividendos recebidos</>}
         />
         <MetricCard
           label={`S&P 500 a ${rate} %`}
-          value={formatEUR(c.benchmark, hidden)}
-          sub={`com ${formatEUR(c.invested, hidden)} investidos`}
+          value={privateEUR(c.benchmark, hidden)}
+          sub={<>com {privateEUR(c.invested, hidden)} investidos</>}
         />
         <MetricCard
           label={ahead ? "À frente do S&P 500" : "Atrás do S&P 500"}
-          value={`${ahead ? "+" : ""}${formatEUR(c.difference, hidden)}`}
-          sub={c.differencePct == null ? "" : formatPct(c.differencePct, 1, hidden)}
+          value={
+            <>
+              {ahead ? "+" : ""}
+              {privateEUR(c.difference, hidden)}
+            </>
+          }
+          sub={c.differencePct == null ? "" : formatPct(c.differencePct, 1)}
           tone={ahead ? "positive" : "negative"}
         />
       </div>
@@ -127,7 +127,7 @@ function BenchmarkBody({
             content={
               <ChartTooltip
                 labelFormatter={(l) => formatPeriodKey(l, true)}
-                valueFormatter={(v) => formatEUR(v, hidden)}
+                valueFormatter={(v) => privateEUR(v, hidden)}
               />
             }
           />
