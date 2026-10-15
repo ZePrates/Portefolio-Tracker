@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware-ext
 import { alertKey, dataQualityAlerts } from "@/lib/data-quality";
 import { todayLisbon } from "@/lib/dates";
 import { dbError } from "@/lib/errors";
+import { readExposurePages } from "@/lib/exposure-pagination";
 
 /** Alertas de qualidade de dados da carteira (só leitura). */
 export const getDataQualityAlerts = createServerFn({ method: "GET" })
@@ -24,7 +25,10 @@ export const getDataQualityAlerts = createServerFn({ method: "GET" })
       sb
         .from("dividends")
         .select("asset_id, amount, gross_amount, tax_amount, status, payment_date_estimated"),
-      sb.from("etf_holdings").select("asset_id, weight"),
+      // Milhares de linhas: lidas por páginas (a API corta em 1000).
+      readExposurePages((from, to) =>
+        sb.from("etf_holdings").select("asset_id, weight").order("id").range(from, to),
+      ),
       sb.from("asset_profiles").select("asset_id, domicile_country"),
       sb.from("dismissed_alerts").select("alert_key"),
       sb
@@ -33,11 +37,11 @@ export const getDataQualityAlerts = createServerFn({ method: "GET" })
         .order("occurred_on", { ascending: false })
         .limit(1000),
     ]);
-    for (const r of [assetsRes, txRes, divRes, holdRes, profRes, dismissedRes, p2pRes])
+    for (const r of [assetsRes, txRes, divRes, profRes, dismissedRes, p2pRes])
       if (r.error) throw dbError(r.error);
 
     const coverage = new Map<string, number>();
-    for (const h of holdRes.data ?? []) {
+    for (const h of holdRes) {
       coverage.set(h.asset_id, (coverage.get(h.asset_id) ?? 0) + (Number(h.weight) || 0));
     }
     const domicile = new Map(

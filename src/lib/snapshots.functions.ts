@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/external-types";
 import { isoDateLisbon, todayLisbon } from "@/lib/dates";
 import { planOpenAppSnapshot } from "@/lib/daily-snapshot";
+import { readExposurePages } from "@/lib/exposure-pagination";
 
 export type SB = { from: SupabaseClient<Database>["from"] };
 
@@ -83,12 +84,17 @@ export async function takeSnapshot(supabase: SB, userId: string): Promise<void> 
 export const listPortfolioSnapshots = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
-      .from("portfolio_snapshots")
-      .select("snapshot_date, scope, invested_amount, market_value, source")
-      .order("snapshot_date", { ascending: true });
-    if (error) throw new Error(error.message);
-    const rows: PortfolioSnapshotRow[] = (data ?? []).map((r) => ({
+    // O histórico reconstruído tem milhares de linhas: a API devolve no máximo
+    // 1000 por pedido, por isso lê-se por páginas (senão só vinham os dias mais antigos).
+    const data = await readExposurePages((from, to) =>
+      context.supabase
+        .from("portfolio_snapshots")
+        .select("snapshot_date, scope, invested_amount, market_value, source")
+        .order("snapshot_date", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
+    const rows: PortfolioSnapshotRow[] = data.map((r) => ({
       snapshotDate: r.snapshot_date,
       scope: r.scope,
       investedAmount: Number(r.invested_amount) || 0,
