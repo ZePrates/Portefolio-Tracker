@@ -19,6 +19,7 @@ import { Route as AuthenticatedCalendarioRouteImport } from './routes/_authentic
 import { Route as AuthenticatedDividendosRouteImport } from './routes/_authenticated/dividendos'
 import { Route as AuthenticatedEtfsRouteImport } from './routes/_authenticated/etfs'
 import { Route as AuthenticatedExposicaoRouteImport } from './routes/_authenticated/exposicao'
+import { Route as AuthenticatedFechoRouteImport } from './routes/_authenticated/fecho'
 import { Route as AuthenticatedImportarRouteImport } from './routes/_authenticated/importar'
 import { Route as AuthenticatedInteligenciaRouteImport } from './routes/_authenticated/inteligencia'
 import { Route as AuthenticatedIrsRouteImport } from './routes/_authenticated/irs'
@@ -80,6 +81,11 @@ const AuthenticatedEtfsRoute = AuthenticatedEtfsRouteImport.update({
 const AuthenticatedExposicaoRoute = AuthenticatedExposicaoRouteImport.update({
   id: '/exposicao',
   path: '/exposicao',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedFechoRoute = AuthenticatedFechoRouteImport.update({
+  id: '/fecho',
+  path: '/fecho',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedImportarRoute = AuthenticatedImportarRouteImport.update({
@@ -151,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/dividendos': typeof AuthenticatedDividendosRoute
   '/etfs': typeof AuthenticatedEtfsRoute
   '/exposicao': typeof AuthenticatedExposicaoRoute
+  '/fecho': typeof AuthenticatedFechoRoute
   '/importar': typeof AuthenticatedImportarRoute
   '/inteligencia': typeof AuthenticatedInteligenciaRoute
   '/irs': typeof AuthenticatedIrsRoute
@@ -172,6 +179,7 @@ export interface FileRoutesByTo {
   '/dividendos': typeof AuthenticatedDividendosRoute
   '/etfs': typeof AuthenticatedEtfsRoute
   '/exposicao': typeof AuthenticatedExposicaoRoute
+  '/fecho': typeof AuthenticatedFechoRoute
   '/importar': typeof AuthenticatedImportarRoute
   '/inteligencia': typeof AuthenticatedInteligenciaRoute
   '/irs': typeof AuthenticatedIrsRoute
@@ -196,6 +204,7 @@ export interface FileRoutesById {
   '/_authenticated/dividendos': typeof AuthenticatedDividendosRoute
   '/_authenticated/etfs': typeof AuthenticatedEtfsRoute
   '/_authenticated/exposicao': typeof AuthenticatedExposicaoRoute
+  '/_authenticated/fecho': typeof AuthenticatedFechoRoute
   '/_authenticated/importar': typeof AuthenticatedImportarRoute
   '/_authenticated/inteligencia': typeof AuthenticatedInteligenciaRoute
   '/_authenticated/irs': typeof AuthenticatedIrsRoute
@@ -221,6 +230,7 @@ export interface FileRouteTypes {
     | '/dividendos'
     | '/etfs'
     | '/exposicao'
+    | '/fecho'
     | '/importar'
     | '/inteligencia'
     | '/irs'
@@ -242,6 +252,7 @@ export interface FileRouteTypes {
     | '/dividendos'
     | '/etfs'
     | '/exposicao'
+    | '/fecho'
     | '/importar'
     | '/inteligencia'
     | '/irs'
@@ -265,6 +276,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dividendos'
     | '/_authenticated/etfs'
     | '/_authenticated/exposicao'
+    | '/_authenticated/fecho'
     | '/_authenticated/importar'
     | '/_authenticated/inteligencia'
     | '/_authenticated/irs'
@@ -357,6 +369,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedExposicaoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/fecho': {
+      id: '/_authenticated/fecho'
+      path: '/fecho'
+      fullPath: '/fecho'
+      preLoaderRoute: typeof AuthenticatedFechoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/importar': {
       id: '/_authenticated/importar'
       path: '/importar'
@@ -445,6 +464,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDividendosRoute: typeof AuthenticatedDividendosRoute
   AuthenticatedEtfsRoute: typeof AuthenticatedEtfsRoute
   AuthenticatedExposicaoRoute: typeof AuthenticatedExposicaoRoute
+  AuthenticatedFechoRoute: typeof AuthenticatedFechoRoute
   AuthenticatedImportarRoute: typeof AuthenticatedImportarRoute
   AuthenticatedInteligenciaRoute: typeof AuthenticatedInteligenciaRoute
   AuthenticatedIrsRoute: typeof AuthenticatedIrsRoute
@@ -466,6 +486,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDividendosRoute: AuthenticatedDividendosRoute,
   AuthenticatedEtfsRoute: AuthenticatedEtfsRoute,
   AuthenticatedExposicaoRoute: AuthenticatedExposicaoRoute,
+  AuthenticatedFechoRoute: AuthenticatedFechoRoute,
   AuthenticatedImportarRoute: AuthenticatedImportarRoute,
   AuthenticatedInteligenciaRoute: AuthenticatedInteligenciaRoute,
   AuthenticatedIrsRoute: AuthenticatedIrsRoute,
