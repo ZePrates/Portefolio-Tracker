@@ -45,6 +45,7 @@ A app usa o projeto Supabase **externo** `azekwmamjovoguauncrg` (definido em `vi
 
 - **`supabase/migrations/` é a fonte de verdade** dessa base. Cada ficheiro tem de ter **exatamente** a versão registada no Supabase (`supabase_migrations.schema_migrations`; ver `list_migrations`). O `apply_migration` regista a hora a que a migração é aplicada, por isso o nome do ficheiro faz-se depois, com essa versão. Se faltar um ficheiro, o check do Supabase no GitHub falha com "Remote migration versions not found".
 - **`drizzle/` é gerido pelo Lovable** para a base da Lovable Cloud (`LOVABLE_DB_MIGRATION_URL`), que não guarda os dados da carteira. Não se edita à mão.
+- **`supabase/functions/sync-etf-holdings/`** é a Edge Function do botão "Sincronizar com gestoras". Corre com a sessão do utilizador e publica-se à parte no projeto externo (`deploy_edge_function`, `verify_jwt = true`); o ficheiro no repositório tem de ficar igual ao publicado. Gestoras com lista completa: **iShares**, **Vanguard**, **Xtrackers** e **Global X**. VanEck e BNP Paribas exigem aceitar um aviso de investidor antes de mostrar a composição; a WisdomTree bloqueia pedidos automáticos (Cloudflare). Estes ETFs ficam com o top 10 do justETF/FT.
 - Todas as tabelas têm RLS: cada utilizador só lê e escreve as suas linhas (`auth.uid() = user_id`). A `security_profiles` é só de leitura para utilizadores autenticados.
 
 ## Desenvolvimento local
