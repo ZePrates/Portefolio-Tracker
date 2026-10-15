@@ -263,8 +263,9 @@ export function xtbRowsFromWorkbook(sheets: XlsxSheets, fileName = ""): XtbWorkb
 export function parseXtbRows(rows: XtbRawRow[]): XtbParseResult {
   const result: XtbParseResult = { trades: [], dividends: [], ignored: [], errors: [] };
   const ignored = new Map<string, number>();
-  const withholding = new Map<string, number>();
+  const withholding: Array<{ id: string; key: string; amount: number }> = [];
   const rawDividends: Array<Omit<XtbDividend, "taxEur" | "netEur">> = [];
+  const corrections: Array<{ line: number; key: string; from: string | null; amount: number }> = [];
   const partial = new Map<string, XtbTrade & { total: number }>();
 
   for (const row of rows) {
@@ -272,8 +273,12 @@ export function parseXtbRows(rows: XtbRawRow[]): XtbParseResult {
     // Linha de totais no fim do export.
     if (!type || /^total/i.test(sourceId) || /^total/i.test(type)) continue;
     const kind = kindOf(type);
-    // Retenção positiva = reembolso (ex.: "US Dividends Reclassification"), não imposto pago.
-    const label = kind === "withholding" && amount > 0 ? `${type} (reembolso)` : type;
+    // Retenção positiva = reembolso (ex.: "US Dividends Reclassification") ou a
+    // anulação da retenção de um dividendo corrigido ("corr … from …"), não imposto pago.
+    const label =
+      kind === "withholding" && amount > 0
+        ? `${type} (${/^\s*corr\b/i.test(row.comment) ? "correção" : "reembolso"})`
+        : type;
     if (!kind || label !== type) {
       ignored.set(label, (ignored.get(label) ?? 0) + 1);
       continue;
@@ -326,8 +331,11 @@ export function parseXtbRows(rows: XtbRawRow[]): XtbParseResult {
       }
       result.trades.push(trade);
     } else if (kind === "withholding") {
-      const key = `${symbol}|${date}`;
-      withholding.set(key, (withholding.get(key) ?? 0) + Math.abs(amount));
+      withholding.push({ id: sourceId, key: `${symbol}|${date}`, amount: Math.abs(amount) });
+    } else if (amount < 0) {
+      // Correção ("corr NVO.US USD 1.2174/ SHR from 2026-04-08"): anula um dividendo já pago.
+      const from = /\bfrom\s+(\d{4}-\d{2}-\d{2})/i.exec(row.comment)?.[1] ?? null;
+      corrections.push({ line: row.line, key: symbol, from, amount: -amount });
     } else {
       const m = DIV_RE.exec(row.comment);
       rawDividends.push({
@@ -346,21 +354,54 @@ export function parseXtbRows(rows: XtbRawRow[]): XtbParseResult {
     return trade;
   });
 
-  // Junta cada retenção ao dividendo do mesmo título e data.
-  const usedKeys = new Set<string>();
-  for (const d of rawDividends) {
-    const key = `${d.symbol}|${d.date}`;
-    const tax = usedKeys.has(key) ? 0 : (withholding.get(key) ?? 0);
-    usedKeys.add(key);
-    result.dividends.push({ ...d, taxEur: tax, netEur: d.grossEur - tax });
-  }
-  for (const key of withholding.keys()) {
-    if (!usedKeys.has(key)) {
+  // Cada correção anula o dividendo original (mesmo título e montante, na data
+  // indicada em "from"); a retenção desse dividendo cai com ele.
+  const cancelled = new Set<string>();
+  for (const c of corrections) {
+    const original = rawDividends.find(
+      (d) =>
+        d.symbol === c.key &&
+        !cancelled.has(d.sourceId) &&
+        Math.abs(d.grossEur - c.amount) < 0.005 &&
+        (c.from ? d.date === c.from : true),
+    );
+    if (original) {
+      cancelled.add(original.sourceId);
+    } else {
       result.errors.push({
-        line: 0,
-        message: `Retenção sem dividendo correspondente (${key.replace("|", " em ")}).`,
+        line: c.line,
+        message: `Correção de dividendo sem o dividendo original (${c.key}${c.from ? ` de ${c.from}` : ""}).`,
       });
     }
+  }
+  if (cancelled.size) {
+    ignored.set("Dividend (correção + original anulado)", cancelled.size);
+  }
+
+  // Junta cada retenção ao seu dividendo: a XTB lança-a com o ID seguinte ao do
+  // dividendo (um par por lote, quando o mesmo título paga várias linhas no
+  // mesmo dia). Sem esse par, vai para um dividendo do mesmo título e data.
+  const keyOf = (d: { symbol: string; date: string }) => `${d.symbol}|${d.date}`;
+  const tax = new Map<string, number>();
+  for (const w of withholding) {
+    const prevId = /^\d+$/.test(w.id) ? String(Number(w.id) - 1) : null;
+    const target =
+      rawDividends.find((d) => d.sourceId === prevId && keyOf(d) === w.key) ??
+      rawDividends.find((d) => keyOf(d) === w.key && !cancelled.has(d.sourceId)) ??
+      rawDividends.find((d) => keyOf(d) === w.key);
+    if (!target) {
+      result.errors.push({
+        line: 0,
+        message: `Retenção sem dividendo correspondente (${w.key.replace("|", " em ")}).`,
+      });
+      continue;
+    }
+    tax.set(target.sourceId, (tax.get(target.sourceId) ?? 0) + w.amount);
+  }
+  for (const d of rawDividends) {
+    if (cancelled.has(d.sourceId)) continue;
+    const t = tax.get(d.sourceId) ?? 0;
+    result.dividends.push({ ...d, taxEur: t, netEur: d.grossEur - t });
   }
 
   result.ignored = [...ignored.entries()].map(([type, count]) => ({ type, count }));
