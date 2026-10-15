@@ -170,10 +170,38 @@ export interface FireTax {
   fireMonth: string | null;
 }
 
+export interface FireScenario {
+  key: "prudent" | "historical" | "optimistic" | "yours";
+  name: string;
+  /** Retorno real anual, em %. */
+  realReturnPct: number;
+  /** Retorno nominal equivalente com a inflação escolhida, em %. */
+  nominalReturnPct: number;
+  years: number | null;
+  month: string | null;
+}
+
+/**
+ * Cenários de retorno real para comparar com o escolhido. As ações globais
+ * renderam cerca de 5 % real ao ano a longo prazo; 3 % e 7 % dão a margem.
+ */
+export const FIRE_SCENARIOS: readonly { key: FireScenario["key"]; name: string; real: number }[] = [
+  { key: "prudent", name: "Prudente", real: 3 },
+  { key: "historical", name: "Histórico", real: 5 },
+  { key: "optimistic", name: "Otimista", real: 7 },
+];
+
+/** Retorno real acima do qual a previsão é tratada como otimista, em %. */
+export const FIRE_OPTIMISTIC_REAL_PCT = 7;
+
 export interface FireDetails {
   levels: FireLevel[];
   coast: FireCoast;
   tax: FireTax | null;
+  /** Data do FIRE com outros retornos (mesmas despesas e aportes). */
+  scenarios: FireScenario[];
+  /** O retorno real escolhido está acima do cenário otimista. */
+  optimistic: boolean;
 }
 
 /**
@@ -216,7 +244,32 @@ export function fireDetails(
   const coastMonths = monthsToTarget(value, fireNumber, rate, 0);
   const coast: FireCoast = { years: toYears(coastMonths), month: addMonths(today, coastMonths) };
 
-  return { levels, coast, tax: fireTax(settings, value, costBasis, today, taxRate) };
+  const yoursReal =
+    ((1 + settings.expectedReturnPct / 100) / (1 + settings.inflationPct / 100) - 1) * 100;
+  const scenario = (key: FireScenario["key"], name: string, real: number): FireScenario => {
+    const r = Math.pow(1 + real / 100, 1 / 12) - 1;
+    const months = monthsToTarget(value, fireNumber, r, contribution);
+    return {
+      key,
+      name,
+      realReturnPct: real,
+      nominalReturnPct: ((1 + real / 100) * (1 + settings.inflationPct / 100) - 1) * 100,
+      years: toYears(months),
+      month: addMonths(today, months),
+    };
+  };
+  const scenarios = [
+    ...FIRE_SCENARIOS.map((s) => scenario(s.key, s.name, s.real)),
+    scenario("yours", "O teu", yoursReal),
+  ];
+
+  return {
+    levels,
+    coast,
+    tax: fireTax(settings, value, costBasis, today, taxRate),
+    scenarios,
+    optimistic: yoursReal > FIRE_OPTIMISTIC_REAL_PCT + 1e-9,
+  };
 }
 
 function fireTax(
