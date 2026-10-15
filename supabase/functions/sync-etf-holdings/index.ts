@@ -2,7 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 // Sincroniza holdings completas dos ETFs a partir das fontes oficiais das gestoras.
-// iShares (CSV), Vanguard (GraphQL oficial), Xtrackers/DWS (Excel), Global X (CSV).
+// iShares (CSV), Vanguard (GraphQL oficial), Xtrackers/DWS (Excel), Global X (CSV), VanEck (Excel).
 // Corre sempre com a sessão do utilizador (RLS ativo). Evita downloads quando os dados não mudaram.
 // Publicada no projeto Supabase externo (azekwmamjovoguauncrg) com verify_jwt = true.
 
@@ -26,13 +26,14 @@ function countryName(code?: string | null): string | null {
   try { return regionNames.of(code) ?? null; } catch { return null; }
 }
 
-const MANAGERS = ["ishares", "vanguard", "xtrackers", "globalx"];
+const MANAGERS = ["ishares", "vanguard", "xtrackers", "globalx", "vaneck"];
 function detectManager(name: string, slug?: string | null): string | null {
   if (slug && MANAGERS.includes(slug)) return slug;
   if (/^ishares/i.test(name)) return "ishares";
   if (/^vanguard/i.test(name)) return "vanguard";
   if (/^xtrackers/i.test(name)) return "xtrackers";
   if (/^global x/i.test(name)) return "globalx";
+  if (/^vaneck/i.test(name)) return "vaneck";
   return null;
 }
 
@@ -221,6 +222,66 @@ async function globalxSync(sb: SupabaseClient, assetId: string, isin: string | n
   });
 }
 
+// ---------- VanEck (Europa) ----------
+// O site só mostra a composição depois do aviso de investidor. O utilizador
+// autorizou declarar "investidor particular em Portugal" (15/10/2026); estes
+// cookies são os que o site grava ao aceitar esse aviso.
+const VK = "https://www.vaneck.com";
+const VK_COOKIE = "ve-country-pt=iso%3Dpt%26investortype%3Dretail%26language%3Den%26disclaimer%3Dtrue%26foreigntax%3Dfalse%26foreigntaxdisclaimer%3Dfalse; ve-country=current%3Dpt%26previous%3D; visitortype=user; sitelanguage=en";
+const VK_HEADERS = { "User-Agent": UA, Cookie: VK_COOKIE };
+
+/** Encontra o código do produto (ex.: nuclear-etf) pelo ISIN, a partir do sitemap. */
+async function vaneckSlug(isin: string): Promise<string | null> {
+  const r = await fetch(`${VK}/ie/sitemap.xml`, { headers: VK_HEADERS });
+  if (!r.ok) return null;
+  const slugs = [...new Set([...(await r.text()).matchAll(/<loc>https:\/\/www\.vaneck\.com\/ie\/en\/investments\/([a-z0-9-]+)\/<\/loc>/g)].map((m) => m[1]))];
+  for (const slug of slugs.slice(0, 120)) {
+    const p = await fetch(`${VK}/pt/en/investments/${slug}/overview/`, { headers: VK_HEADERS });
+    if (p.ok && (await p.text()).includes(isin)) return slug;
+  }
+  return null;
+}
+
+async function vaneckSync(sb: SupabaseClient, assetId: string, isin: string | null, ref: Record<string, unknown>): Promise<Result> {
+  let slug = (ref.vaneck_slug as string) ?? null;
+  if (!slug && isin) slug = await vaneckSlug(isin);
+  if (!slug) throw new Error("Fundo VanEck não encontrado pelo ISIN");
+  const r = await fetch(`${VK}/pt/en/investments/${slug}/downloads/holdings/`, { headers: { ...VK_HEADERS, Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,*/*" } });
+  const ct = r.headers.get("content-type") ?? "";
+  if (!r.ok || !ct.includes("spreadsheet")) throw new Error(`Excel VanEck indisponível (HTTP ${r.status})`);
+  const XLSX = await import("npm:xlsx@0.18.5");
+  const wb = XLSX.read(new Uint8Array(await r.arrayBuffer()), { type: "array" });
+  const grid: any[][] = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: null });
+  const hIdx = grid.findIndex((row) => row.some((c) => /holding name/i.test(String(c ?? ""))) && row.some((c) => /net assets/i.test(String(c ?? ""))));
+  if (hIdx < 0) throw new Error("Formato do Excel VanEck não reconhecido");
+  const head = grid[hIdx].map((c) => String(c ?? "").trim().toLowerCase());
+  const col = (re: RegExp) => head.findIndex((h) => re.test(h));
+  const cName = col(/holding name/), cTicker = col(/^ticker$/), cIsin = col(/isin/), cMv = col(/market value/), cW = col(/net assets/);
+  // "All Holdings  10/14/2026" (mês/dia/ano)
+  const dm = grid.slice(0, hIdx).flat().map((c) => String(c ?? "")).join(" ").match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  const asOf = dm ? `${dm[3]}-${dm[1].padStart(2, "0")}-${dm[2].padStart(2, "0")}` : new Date().toISOString().slice(0, 10);
+  const num = (v: unknown) => Number(String(v ?? "").replace(/[$%,\s]/g, ""));
+  const rows: Row[] = grid.slice(hIdx + 1).filter((x) => x[cName] && x[cW] != null).map((x) => {
+    const isinCell = cIsin >= 0 && /^[A-Z]{2}[A-Z0-9]{10}$/.test(String(x[cIsin] ?? "").trim()) ? String(x[cIsin]).trim() : null;
+    const ticker = cTicker >= 0 ? String(x[cTicker] ?? "").trim() : "";
+    return {
+      name: String(x[cName]).trim(),
+      symbol: ticker && ticker !== "--" ? ticker : null,
+      isin: isinCell,
+      weight: num(x[cW]) / 100,
+      // Sem coluna de país: usa o país do emitente indicado no ISIN.
+      country: isinCell ? countryName(isinCell.slice(0, 2)) : null,
+      mv: cMv >= 0 && x[cMv] ? num(x[cMv]) : null,
+      asset_class: isinCell ? "Equity" : "Cash and/or Derivatives",
+    };
+  });
+  return withFundSectorsKept(sb, assetId, rows, async () => {
+    const { data, error } = await sb.rpc("import_etf_holdings", { p_asset_id: assetId, p_source: "vaneck", p_as_of: asOf, p_rows: rows, p_provider_ref: { vaneck_slug: slug } });
+    if (error) throw new Error(error.message);
+    return data as Result;
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   const auth = req.headers.get("Authorization");
@@ -248,6 +309,7 @@ Deno.serve(async (req) => {
       const r = mgr === "ishares" ? await isharesSync(sb, a.id, isin, ref)
         : mgr === "vanguard" ? await vanguardSync(sb, a.id, ref, p?.as_of_date ?? null, force)
         : mgr === "globalx" ? await globalxSync(sb, a.id, isin, ref)
+        : mgr === "vaneck" ? await vaneckSync(sb, a.id, isin, ref)
         : await xtrackersSync(sb, a.id, isin);
       results.push({ ticker: a.ticker, manager: mgr, ...r });
     } catch (err) {

@@ -18,6 +18,7 @@ describe("ETF sheet overlap eligibility", () => {
 describe("managerName", () => {
   it("reconhece as gestoras com lista completa", () => {
     expect(managerName("globalx")).toBe("Global X");
+    expect(managerName("vaneck")).toBe("VanEck");
     expect(managerName(null, "xtrackers")).toBe("Xtrackers");
     expect(managerName("outra")).toBe("outra");
   });
