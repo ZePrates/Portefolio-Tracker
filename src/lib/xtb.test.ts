@@ -377,6 +377,63 @@ describe("extrato XTB em Excel (formato novo, várias contas)", () => {
     expect(missing.errors[0]!.message).toMatch(/Sem câmbio/);
   });
 
+  it("associa cada retenção ao seu lote e anula dividendos corrigidos", () => {
+    const r = (id: string, type: string, date: string, comment: string, amount: number) => ({
+      line: Number(id),
+      id,
+      type,
+      date,
+      symbol: "NVO.US",
+      comment,
+      amount,
+    });
+    const out = parseXtbRows([
+      // Dois lotes pagos no dia 08/04, depois anulados e pagos de novo a 13/04.
+      r("100", "Dividend", "2026-04-08", "NVO.US USD 1.2174/ SHR", 4.87),
+      r("101", "Withholding tax", "2026-04-08", "NVO.US USD WHT 27%", -1.31),
+      r("200", "Dividend", "2026-04-08", "NVO.US USD 1.2174/ SHR", 2.43),
+      r("201", "Withholding tax", "2026-04-08", "NVO.US USD WHT 27%", -0.66),
+      r("300", "Dividend", "2026-04-13", "NVO.US USD 1.1968/ SHR", 4.79),
+      r("301", "Withholding tax", "2026-04-13", "NVO.US USD WHT 27%", -1.29),
+      r("302", "Dividend", "2026-04-13", "NVO.US USD 1.1968/ SHR", 2.39),
+      r("303", "Withholding tax", "2026-04-13", "NVO.US USD WHT 27%", -0.65),
+      r("400", "Dividend", "2026-04-14", "corr NVO.US USD 1.2174/ SHR from 2026-04-08", -2.43),
+      r("401", "Withholding tax", "2026-04-14", "corr NVO.US USD WHT 27% from 2026-04-08", 0.66),
+      r("500", "Dividend", "2026-04-14", "corr NVO.US USD 1.2174/ SHR from 2026-04-08", -4.87),
+      r("501", "Withholding tax", "2026-04-14", "corr NVO.US USD WHT 27% from 2026-04-08", 1.31),
+    ]);
+    expect(out.errors).toEqual([]);
+    expect(out.dividends).toEqual([
+      expect.objectContaining({ sourceId: "300", grossEur: 4.79, taxEur: 1.29 }),
+      expect.objectContaining({ sourceId: "302", grossEur: 2.39, taxEur: 0.65 }),
+    ]);
+    expect(out.ignored).toEqual(
+      expect.arrayContaining([
+        { type: "Dividend (correção + original anulado)", count: 2 },
+        { type: "Withholding tax (correção)", count: 2 },
+      ]),
+    );
+  });
+
+  it("assinala uma correção sem o dividendo original", () => {
+    const out = parseXtbRows([
+      {
+        line: 7,
+        id: "9",
+        type: "Dividend",
+        date: "2026-04-14",
+        symbol: "NVO.US",
+        comment: "corr NVO.US USD 1.2174/ SHR from 2026-04-08",
+        amount: -2.43,
+      },
+    ]);
+    expect(out.dividends).toEqual([]);
+    expect(out.errors[0]).toMatchObject({
+      line: 7,
+      message: expect.stringMatching(/sem o dividendo original/),
+    });
+  });
+
   it("deteta transferências de títulos entre contas", () => {
     expect(
       hasStockTransfers(
