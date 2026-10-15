@@ -673,6 +673,10 @@ export function planXtbImport(input: {
 
   const importedDiv = new Set(existingDividends.map((d) => d.source_event_id).filter(Boolean));
   const usedEstimated = new Set<string>();
+  // Lotes do mesmo título pagos no mesmo dia: só o primeiro confirma a
+  // estimativa (que passa a esse lote); os outros entram como dividendos
+  // novos, em vez de confirmarem a estimativa do mês anterior.
+  const confirmedOn = new Set<string>();
   const dividends: PlannedDividend[] = parsed.dividends.map((dividend): PlannedDividend => {
     const assetId = assetFor(dividend.symbol);
     if (!assetId) return { dividend, assetId, action: "unmatched" };
@@ -682,6 +686,8 @@ export function planXtbImport(input: {
     const from = new Date(`${dividend.date}T00:00:00Z`);
     from.setUTCDate(from.getUTCDate() - DIVIDEND_MATCH_DAYS);
     const fromIso = from.toISOString().slice(0, 10);
+    const lotKey = `${assetId}|${dividend.date}`;
+    if (confirmedOn.has(lotKey)) return { dividend, assetId, action: "insert" };
     const candidate = existingDividends
       .filter(
         (d) =>
@@ -695,6 +701,7 @@ export function planXtbImport(input: {
       .sort((a, b) => (b.ex_date ?? "").localeCompare(a.ex_date ?? ""))[0];
     if (candidate) {
       usedEstimated.add(candidate.id);
+      confirmedOn.add(lotKey);
       return { dividend, assetId, action: "confirm", confirmDividendId: candidate.id };
     }
     return { dividend, assetId, action: "insert" };

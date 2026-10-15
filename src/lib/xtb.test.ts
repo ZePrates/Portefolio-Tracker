@@ -231,6 +231,44 @@ describe("planXtbImport", () => {
     expect(plan.dividends[0]).toMatchObject({ action: "confirm", confirmDividendId: "y1" });
     expect(plan.unmatchedSymbols).toEqual(["VWCE.DE"]);
   });
+
+  it("um segundo lote no mesmo dia entra como novo e não gasta a estimativa anterior", () => {
+    const div = (sourceId: string, date: string) => ({
+      sourceId,
+      date,
+      symbol: "O.US",
+      grossEur: 1,
+      taxEur: 0.15,
+      netEur: 0.85,
+      currency: "USD",
+      perShareNative: 0.27,
+    });
+    const estimate = (id: string, ex_date: string) => ({
+      id,
+      asset_id: "o",
+      source: "yahoo",
+      source_event_id: `yahoo:O:${ex_date}`,
+      ex_date,
+      payment_date_estimated: true,
+    });
+    const plan = planXtbImport({
+      parsed: {
+        trades: [],
+        dividends: [div("2", "2025-03-14"), div("3", "2025-03-14"), div("1", "2025-02-14")],
+        ignored: [],
+        errors: [],
+      },
+      assets: [assets[0]!],
+      existingTransactions: [],
+      existingDividends: [estimate("mar", "2025-02-28"), estimate("fev", "2025-01-31")],
+      validateLedger: validate,
+    });
+    expect(plan.dividends.map((d) => [d.action, d.confirmDividendId])).toEqual([
+      ["confirm", "mar"],
+      ["insert", undefined],
+      ["confirm", "fev"],
+    ]);
+  });
 });
 
 describe("extrato XTB em Excel (formato novo, várias contas)", () => {
