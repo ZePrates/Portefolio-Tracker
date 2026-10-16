@@ -3,62 +3,41 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware-external";
 import { todayLisbon } from "@/lib/dates";
 import { dbError } from "@/lib/errors";
-import { monthClose, shiftMonth } from "@/lib/month-close";
+import { confirmKey } from "@/lib/month-close";
+import { loadMonthClose } from "@/lib/month-close.server";
+
+const monthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
 
 /** Estado dos passos do fecho de um mês ("YYYY-MM"). */
 export const getMonthClose = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ month: monthSchema }).parse(input))
+  .handler(({ data, context }) => loadMonthClose(context.supabase, data.month, todayLisbon()));
+
+/** Confirma (ou reabre) um passo sem extrato: Elementum e Scramble. */
+export const setMonthCloseConfirmed = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
-    z.object({ month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/) }).parse(input),
+    z
+      .object({
+        month: monthSchema,
+        step: z.enum(["elementum", "scramble"]),
+        confirmed: z.boolean(),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
+    const alert_key = confirmKey(data.month, data.step);
     const sb = context.supabase;
-    const from = `${data.month}-01`;
-    const to = `${shiftMonth(data.month, 1)}-01`;
-    const [assetsRes, txRes, divPayRes, divPaidRes, p2pRes] = await Promise.all([
-      sb.from("assets").select("id, name, ticker, class"),
-      sb
-        .from("transactions")
-        .select("asset_id, type, traded_at, source, fee")
-        .gte("traded_at", from)
-        .lt("traded_at", to),
-      sb
-        .from("dividends")
-        .select(
-          "asset_id, asset_name, payment_date, paid_at, source, payment_date_estimated, net_amount, amount",
-        )
-        .gte("payment_date", from)
-        .lt("payment_date", to),
-      // Dividendos antigos sem data de pagamento: conta a data de recebimento.
-      sb
-        .from("dividends")
-        .select(
-          "asset_id, asset_name, payment_date, paid_at, source, payment_date_estimated, net_amount, amount",
-        )
-        .is("payment_date", null)
-        .gte("paid_at", from)
-        .lt("paid_at", to),
-      sb
-        .from("p2p_cash_movements")
-        .select("occurred_on, type")
-        .gte("occurred_on", from)
-        .lt("occurred_on", to),
-    ]);
-    for (const r of [assetsRes, txRes, divPayRes, divPaidRes, p2pRes]) {
-      if (r.error) throw dbError(r.error);
-    }
-    return monthClose({
-      month: data.month,
-      today: todayLisbon(),
-      assets: assetsRes.data ?? [],
-      transactions: (txRes.data ?? []).flatMap((t) =>
-        t.asset_id ? [{ ...t, asset_id: t.asset_id, fee: Number(t.fee ?? 0) }] : [],
-      ),
-      dividends: [...(divPayRes.data ?? []), ...(divPaidRes.data ?? [])].map((d) => ({
-        ...d,
-        net_amount: d.net_amount == null ? null : Number(d.net_amount),
-        amount: d.amount == null ? null : Number(d.amount),
-      })),
-      p2pMovements: p2pRes.data ?? [],
-    });
+    const { error } = data.confirmed
+      ? await sb
+          .from("dismissed_alerts")
+          .upsert([{ user_id: context.userId, alert_key }], { onConflict: "user_id,alert_key" })
+      : await sb
+          .from("dismissed_alerts")
+          .delete()
+          .eq("user_id", context.userId)
+          .eq("alert_key", alert_key);
+    if (error) throw dbError(error);
+    return { ok: true };
   });

@@ -5,6 +5,8 @@ import { alertKey, dataQualityAlerts } from "@/lib/data-quality";
 import { todayLisbon } from "@/lib/dates";
 import { dbError } from "@/lib/errors";
 import { readExposurePages } from "@/lib/exposure-pagination";
+import { closeReminderMonth, monthCloseAlert } from "@/lib/month-close";
+import { loadMonthClose } from "@/lib/month-close.server";
 
 /** Alertas de qualidade de dados da carteira (só leitura). */
 export const getDataQualityAlerts = createServerFn({ method: "GET" })
@@ -56,6 +58,7 @@ export const getDataQualityAlerts = createServerFn({ method: "GET" })
     }
 
     const dismissed = new Set((dismissedRes.data ?? []).map((d) => d.alert_key));
+    const today = todayLisbon();
     const alerts = dataQualityAlerts({
       assets: (assetsRes.data ?? []).map((a) => ({
         ...a,
@@ -72,9 +75,19 @@ export const getDataQualityAlerts = createServerFn({ method: "GET" })
       dividends: divRes.data ?? [],
       holdingsCoverage: coverage,
       p2pLastMovement,
-      today: todayLisbon(),
-    }).filter((a) => !dismissed.has(alertKey(a)));
-    return { alerts, checkedAt: new Date().toISOString() };
+      today,
+    });
+
+    // Lembrete do fecho do mês: só nos últimos dias do mês e até ao dia 10 do seguinte.
+    const closeMonth = closeReminderMonth(today);
+    if (closeMonth) {
+      const reminder = monthCloseAlert(await loadMonthClose(sb, closeMonth, today));
+      if (reminder) alerts.unshift(reminder);
+    }
+    return {
+      alerts: alerts.filter((a) => !dismissed.has(alertKey(a))),
+      checkedAt: new Date().toISOString(),
+    };
   });
 
 /** Dispensa avisos (por chave); ficam guardados na conta, em todos os dispositivos. */
