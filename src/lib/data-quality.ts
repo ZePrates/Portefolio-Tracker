@@ -22,7 +22,8 @@ export type AlertCode =
   | "unknown_withholding"
   | "estimated_payment_dates"
   | "fx_unconfirmed"
-  | "p2p_stale_import";
+  | "p2p_stale_import"
+  | "month_close_due";
 
 export interface DataQualityAlert {
   code: AlertCode;
@@ -32,6 +33,8 @@ export interface DataQualityAlert {
   assetName?: string;
   /** Número de registos afetados (quando aplicável). */
   count?: number;
+  /** Página onde se resolve (mostra um link no aviso). */
+  href?: "/fecho";
 }
 
 /** Identifica um aviso; se a mensagem mudar (ex.: nova contagem), volta a aparecer. */

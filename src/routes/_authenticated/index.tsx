@@ -101,6 +101,14 @@ function AlertList({
             {a.severity === "error" ? "Erro" : a.severity === "warning" ? "Aviso" : "Info"}
           </Badge>
           <p className="min-w-0 flex-1 text-sm">{a.message}</p>
+          {a.href && (
+            <Link
+              to={a.href}
+              className="shrink-0 rounded-md bg-foreground/[0.06] px-2.5 py-1 text-[13px] font-medium transition-colors hover:bg-foreground/10"
+            >
+              Abrir
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => onDismiss(a)}
