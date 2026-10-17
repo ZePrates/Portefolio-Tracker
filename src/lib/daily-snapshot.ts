@@ -47,6 +47,29 @@ export async function runDailySnapshots(deps: DailySnapshotDeps): Promise<DailyS
   return result;
 }
 
+/**
+ * Problema com a chave de EXTERNAL_SUPABASE_SERVICE_KEY, ou null se serve.
+ * A chave publicável (sb_publishable_) está sujeita ao RLS: as leituras vêm
+ * vazias e a tarefa acabaria "com sucesso" sem fazer nada.
+ */
+export function serviceKeyProblem(key: string | undefined): string | null {
+  if (!key) return "EXTERNAL_SUPABASE_SERVICE_KEY em falta: sem acesso à base de dados.";
+  if (key.startsWith("sb_publishable_")) {
+    return "EXTERNAL_SUPABASE_SERVICE_KEY tem a chave publicável (sb_publishable_): é precisa a chave secreta (sb_secret_).";
+  }
+  return null;
+}
+
+/**
+ * Código HTTP da tarefa: 500 se não encontrou nenhum utilizador (chave sem
+ * acesso ou base vazia), 207 se algum falhou, 200 se correu tudo. Assim uma
+ * execução que não faz nada aparece como falhada no histórico do Lovable.
+ */
+export function dailySnapshotStatus(result: DailySnapshotResult): number {
+  if (result.users === 0) return 500;
+  return result.failed.length > 0 ? 207 : 200;
+}
+
 export interface OpenAppSnapshotPlan {
   /** Atualizar as cotações antes de gravar (as últimas não são de hoje). */
   refresh: boolean;

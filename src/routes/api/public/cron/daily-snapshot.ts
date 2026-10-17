@@ -14,19 +14,23 @@ export const Route = createFileRoute("/api/public/cron/daily-snapshot")({
         const denied = await authenticateCronRequest(request);
         if (denied) return denied;
 
+        const { runDailySnapshots, serviceKeyProblem, dailySnapshotStatus } =
+          await import("@/lib/daily-snapshot");
+        const keyProblem = serviceKeyProblem(process.env["EXTERNAL_SUPABASE_SERVICE_KEY"]);
+        if (keyProblem) return Response.json({ error: keyProblem }, { status: 500 });
+
         const { getExternalAdminClient } =
           await import("@/integrations/supabase/admin-external.server");
         const admin = getExternalAdminClient();
         if (!admin) {
           return Response.json(
-            { error: "EXTERNAL_SUPABASE_SERVICE_KEY em falta: sem acesso à base de dados." },
+            { error: "Sem acesso à base de dados externa (URL ou chave em falta)." },
             { status: 500 },
           );
         }
         const db = admin as unknown as import("@/lib/prices.server").PricesDb;
         const { refreshPrices } = await import("@/lib/prices.server");
         const { takeSnapshot } = await import("@/lib/snapshots.functions");
-        const { runDailySnapshots } = await import("@/lib/daily-snapshot");
 
         const result = await runDailySnapshots({
           listUserIds: async () => {
@@ -43,7 +47,7 @@ export const Route = createFileRoute("/api/public/cron/daily-snapshot")({
           },
           takeSnapshot: (userId) => takeSnapshot(db, userId),
         });
-        return Response.json(result, { status: result.failed.length > 0 ? 207 : 200 });
+        return Response.json(result, { status: dailySnapshotStatus(result) });
       },
     },
   },

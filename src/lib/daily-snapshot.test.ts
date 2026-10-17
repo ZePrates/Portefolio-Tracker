@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { planOpenAppSnapshot, priceFreshness, runDailySnapshots } from "@/lib/daily-snapshot";
+import {
+  dailySnapshotStatus,
+  planOpenAppSnapshot,
+  priceFreshness,
+  runDailySnapshots,
+  serviceKeyProblem,
+} from "@/lib/daily-snapshot";
 
 describe("runDailySnapshots", () => {
   it("atualiza preços e tira a fotografia de cada utilizador (sem duplicados)", async () => {
@@ -33,6 +39,30 @@ describe("runDailySnapshots", () => {
     expect(r.ok).toBe(2);
     expect(r.failed).toEqual([{ userId: "b", error: "db em baixo" }]);
     expect(r.priceFailures).toBe(3);
+  });
+});
+
+describe("serviceKeyProblem", () => {
+  it("recusa chave em falta ou publicável; aceita a secreta", () => {
+    expect(serviceKeyProblem(undefined)).toMatch(/em falta/);
+    expect(serviceKeyProblem("")).toMatch(/em falta/);
+    expect(serviceKeyProblem("sb_publishable_abc")).toMatch(/publicável/);
+    expect(serviceKeyProblem("sb_secret_abc")).toBeNull();
+  });
+});
+
+describe("dailySnapshotStatus", () => {
+  const base = { ok: 0, failed: [], pricesUpdated: 0, priceFailures: 0 };
+
+  it("0 utilizadores é erro (a tarefa não fez nada)", () => {
+    expect(dailySnapshotStatus({ ...base, users: 0 })).toBe(500);
+  });
+
+  it("207 se algum utilizador falhou, 200 se correu tudo", () => {
+    expect(
+      dailySnapshotStatus({ ...base, users: 2, ok: 1, failed: [{ userId: "b", error: "x" }] }),
+    ).toBe(207);
+    expect(dailySnapshotStatus({ ...base, users: 2, ok: 2 })).toBe(200);
   });
 });
 
