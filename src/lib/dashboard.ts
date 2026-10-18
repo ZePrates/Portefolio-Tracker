@@ -178,7 +178,7 @@ export function portfolioSummary(
     (s, a) =>
       s + (Number(a.annual_yield) > 0 ? (assetCurrentValue(a) * Number(a.annual_yield)) / 100 : 0),
     0,
-    );
+  );
 
   return {
     currentValue,

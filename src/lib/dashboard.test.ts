@@ -361,11 +361,41 @@ describe("yield sobre custo — só REITs e ações de dividendos abertas", () =
   });
   const all = [reit, divAcao, growth, etfOpen, p2pOpen, closedReit];
   const divs = [
-    div({ asset_id: "reit", amount: 30, net_amount: 25, payment_date: "2026-06-01", status: "received" }),
-    div({ asset_id: "div", amount: 40, net_amount: 35, payment_date: "2026-06-01", status: "received" }),
-    div({ asset_id: "etf2", amount: 100, net_amount: 100, payment_date: "2026-06-01", status: "received" }),
-    div({ asset_id: "growth", amount: 50, net_amount: 50, payment_date: "2026-06-01", status: "received" }),
-    div({ asset_id: "closedreit", amount: 20, net_amount: 20, payment_date: "2026-06-01", status: "received" }),
+    div({
+      asset_id: "reit",
+      amount: 30,
+      net_amount: 25,
+      payment_date: "2026-06-01",
+      status: "received",
+    }),
+    div({
+      asset_id: "div",
+      amount: 40,
+      net_amount: 35,
+      payment_date: "2026-06-01",
+      status: "received",
+    }),
+    div({
+      asset_id: "etf2",
+      amount: 100,
+      net_amount: 100,
+      payment_date: "2026-06-01",
+      status: "received",
+    }),
+    div({
+      asset_id: "growth",
+      amount: 50,
+      net_amount: 50,
+      payment_date: "2026-06-01",
+      status: "received",
+    }),
+    div({
+      asset_id: "closedreit",
+      amount: 20,
+      net_amount: 20,
+      payment_date: "2026-06-01",
+      status: "received",
+    }),
   ];
 
   it("exclui ETFs, crescimento, P2P e posições fechadas do custo e dos dividendos", () => {
