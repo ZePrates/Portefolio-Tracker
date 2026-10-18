@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Uniformizar eixos temporais com mês/ano PT-PT, etiquetas mensais/trimestrais e tooltip com data completa, sem mudar cálculos.
+
 - [x] FIRE: patamares (Half/Barista, Lean, FIRE, Fat), Coast FIRE (sem mais aportes) e FIRE com 28 % sobre mais-valias, sem schema/RLS; testes, typecheck e build verificados.
 - [ ] FIRE: confirmação visual na carteira real (pendente do utilizador no preview).
 - [ ] Carteira vs. benchmark real (mesmos aportes em S&P 500/VWCE) na página Desempenho.
