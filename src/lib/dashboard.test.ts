@@ -303,3 +303,86 @@ describe("portfolioSummary — base da rentabilidade com vendas (F8)", () => {
     expect(s.returnBasis).toBeCloseTo(1000);
   });
 });
+
+describe("yield sobre custo — só REITs e ações de dividendos abertas", () => {
+  const reit = asset({
+    id: "reit",
+    name: "O",
+    class: "reit",
+    quantity: 10,
+    average_price: 50,
+    current_price: 60,
+    invested_amount: 500,
+    annual_yield: 5,
+  });
+  const divAcao = asset({
+    id: "div",
+    name: "ABBV",
+    class: "acao_dividendo",
+    quantity: 10,
+    average_price: 100,
+    current_price: 100,
+    invested_amount: 1000,
+    annual_yield: 4,
+  });
+  const growth = asset({
+    id: "growth",
+    name: "Crescimento",
+    class: "acao_crescimento",
+    quantity: 10,
+    average_price: 100,
+    current_price: 200,
+    invested_amount: 1000,
+  });
+  const etfOpen = asset({
+    id: "etf2",
+    name: "VWCE",
+    class: "etf",
+    quantity: 10,
+    average_price: 100,
+    current_price: 100,
+    invested_amount: 1000,
+    annual_yield: 2,
+  });
+  const p2pOpen = asset({
+    id: "p2p2",
+    name: "P2P",
+    class: "p2p",
+    invested_amount: 500,
+    current_value: 550,
+  });
+  const closedReit = asset({
+    id: "closedreit",
+    name: "Vendido",
+    class: "reit",
+    status: "closed",
+    quantity: 0,
+    invested_amount: 0,
+  });
+  const all = [reit, divAcao, growth, etfOpen, p2pOpen, closedReit];
+  const divs = [
+    div({ asset_id: "reit", amount: 30, net_amount: 25, payment_date: "2026-06-01", status: "received" }),
+    div({ asset_id: "div", amount: 40, net_amount: 35, payment_date: "2026-06-01", status: "received" }),
+    div({ asset_id: "etf2", amount: 100, net_amount: 100, payment_date: "2026-06-01", status: "received" }),
+    div({ asset_id: "growth", amount: 50, net_amount: 50, payment_date: "2026-06-01", status: "received" }),
+    div({ asset_id: "closedreit", amount: 20, net_amount: 20, payment_date: "2026-06-01", status: "received" }),
+  ];
+
+  it("exclui ETFs, crescimento, P2P e posições fechadas do custo e dos dividendos", () => {
+    const s = portfolioSummary(all, divs, TODAY);
+    // numerador: 25 + 35 = 60; denominador: 500 + 1000 = 1500
+    expect(s.yieldOnCost).toBeCloseTo(4, 6);
+  });
+
+  it("yield prospetivo usa o annual_yield bruto das mesmas posições", () => {
+    const s = portfolioSummary(all, divs, TODAY);
+    // (10×60×5% + 10×100×4%) / 1500 = (30 + 40) / 1500
+    expect(s.forwardYieldOnCost).toBeCloseTo((70 / 1500) * 100, 6);
+  });
+
+  it("sem ativos distributivos devolve null", () => {
+    const s = portfolioSummary([growth, etfOpen, p2pOpen], divs, TODAY);
+    expect(s.yieldOnCost).toBeNull();
+    expect(s.forwardYieldOnCost).toBeNull();
+  });
+});
