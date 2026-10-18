@@ -33,14 +33,20 @@ function Metric({
   label,
   children,
   big,
+  hint,
 }: {
   label: string;
   children: React.ReactNode;
   big?: boolean;
+  /** Nota curta visível como tooltip ao passar o rato. */
+  hint?: string;
 }) {
   return (
     <div className="min-w-0">
-      <dt className="text-[12.5px] text-muted-foreground">{label}</dt>
+      <dt className="text-[12.5px] text-muted-foreground" title={hint}>
+        {label}
+        {hint ? <span className="ml-1 cursor-help text-muted-foreground/60">ⓘ</span> : null}
+      </dt>
       <dd
         className={
           big
@@ -102,8 +108,17 @@ export function PassiveIncomeCard({
           <Metric label="Últimos 12 meses" big>
             {privateEUR(last12, hidden)}
           </Metric>
-          <Metric label="Yield sobre custo">
+          <Metric
+            label="Yield sobre custo · 12 meses"
+            hint="Dividendos líquidos recebidos nos últimos 12 meses, só de REITs e ações de dividendos. Inclui só o período em que detiveste as posições — subestima se compraste recentemente."
+          >
             {yieldOnCost === null ? "Sem dados" : formatPct(yieldOnCost, 1)}
+          </Metric>
+          <Metric
+            label="Yield sobre custo · estimado"
+            hint="Estimativa prospetiva e bruta, a partir do yield anual de mercado, só de REITs e ações de dividendos."
+          >
+            {forwardYieldOnCost === null ? "Sem dados" : formatPct(forwardYieldOnCost, 1)}
           </Metric>
           <Metric label="Desde o início">{privateEUR(sinceStart, hidden)}</Metric>
         </dl>
