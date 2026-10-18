@@ -58,6 +58,7 @@ export function PassiveIncomeCard({
   byMonth,
   last12,
   yieldOnCost,
+  forwardYieldOnCost,
   sinceStart,
   upcoming,
   hidden,
@@ -65,6 +66,7 @@ export function PassiveIncomeCard({
   byMonth: Array<{ key: string; amount: number }>;
   last12: number;
   yieldOnCost: number | null;
+  forwardYieldOnCost: number | null;
   sinceStart: number;
   /** Pagamentos projetados (estimativa); `undefined` enquanto carrega. */
   upcoming: ProjectedDividend[] | undefined;
