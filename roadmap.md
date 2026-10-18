@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Uniformizar eixos temporais com mês/ano PT-PT, etiquetas mensais/trimestrais e tooltip com data completa, sem mudar cálculos.
+- [x] Uniformizar eixos temporais com mês/ano PT-PT e etiquetas mensais/trimestrais; tooltip com data completa quando existe um dia (agregados mensais mantêm mês/ano), sem mudar cálculos; 93 testes e verificação visual em computador/telemóvel com dados de teste.
 
 - [x] FIRE: patamares (Half/Barista, Lean, FIRE, Fat), Coast FIRE (sem mais aportes) e FIRE com 28 % sobre mais-valias, sem schema/RLS; testes, typecheck e build verificados.
 - [ ] FIRE: confirmação visual na carteira real (pendente do utilizador no preview).
