@@ -1,9 +1,10 @@
+import { dateXAxis, formatChartTooltipDate } from "@/lib/chart-dates";
 import { Link } from "@tanstack/react-router";
 import { Bar, BarChart, Cell, Tooltip, XAxis } from "recharts";
 import { useMemo } from "react";
 import type { ProjectedDividend } from "@/lib/dividend-calendar";
 import { todayISO } from "@/lib/dashboard";
-import { formatDayMonthPt, formatMonthPt, formatPct, formatPeriodKey } from "@/lib/format";
+import { formatDayMonthPt, formatPct } from "@/lib/format";
 import { Card } from "@/components/ui-bits";
 import { AXIS_LINE, AXIS_TICK, ChartFrame, ChartTooltip } from "@/components/chart-kit";
 import { privateEUR } from "@/components/private-value";
@@ -118,14 +119,13 @@ export function PassiveIncomeCard({
                 tick={{ ...AXIS_TICK, fontSize: 11.5 }}
                 axisLine={AXIS_LINE}
                 tickLine={false}
-                interval={0}
-                tickFormatter={(k: string) => formatMonthPt(k).split("/")[0] ?? k}
+                {...dateXAxis(months.map((p) => p.key))}
               />
               <Tooltip
                 cursor={{ fill: "var(--color-accent)", opacity: 0.4 }}
                 content={
                   <ChartTooltip
-                    labelFormatter={(l) => formatPeriodKey(l)}
+                    labelFormatter={formatChartTooltipDate}
                     valueFormatter={(v) => privateEUR(v, hidden)}
                   />
                 }

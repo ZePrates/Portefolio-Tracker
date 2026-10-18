@@ -1,3 +1,4 @@
+import { dateXAxis, formatChartTooltipDate } from "@/lib/chart-dates";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -32,7 +33,7 @@ import {
 } from "@/lib/performance";
 import { assetCurrentValue, isOpenPosition, type Asset } from "@/lib/portfolio-types";
 import type { DividendRecord } from "@/lib/dividends";
-import { formatEURCompact, formatPct, formatPeriodKey } from "@/lib/format";
+import { formatEURCompact, formatPct } from "@/lib/format";
 import { usePrivateMode } from "@/components/private-mode";
 import { Button, Card as UiCard, EmptyState, MetricCard, PageHeader } from "@/components/ui-bits";
 import { AXIS_LINE, AXIS_TICK, ChartFrame, ChartTooltip, GRID_PROPS } from "@/components/chart-kit";
@@ -274,8 +275,7 @@ function PerformancePage() {
               tick={AXIS_TICK}
               axisLine={AXIS_LINE}
               tickLine={false}
-              tickFormatter={(k: string) => formatPeriodKey(k)}
-              minTickGap={24}
+              {...dateXAxis(chart.map((p) => p.date))}
             />
             <YAxis
               tick={AXIS_TICK}
@@ -287,7 +287,7 @@ function PerformancePage() {
             <Tooltip
               content={
                 <ChartTooltip
-                  labelFormatter={(l) => formatPeriodKey(l, true)}
+                  labelFormatter={formatChartTooltipDate}
                   valueFormatter={(v) => privateEUR(v, hidden)}
                 />
               }
@@ -359,8 +359,7 @@ function PerformancePage() {
                 tick={AXIS_TICK}
                 axisLine={AXIS_LINE}
                 tickLine={false}
-                tickFormatter={(k: string) => formatPeriodKey(k)}
-                minTickGap={24}
+                {...dateXAxis(snapSeries.map((p) => p.date))}
               />
               <YAxis
                 tick={AXIS_TICK}
@@ -372,7 +371,7 @@ function PerformancePage() {
               <Tooltip
                 content={
                   <ChartTooltip
-                    labelFormatter={(l) => formatPeriodKey(l, true)}
+                    labelFormatter={formatChartTooltipDate}
                     valueFormatter={(v) => privateEUR(v, hidden)}
                   />
                 }
