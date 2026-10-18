@@ -159,9 +159,26 @@ export function portfolioSummary(
   const returnBasis = costBasis + soldCost;
   const totalResult = realizedPL + unrealizedPL + dividendsReceived;
 
+  // Yield sobre custo: só ativos que distribuem (REITs e ações de dividendos)
+  // com posição aberta — ETFs, metais, P2P e crescimento não entram, nem
+  // dividendos de posições já fechadas.
+  const distributing = open.filter((a) => a.class === "reit" || a.class === "acao_dividendo");
+  const distributingIds = new Set(distributing.map((a) => a.id));
+  const distributingCost = distributing.reduce((s, a) => s + assetInvested(a), 0);
   const last12 = dividends
-    .filter((d) => isReceived(d, today) && (d.payment_date ?? d.paid_at) >= shiftYears(today, -1))
+    .filter(
+      (d) =>
+        d.asset_id !== null &&
+        distributingIds.has(d.asset_id) &&
+        isReceived(d, today) &&
+        (d.payment_date ?? d.paid_at) >= shiftYears(today, -1),
+    )
     .reduce((s, d) => s + netOf(d), 0);
+  const forwardAnnual = distributing.reduce(
+    (s, a) =>
+      s + (Number(a.annual_yield) > 0 ? (assetCurrentValue(a) * Number(a.annual_yield)) / 100 : 0),
+    0,
+    );
 
   return {
     currentValue,
