@@ -525,6 +525,7 @@ function DashboardPage() {
         byMonth={divs.byMonth}
         last12={last12}
         yieldOnCost={summary.yieldOnCost}
+        forwardYieldOnCost={summary.forwardYieldOnCost}
         sinceStart={divs.total}
         upcoming={upcomingIncome}
         hidden={hidden}

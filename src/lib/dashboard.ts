@@ -98,8 +98,16 @@ export interface PortfolioSummary {
   totalReturnPct: number | null;
   /** Base usada para a rentabilidade total, em EUR. */
   returnBasis: number;
-  /** Dividendos dos últimos 12 meses / cost basis atual, em %. */
+  /**
+   * Dividendos líquidos dos últimos 12 meses de REITs e ações de dividendos
+   * com posição aberta / custo dessas mesmas posições, em %.
+   */
   yieldOnCost: number | null;
+  /**
+   * Yield prospetivo estimado (bruto): soma(valor atual × annual_yield) das
+   * posições abertas de REITs e ações de dividendos / custo dessas posições, em %.
+   */
+  forwardYieldOnCost: number | null;
   openPositions: number;
   closedPositions: number;
 }
@@ -151,9 +159,26 @@ export function portfolioSummary(
   const returnBasis = costBasis + soldCost;
   const totalResult = realizedPL + unrealizedPL + dividendsReceived;
 
+  // Yield sobre custo: só ativos que distribuem (REITs e ações de dividendos)
+  // com posição aberta — ETFs, metais, P2P e crescimento não entram, nem
+  // dividendos de posições já fechadas.
+  const distributing = open.filter((a) => a.class === "reit" || a.class === "acao_dividendo");
+  const distributingIds = new Set(distributing.map((a) => a.id));
+  const distributingCost = distributing.reduce((s, a) => s + assetInvested(a), 0);
   const last12 = dividends
-    .filter((d) => isReceived(d, today) && (d.payment_date ?? d.paid_at) >= shiftYears(today, -1))
+    .filter(
+      (d) =>
+        d.asset_id !== null &&
+        distributingIds.has(d.asset_id) &&
+        isReceived(d, today) &&
+        (d.payment_date ?? d.paid_at) >= shiftYears(today, -1),
+    )
     .reduce((s, d) => s + netOf(d), 0);
+  const forwardAnnual = distributing.reduce(
+    (s, a) =>
+      s + (Number(a.annual_yield) > 0 ? (assetCurrentValue(a) * Number(a.annual_yield)) / 100 : 0),
+    0,
+  );
 
   return {
     currentValue,
@@ -166,7 +191,8 @@ export function portfolioSummary(
     totalResult,
     totalReturnPct: returnBasis > 0 ? (totalResult / returnBasis) * 100 : null,
     returnBasis,
-    yieldOnCost: costBasis > 0 ? (last12 / costBasis) * 100 : null,
+    yieldOnCost: distributingCost > 0 ? (last12 / distributingCost) * 100 : null,
+    forwardYieldOnCost: distributingCost > 0 ? (forwardAnnual / distributingCost) * 100 : null,
     openPositions: open.length,
     closedPositions: closed.length,
   };
