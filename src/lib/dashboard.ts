@@ -98,8 +98,16 @@ export interface PortfolioSummary {
   totalReturnPct: number | null;
   /** Base usada para a rentabilidade total, em EUR. */
   returnBasis: number;
-  /** Dividendos dos últimos 12 meses / cost basis atual, em %. */
+  /**
+   * Dividendos líquidos dos últimos 12 meses de REITs e ações de dividendos
+   * com posição aberta / custo dessas mesmas posições, em %.
+   */
   yieldOnCost: number | null;
+  /**
+   * Yield prospetivo estimado (bruto): soma(valor atual × annual_yield) das
+   * posições abertas de REITs e ações de dividendos / custo dessas posições, em %.
+   */
+  forwardYieldOnCost: number | null;
   openPositions: number;
   closedPositions: number;
 }
