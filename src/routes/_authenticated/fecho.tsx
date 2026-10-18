@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { ArrowRight, Circle, CircleCheck } from "lucide-react";
+import { toast } from "sonner";
 import {
   Badge,
   Button,
@@ -16,11 +17,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { usePrivateMode } from "@/components/private-mode";
 import { privateEUR } from "@/components/private-value";
 import { todayLisbon } from "@/lib/dates";
-import { getMonthClose } from "@/lib/month-close.functions";
+import { getMonthClose, setMonthCloseConfirmed } from "@/lib/month-close.functions";
 import { defaultCloseMonth, shiftMonth, type MonthCloseStep } from "@/lib/month-close";
 
 const DESCRIPTION =
-  "Rotina mensal: extrato da XTB, dividendos, compra da Elementum e relatório da Scramble. Cada passo fica feito sozinho quando os dados chegam.";
+  "Rotina mensal: extrato da XTB, dividendos, compras da Elementum e relatório da Scramble. A XTB e os dividendos ficam feitos sozinhos quando os dados chegam; na Elementum e na Scramble confirmas tu que está tudo registado.";
 
 export const Route = createFileRoute("/_authenticated/fecho")({
   head: () => ({
@@ -52,6 +53,25 @@ function MonthClosePage() {
     queryKey: ["month-close", month],
     queryFn: () => fetchClose({ data: { month } }),
   });
+
+  const queryClient = useQueryClient();
+  const confirmFn = useServerFn(setMonthCloseConfirmed);
+  const [saving, setSaving] = useState<string | null>(null);
+  const setConfirmed = async (step: "elementum" | "scramble", confirmed: boolean) => {
+    setSaving(step);
+    try {
+      await confirmFn({ data: { month, step, confirmed } });
+      // O lembrete do dashboard depende da mesma confirmação.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["month-close", month] }),
+        queryClient.invalidateQueries({ queryKey: ["data-quality"] }),
+      ]);
+    } catch {
+      toast.error("Não foi possível guardar a confirmação.");
+    } finally {
+      setSaving(null);
+    }
+  };
 
   const total = data?.steps.length ?? 0;
   const allDone = !!data && total > 0 && data.doneCount === total;
@@ -93,7 +113,14 @@ function MonthClosePage() {
         <ol className="space-y-3">
           {data.steps.map((s, i) => (
             <li key={s.key}>
-              <StepCard step={s} index={i + 1} />
+              <StepCard
+                step={s}
+                index={i + 1}
+                saving={saving === s.key}
+                onConfirm={(confirmed) =>
+                  void setConfirmed(s.key as "elementum" | "scramble", confirmed)
+                }
+              />
             </li>
           ))}
         </ol>
@@ -107,7 +134,17 @@ function MonthClosePage() {
   );
 }
 
-function StepCard({ step, index }: { step: MonthCloseStep; index: number }) {
+function StepCard({
+  step,
+  index,
+  saving,
+  onConfirm,
+}: {
+  step: MonthCloseStep;
+  index: number;
+  saving: boolean;
+  onConfirm: (confirmed: boolean) => void;
+}) {
   return (
     <Card className={step.done ? "opacity-80" : undefined}>
       <div className="flex items-start gap-3">
@@ -137,12 +174,24 @@ function StepCard({ step, index }: { step: MonthCloseStep; index: number }) {
             </ul>
           )}
         </div>
-        <Link to={step.href} className="shrink-0">
-          <Button variant={step.done ? "ghost" : "outline"} size="sm">
-            {step.action}
-            <ArrowRight aria-hidden className="h-3.5 w-3.5" />
-          </Button>
-        </Link>
+        <div className="flex shrink-0 flex-wrap justify-end gap-2">
+          {step.confirmable && (
+            <Button
+              variant={step.confirmed ? "ghost" : "primary"}
+              size="sm"
+              disabled={saving}
+              onClick={() => onConfirm(!step.confirmed)}
+            >
+              {step.confirmed ? "Reabrir" : "Está tudo registado"}
+            </Button>
+          )}
+          <Link to={step.href}>
+            <Button variant={step.done ? "ghost" : "outline"} size="sm">
+              {step.action}
+              <ArrowRight aria-hidden className="h-3.5 w-3.5" />
+            </Button>
+          </Link>
+        </div>
       </div>
     </Card>
   );
