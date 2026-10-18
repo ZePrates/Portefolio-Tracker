@@ -1,10 +1,11 @@
+import { dateXAxis, formatChartTooltipDate } from "@/lib/chart-dates";
 import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import {
   SP500_ANNUAL_RETURN_PCT,
   type BenchmarkComparison,
   type BenchmarkScope,
 } from "@/lib/benchmark";
-import { formatEURCompact, formatNumber, formatPct, formatPeriodKey } from "@/lib/format";
+import { formatEURCompact, formatNumber, formatPct } from "@/lib/format";
 import { AXIS_LINE, AXIS_TICK, ChartFrame, ChartTooltip, GRID_PROPS } from "@/components/chart-kit";
 import { Button, Card, EmptyState, MetricCard } from "@/components/ui-bits";
 import { privateEUR } from "@/components/private-value";
@@ -113,8 +114,7 @@ function BenchmarkBody({
             tick={AXIS_TICK}
             axisLine={AXIS_LINE}
             tickLine={false}
-            tickFormatter={(k: string) => formatPeriodKey(k)}
-            minTickGap={24}
+            {...dateXAxis(chart.map((p) => p.date))}
           />
           <YAxis
             tick={AXIS_TICK}
@@ -126,7 +126,7 @@ function BenchmarkBody({
           <Tooltip
             content={
               <ChartTooltip
-                labelFormatter={(l) => formatPeriodKey(l, true)}
+                labelFormatter={formatChartTooltipDate}
                 valueFormatter={(v) => privateEUR(v, hidden)}
               />
             }

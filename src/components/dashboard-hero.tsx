@@ -1,3 +1,4 @@
+import { dateXAxis, formatChartTooltipDate } from "@/lib/chart-dates";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
 import { useId } from "react";
@@ -5,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { PeriodKey, PortfolioSummary } from "@/lib/dashboard";
 import type { HeroPoint, PeriodChange } from "@/lib/dashboard-period";
-import { formatDatePt, formatEURCompact, formatPercent, formatPeriodKey } from "@/lib/format";
+import { formatDatePt, formatEURCompact, formatPercent } from "@/lib/format";
 import { AXIS_LINE, AXIS_TICK, ChartFrame, ChartTooltip, GRID_PROPS } from "@/components/chart-kit";
 import { Skeleton } from "@/components/ui/skeleton";
 import { privateEUR, privateSignedEUR } from "@/components/private-value";
@@ -155,8 +156,7 @@ export function DashboardHero({
           tick={{ ...AXIS_TICK, fontSize: 11.5 }}
           axisLine={AXIS_LINE}
           tickLine={false}
-          tickFormatter={(k: string) => formatPeriodKey(k)}
-          minTickGap={32}
+          {...dateXAxis(series.map((p) => p.date))}
         />
         <YAxis
           hide={compact}
@@ -171,7 +171,7 @@ export function DashboardHero({
         <Tooltip
           content={
             <ChartTooltip
-              labelFormatter={(l) => formatPeriodKey(l, true)}
+              labelFormatter={formatChartTooltipDate}
               valueFormatter={(v) => privateEUR(v, hidden)}
             />
           }

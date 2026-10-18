@@ -1,3 +1,4 @@
+import { dateXAxis, formatChartTooltipDate } from "@/lib/chart-dates";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
@@ -9,7 +10,7 @@ import { AXIS_LINE, AXIS_TICK, ChartFrame, ChartTooltip, GRID_PROPS } from "@/co
 import { usePrivateMode } from "@/components/private-mode";
 import { getDividendCalendar } from "@/lib/insights.functions";
 import type { ProjectedDividend } from "@/lib/dividend-calendar";
-import { formatCompact, formatDatePt, formatPeriodKey, formatQuantity } from "@/lib/format";
+import { formatCompact, formatDatePt, formatQuantity } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { privateEUR, privateMoney } from "@/components/private-value";
 
@@ -154,8 +155,7 @@ export function DividendCalendarPanel() {
                   tick={AXIS_TICK}
                   axisLine={AXIS_LINE}
                   tickLine={false}
-                  tickFormatter={(k: string) => formatPeriodKey(k)}
-                  minTickGap={12}
+                  {...dateXAxis(data.byMonth.map((p) => p.month))}
                 />
                 <YAxis
                   tick={AXIS_TICK}
@@ -168,7 +168,7 @@ export function DividendCalendarPanel() {
                   cursor={{ fill: "var(--color-accent)", opacity: 0.4 }}
                   content={
                     <ChartTooltip
-                      labelFormatter={(l) => formatPeriodKey(l)}
+                      labelFormatter={formatChartTooltipDate}
                       valueFormatter={(v) => privateEUR(v, hidden)}
                     />
                   }

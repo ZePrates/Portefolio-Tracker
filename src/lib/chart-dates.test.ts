@@ -10,22 +10,27 @@ describe("calendar axis tick selection", () => {
   });
 
   it("spaces multi-year horizons at least three calendar months apart", () => {
-    const dates = Array.from({ length: 28 }, (_, i) =>
-      `${2024 + Math.floor(i / 12)}-${String(i % 12 + 1).padStart(2, "0")}-19`,
+    const dates = Array.from(
+      { length: 28 },
+      (_, i) => `${2024 + Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, "0")}-19`,
     );
     expect(chartDateTicks(dates)).toEqual(dates.filter((_, i) => i % 3 === 0));
   });
 
   it("keeps monthly ticks for horizons shorter than two years", () => {
     expect(chartDateTicks(["2026-10", "2026-11", "2026-12", "2027-01"])).toEqual([
-      "2026-10", "2026-11", "2026-12", "2027-01",
+      "2026-10",
+      "2026-11",
+      "2026-12",
+      "2027-01",
     ]);
   });
 
   it("handles empty, unordered and sparse series without invented dates", () => {
     expect(chartDateTicks([])).toEqual([]);
     expect(chartDateTicks(["2027-01-04", "2024-10-18", "2024-11-01", "invalid"])).toEqual([
-      "2024-10-18", "2027-01-04",
+      "2024-10-18",
+      "2027-01-04",
     ]);
   });
 });

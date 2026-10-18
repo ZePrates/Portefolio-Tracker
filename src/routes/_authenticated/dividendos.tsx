@@ -1,3 +1,4 @@
+import { formatChartMonth } from "@/lib/chart-dates";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PageTabs } from "@/components/page-tabs";
 import { DividendCalendarPanel } from "@/components/dividend-calendar-panel";
@@ -483,7 +484,17 @@ function DividendosPage() {
         >
           <BarChart data={stats.monthly}>
             <CartesianGrid {...GRID_PROPS} />
-            <XAxis dataKey="month" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
+            <XAxis
+              dataKey="month"
+              tick={AXIS_TICK}
+              axisLine={AXIS_LINE}
+              tickLine={false}
+              tickFormatter={(month: string) =>
+                formatChartMonth(`${year}-${String(MONTHS.indexOf(month) + 1).padStart(2, "0")}`)
+              }
+              interval="preserveStart"
+              minTickGap={24}
+            />
             <YAxis
               tick={AXIS_TICK}
               axisLine={false}
@@ -493,7 +504,16 @@ function DividendosPage() {
             />
             <Tooltip
               cursor={{ fill: "var(--color-accent)", opacity: 0.4 }}
-              content={<ChartTooltip valueFormatter={(v) => privateEUR(v, hidden)} />}
+              content={
+                <ChartTooltip
+                  labelFormatter={(month) =>
+                    formatChartMonth(
+                      `${year}-${String(MONTHS.indexOf(month) + 1).padStart(2, "0")}`,
+                    )
+                  }
+                  valueFormatter={(v) => privateEUR(v, hidden)}
+                />
+              }
             />
             <Bar
               dataKey="total"
