@@ -191,7 +191,8 @@ export function portfolioSummary(
     totalResult,
     totalReturnPct: returnBasis > 0 ? (totalResult / returnBasis) * 100 : null,
     returnBasis,
-    yieldOnCost: costBasis > 0 ? (last12 / costBasis) * 100 : null,
+    yieldOnCost: distributingCost > 0 ? (last12 / distributingCost) * 100 : null,
+    forwardYieldOnCost: distributingCost > 0 ? (forwardAnnual / distributingCost) * 100 : null,
     openPositions: open.length,
     closedPositions: closed.length,
   };
