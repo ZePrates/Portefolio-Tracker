@@ -131,7 +131,12 @@ export function TaxYearOptionsPanel({
         </div>
       </div>
       <Field label="Notas" className="mt-4">
-        <TextArea rows={2} maxLength={2000} value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <TextArea
+          rows={2}
+          maxLength={2000}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+        />
       </Field>
       <div className="mt-3 flex justify-end">
         <Button onClick={() => void submit()} disabled={invalid || saving}>

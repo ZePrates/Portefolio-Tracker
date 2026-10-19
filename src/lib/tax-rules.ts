@@ -123,7 +123,9 @@ export function lossCarryforward(input: {
     return round2(used);
   };
 
-  const hist = [...input.history].filter((h) => h.year < input.year).sort((a, b) => a.year - b.year);
+  const hist = [...input.history]
+    .filter((h) => h.year < input.year)
+    .sort((a, b) => a.year - b.year);
   for (const h of hist) {
     expire(h.year);
     if (!h.optedAggregation) continue;
@@ -136,7 +138,8 @@ export function lossCarryforward(input: {
       });
   }
   expire(input.year);
-  if (input.manual > 0) pools.unshift({ originYear: null, amount: round2(input.manual), expiresAfter: null });
+  if (input.manual > 0)
+    pools.unshift({ originYear: null, amount: round2(input.manual), expiresAfter: null });
   const available = round2(pools.reduce((s, p) => s + p.amount, 0));
   const snapshot = pools.map((p) => ({ ...p }));
   const applied =

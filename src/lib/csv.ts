@@ -165,13 +165,14 @@ export function taxReportCsv(report: TaxReport, documents: CsvTaxDocument[] = []
     ],
     { bom: false },
   );
-  const rec = documents.flatMap((d) =>
-    d.reconciliation.map((r) => ({ doc: d, r })),
-  );
+  const rec = documents.flatMap((d) => d.reconciliation.map((r) => ({ doc: d, r })));
   const recCsv = toCsvPt(
     rec,
     [
-      { header: "Relatório", value: (x) => `${SOURCE_LABEL[x.doc.source] ?? x.doc.source} — ${x.doc.title}` },
+      {
+        header: "Relatório",
+        value: (x) => `${SOURCE_LABEL[x.doc.source] ?? x.doc.source} — ${x.doc.title}`,
+      },
       { header: "Campo", value: (x) => x.r.label },
       { header: "Oficial (EUR)", value: (x) => x.r.official, type: "money" },
       { header: "App (EUR)", value: (x) => x.r.app, type: "money" },
@@ -179,7 +180,11 @@ export function taxReportCsv(report: TaxReport, documents: CsvTaxDocument[] = []
       {
         header: "Estado",
         value: (x) =>
-          x.r.status === "confere" ? "confere" : x.r.status === "diverge" ? "diverge" : "sem comparação",
+          x.r.status === "confere"
+            ? "confere"
+            : x.r.status === "diverge"
+              ? "diverge"
+              : "sem comparação",
       },
     ],
     { bom: false },

@@ -282,7 +282,10 @@ export function annualTaxReport(input: {
         const gain = round2(realizationValue - acquisitionValue - expenses);
         const excl = holdingExclusionApplies(asset.class)
           ? holdingExclusion(part.traded_at, sale.traded_at)
-          : { years: holdingExclusion(part.traded_at, sale.traded_at).years, excludedPct: 0 as const };
+          : {
+              years: holdingExclusion(part.traded_at, sale.traded_at).years,
+              excludedPct: 0 as const,
+            };
         capitalGains.push({
           assetId,
           assetName: asset.name,
@@ -503,7 +506,10 @@ export function annualTaxReport(input: {
       interestLines.reduce((s, l) => s + l.taxWithheld, 0);
     // Simulação com englobamento: as menos-valias reportáveis podem ser usadas.
     const usableCarry = Math.min(carry.available, Math.max(0, taxableNetGains));
-    const total = Math.max(0, (Math.max(0, taxableNetGains - usableCarry) + divBase + interestBase) * mr - allCredit);
+    const total = Math.max(
+      0,
+      (Math.max(0, taxableNetGains - usableCarry) + divBase + interestBase) * mr - allCredit,
+    );
     aggregated = { marginalRate: mr, total: round2(total) };
   }
 
@@ -512,7 +518,8 @@ export function annualTaxReport(input: {
   const hasMr = typeof mr === "number" && mr >= 0 && mr < 1;
   if (opted) {
     estimate = { mode: "aggregated", total: aggregated?.total ?? null };
-    if (!hasMr) warnings.push("Optaste pelo englobamento: indica a taxa marginal para estimar o imposto.");
+    if (!hasMr)
+      warnings.push("Optaste pelo englobamento: indica a taxa marginal para estimar o imposto.");
   } else if (mandatory?.applies) {
     estimate = {
       mode: "mixed",

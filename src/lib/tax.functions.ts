@@ -68,7 +68,10 @@ export const getTaxReport = createServerFn({ method: "GET" })
       manualLossCarryforward: Number(s?.manual_loss_carryforward ?? 0),
     });
     const current = settingsRows.find((s) => s.tax_year === data.year);
-    const assets = (assetsRes.data ?? []).map((a) => ({ ...a, domicile: domicile.get(a.id) ?? null }));
+    const assets = (assetsRes.data ?? []).map((a) => ({
+      ...a,
+      domicile: domicile.get(a.id) ?? null,
+    }));
     const transactions = (txRes.data ?? []).map((t) => ({
       ...t,
       quantity: Number(t.quantity),
@@ -79,7 +82,8 @@ export const getTaxReport = createServerFn({ method: "GET" })
     // Anos anteriores (até 10): saldo tributável e opção de englobamento, para o reporte.
     const priorYears: YearGains[] = [];
     for (let y = data.year - 10; y < data.year; y++) {
-      if (!transactions.some((t) => t.type === "sell" && t.traded_at.startsWith(String(y)))) continue;
+      if (!transactions.some((t) => t.type === "sell" && t.traded_at.startsWith(String(y))))
+        continue;
       const r = annualTaxReport({ year: y, assets, transactions, dividends: [], today });
       priorYears.push({
         year: y,
@@ -157,7 +161,11 @@ const docSchema = z.object({
       path: z.string().min(1).max(500),
       name: z.string().max(300),
       mime: z.string().max(200),
-      size: z.number().int().min(0).max(10 * 1024 * 1024),
+      size: z
+        .number()
+        .int()
+        .min(0)
+        .max(10 * 1024 * 1024),
     })
     .nullable(),
   realization_value: money,
@@ -204,7 +212,11 @@ export const saveTaxDocument = createServerFn({ method: "POST" })
     if (data.id) {
       let oldPath: string | null = null;
       if (data.file) {
-        const prev = await sb.from("tax_documents").select("file_path").eq("id", data.id).maybeSingle();
+        const prev = await sb
+          .from("tax_documents")
+          .select("file_path")
+          .eq("id", data.id)
+          .maybeSingle();
         oldPath = prev.data?.file_path ?? null;
       }
       const { error } = await sb.from("tax_documents").update(row).eq("id", data.id);

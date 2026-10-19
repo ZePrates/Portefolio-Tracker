@@ -291,3 +291,74 @@ describe("annualTaxReport — juros P2P", () => {
     expect(r.aggregated).toEqual({ marginalRate: 0.37, total: 1.11 });
   });
 });
+
+describe("annualTaxReport — exclusão por detenção e opções", () => {
+  const long = [
+    tx({ id: "l1", quantity: 10, price: 50, traded_at: "2019-01-10" }),
+    tx({ id: "l2", type: "sell", quantity: 10, price: 70, traded_at: "2025-03-01" }),
+  ];
+  it("lote > 5 anos exclui 20 %: taxableGain e imposto autónomo sobre o tributável", () => {
+    const r = annualTaxReport({
+      year: 2025,
+      assets,
+      transactions: long,
+      dividends: [],
+      today: TODAY,
+    });
+    expect(r.capitalGains[0]).toMatchObject({
+      gain: 200,
+      holdingYears: 6,
+      excludedPct: 0.2,
+      taxableGain: 160,
+    });
+    expect(r.totals.netGains).toBe(200);
+    expect(r.totals.taxableNetGains).toBe(160);
+    expect(r.autonomous.capitalGainsTax).toBeCloseTo(44.8);
+  });
+
+  const short = [
+    tx({ id: "s1", quantity: 10, price: 50, traded_at: "2025-01-10" }),
+    tx({ id: "s2", type: "sell", quantity: 10, price: 70, traded_at: "2025-06-01" }),
+  ];
+  it("englobamento obrigatório retira o curto prazo da tributação autónoma", () => {
+    const r = annualTaxReport({
+      year: 2025,
+      assets,
+      transactions: short,
+      dividends: [],
+      today: TODAY,
+      options: { taxableIncome: 90_000, marginalRate: 0.48 },
+    });
+    expect(r.mandatoryAggregation).toEqual({
+      applies: true,
+      shortTermGains: 200,
+      threshold: 83_696,
+    });
+    expect(r.autonomous.capitalGainsTax).toBe(0);
+    expect(r.estimate).toEqual({ mode: "mixed", total: 96 });
+  });
+  it("sem rendimento coletável avisa", () => {
+    const r = annualTaxReport({
+      year: 2025,
+      assets,
+      transactions: short,
+      dividends: [],
+      today: TODAY,
+    });
+    expect(r.mandatoryAggregation).toBeNull();
+    expect(r.warnings.join(" ")).toMatch(/rendimento coletável/);
+  });
+  it("com englobamento aplica perdas reportadas", () => {
+    const r = annualTaxReport({
+      year: 2025,
+      assets,
+      transactions: short,
+      dividends: [],
+      today: TODAY,
+      options: { optedAggregation: true, marginalRate: 0.3 },
+      priorYears: [{ year: 2023, taxableNetGains: -150, optedAggregation: true }],
+    });
+    expect(r.lossCarryforward).toMatchObject({ available: 150, applied: 150 });
+    expect(r.estimate).toEqual({ mode: "aggregated", total: 15 });
+  });
+});

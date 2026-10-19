@@ -70,7 +70,9 @@ export function TaxDocumentsPanel({
   };
 
   const del = async (doc: TaxDocument) => {
-    if (!window.confirm(`Apagar o relatório "${doc.title || SOURCE_LABEL[doc.source]}" e o ficheiro?`))
+    if (
+      !window.confirm(`Apagar o relatório "${doc.title || SOURCE_LABEL[doc.source]}" e o ficheiro?`)
+    )
       return;
     try {
       await remove({ data: { id: doc.id } });
@@ -131,14 +133,26 @@ export function TaxDocumentsPanel({
                   </div>
                   <div className="flex shrink-0 gap-1">
                     {d.file_path && (
-                      <Button variant="ghost" aria-label="Abrir ficheiro" onClick={() => void open(d)}>
+                      <Button
+                        variant="ghost"
+                        aria-label="Abrir ficheiro"
+                        onClick={() => void open(d)}
+                      >
                         <FileText aria-hidden className="h-4 w-4" />
                       </Button>
                     )}
-                    <Button variant="ghost" aria-label="Editar relatório" onClick={() => setEditing(d)}>
+                    <Button
+                      variant="ghost"
+                      aria-label="Editar relatório"
+                      onClick={() => setEditing(d)}
+                    >
                       <Pencil aria-hidden className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" aria-label="Apagar relatório" onClick={() => void del(d)}>
+                    <Button
+                      variant="ghost"
+                      aria-label="Apagar relatório"
+                      onClick={() => void del(d)}
+                    >
                       <Trash2 aria-hidden className="h-4 w-4" />
                     </Button>
                   </div>
@@ -160,7 +174,9 @@ export function TaxDocumentsPanel({
                         {rows.map((r) => (
                           <tr key={r.label}>
                             <td className="py-1.5">{r.label}</td>
-                            <td className="num py-1.5 text-right">{privateEUR(r.official, hidden)}</td>
+                            <td className="num py-1.5 text-right">
+                              {privateEUR(r.official, hidden)}
+                            </td>
                             <td className="num py-1.5 text-right">
                               {r.app == null ? "—" : privateEUR(r.app, hidden)}
                             </td>
@@ -269,7 +285,9 @@ function DocumentForm({
 
   return (
     <Card>
-      <h3 className="mb-3 text-sm font-semibold">{doc ? "Editar relatório" : "Adicionar relatório"}</h3>
+      <h3 className="mb-3 text-sm font-semibold">
+        {doc ? "Editar relatório" : "Adicionar relatório"}
+      </h3>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <Field label="Fonte">
           <SelectInput value={source} onChange={(e) => setSource(e.target.value as TaxDocSource)}>
@@ -309,7 +327,9 @@ function DocumentForm({
           <Field
             key={k}
             label={label}
-            error={parsed[k] != null && !Number.isFinite(parsed[k]) ? "Número inválido." : undefined}
+            error={
+              parsed[k] != null && !Number.isFinite(parsed[k]) ? "Número inválido." : undefined
+            }
           >
             <TextInput
               inputMode="decimal"
@@ -322,7 +342,12 @@ function DocumentForm({
         ))}
       </div>
       <Field label="Notas" className="mt-4">
-        <TextArea rows={2} maxLength={2000} value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <TextArea
+          rows={2}
+          maxLength={2000}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+        />
       </Field>
       <div className="mt-3 flex justify-end gap-2">
         <Button variant="ghost" onClick={() => onDone(false)} disabled={saving}>
