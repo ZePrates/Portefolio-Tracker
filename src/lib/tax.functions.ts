@@ -40,6 +40,7 @@ export const getTaxReport = createServerFn({ method: "GET" })
         .from("p2p_cash_movements")
         .select("asset_id, occurred_on, type, amount")
         .in("type", P2P_INCOME_TYPES)
+        .gte("occurred_on", `${data.year}-01-01`)
         .lte("occurred_on", `${data.year}-12-31`),
     ]);
     const settingsRes = await sb.from("tax_year_settings").select("*");
