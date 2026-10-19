@@ -6,6 +6,22 @@
 
 import { formatDatePt } from "@/lib/format";
 import type { TaxReport } from "@/lib/tax-report";
+import type { ReconciliationRow } from "@/lib/tax-rules";
+
+export interface CsvTaxDocument {
+  source: string;
+  title: string;
+  file_name?: string | null;
+  created_at: string;
+  reconciliation: ReconciliationRow[];
+}
+
+const SOURCE_LABEL: Record<string, string> = {
+  xtb: "XTB",
+  scramble: "Scramble",
+  elementum: "Elementum",
+  other: "Outro",
+};
 
 export type CsvType = "text" | "number" | "money" | "percent" | "date";
 
@@ -136,7 +152,47 @@ export function dividendsCsv(rows: CsvDividend[]): string {
 }
 
 /** Resumo fiscal: secção de mais-valias seguida da de dividendos. */
-export function taxReportCsv(report: TaxReport): string {
+export function taxReportCsv(report: TaxReport, documents: CsvTaxDocument[] = []): string {
+  const body = taxReportBodyCsv(report);
+  if (documents.length === 0) return body;
+  const docs = toCsvPt(
+    documents,
+    [
+      { header: "Fonte", value: (d) => SOURCE_LABEL[d.source] ?? d.source },
+      { header: "Título", value: (d) => d.title },
+      { header: "Ficheiro", value: (d) => d.file_name ?? "" },
+      { header: "Carregado em", value: (d) => d.created_at.slice(0, 10), type: "date" },
+    ],
+    { bom: false },
+  );
+  const rec = documents.flatMap((d) => d.reconciliation.map((r) => ({ doc: d, r })));
+  const recCsv = toCsvPt(
+    rec,
+    [
+      {
+        header: "Relatório",
+        value: (x) => `${SOURCE_LABEL[x.doc.source] ?? x.doc.source} — ${x.doc.title}`,
+      },
+      { header: "Campo", value: (x) => x.r.label },
+      { header: "Oficial (EUR)", value: (x) => x.r.official, type: "money" },
+      { header: "App (EUR)", value: (x) => x.r.app, type: "money" },
+      { header: "Diferença (EUR)", value: (x) => x.r.diff, type: "money" },
+      {
+        header: "Estado",
+        value: (x) =>
+          x.r.status === "confere"
+            ? "confere"
+            : x.r.status === "diverge"
+              ? "diverge"
+              : "sem comparação",
+      },
+    ],
+    { bom: false },
+  );
+  return `${body}\r\nRelatórios oficiais ${report.year}\r\n${docs}\r\nReconciliação oficial vs. app\r\n${recCsv}`;
+}
+
+function taxReportBodyCsv(report: TaxReport): string {
   const gains = toCsvPt(report.capitalGains, [
     { header: "Anexo", value: (r) => r.annex },
     { header: "Código", value: (r) => r.code },
@@ -150,6 +206,9 @@ export function taxReportCsv(report: TaxReport): string {
     { header: "Valor realização (EUR)", value: (r) => r.realizationValue, type: "money" },
     { header: "Despesas e encargos (EUR)", value: (r) => r.expenses, type: "money" },
     { header: "Mais/menos-valia (EUR)", value: (r) => r.gain, type: "money" },
+    { header: "Anos de detenção", value: (r) => r.holdingYears, type: "number" },
+    { header: "% excluída (art. 43.º/5)", value: (r) => r.excludedPct * 100, type: "percent" },
+    { header: "Ganho tributável (EUR)", value: (r) => r.taxableGain, type: "money" },
   ]);
   const divs = toCsvPt(
     report.dividends,

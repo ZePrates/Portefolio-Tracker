@@ -13,6 +13,17 @@
 import { replayLedger, type LedgerEntry } from "@/lib/fifo";
 import { grossOf, isReceived, netOf, taxOf, type DividendRecord } from "@/lib/dividends";
 import { domicileOf, type TaxableAsset } from "@/lib/tax";
+import {
+  holdingExclusion,
+  holdingExclusionApplies,
+  lastBracketThreshold,
+  lossCarryforward,
+  mandatoryAggregation,
+  type AppSourceTotals,
+  type ExcludedPct,
+  type LossPool,
+  type YearGains,
+} from "@/lib/tax-rules";
 
 /** Taxa especial (autónoma) de mais-valias e rendimentos de capitais. */
 export const PT_AUTONOMOUS_RATE = 0.28;
@@ -70,6 +81,7 @@ export type Annex = "G" | "J" | "E";
 export interface CapitalGainLine {
   assetId: string;
   assetName: string;
+  assetClass: string;
   isin: string | null;
   country: string | null;
   /** G = título nacional; J = título estrangeiro (quadro 9.2A). */
@@ -86,6 +98,12 @@ export interface CapitalGainLine {
   /** Despesas e encargos (comissões de compra e venda imputáveis, EUR). */
   expenses: number;
   gain: number;
+  /** Anos completos de detenção (datas de calendário). */
+  holdingYears: number;
+  /** % do saldo excluída (art. 43.º, n.º 5): 0, 10, 20 ou 30 %. */
+  excludedPct: ExcludedPct;
+  /** Saldo considerado para tributação: gain × (1 − excludedPct). */
+  taxableGain: number;
   /** Detido menos de 365 dias (relevante para o englobamento obrigatório). */
   shortTerm: boolean;
 }
@@ -146,6 +164,8 @@ export interface TaxReport {
     expenses: number;
     /** Saldo de mais-valias (ganhos − perdas). */
     netGains: number;
+    /** Saldo após a exclusão parcial por detenção. */
+    taxableNetGains: number;
     shortTermNetGains: number;
     dividendsGross: number;
     dividendsTaxWithheld: number;
@@ -165,7 +185,26 @@ export interface TaxReport {
   };
   /** Estimativa com englobamento, se for indicada a taxa marginal. */
   aggregated: { marginalRate: number; total: number } | null;
+  /** Englobamento obrigatório dos ganhos de curto prazo (null sem rendimento coletável). */
+  mandatoryAggregation: { applies: boolean; shortTermGains: number; threshold: number } | null;
+  /** Menos-valias reportáveis (5 anos, só com englobamento). */
+  lossCarryforward: { available: number; applied: number; remaining: number; pools: LossPool[] };
+  /** Estimativa principal, de acordo com as opções do ano. */
+  estimate: { mode: "autonomous" | "aggregated" | "mixed"; total: number | null };
+  optedAggregation: boolean;
+  /** Totais da app por fonte, para reconciliar com os relatórios oficiais. */
+  bySource: AppSourceTotals;
   warnings: string[];
+}
+
+export interface TaxYearOptions {
+  optedAggregation: boolean;
+  /** Rendimento coletável do ano (EUR), indicado pelo utilizador. */
+  taxableIncome: number | null;
+  /** Taxa marginal (0..1). */
+  marginalRate: number | null;
+  /** Menos-valias de anos anteriores não registadas na app (EUR). */
+  manualLossCarryforward: number;
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -182,8 +221,12 @@ export function annualTaxReport(input: {
   /** Juros e bónus P2P (opcional). */
   interest?: InterestRecord[];
   today: string;
-  /** Taxa marginal de IRS (0..1) para simular o englobamento. */
+  /** Taxa marginal de IRS (0..1) para simular o englobamento (sobrepõe-se às opções). */
   marginalRate?: number | null;
+  /** Opções do ano fiscal (tax_year_settings). */
+  options?: Partial<TaxYearOptions> | null;
+  /** Saldos tributáveis e opções de anos anteriores (reporte de perdas). */
+  priorYears?: YearGains[];
 }): TaxReport {
   const { year, assets, transactions, dividends, today } = input;
   const y = String(year);
@@ -200,11 +243,16 @@ export function annualTaxReport(input: {
   }
 
   const capitalGains: CapitalGainLine[] = [];
+  let metalSales = false;
   for (const [assetId, entries] of byAsset) {
     const asset = assetById.get(assetId);
     if (!asset) continue;
     const salesInYear = entries.some((e) => e.type === "sell" && e.traded_at.startsWith(y));
     if (!salesInYear) continue;
+    if (asset.class === "metal") {
+      metalSales = true;
+      continue;
+    }
 
     const buys = new Map(entries.filter((e) => e.type === "buy" && e.id).map((e) => [e.id!, e]));
     let replay;
@@ -231,9 +279,17 @@ export function annualTaxReport(input: {
         const acquisitionValue = buyPrice * part.quantity;
         const realizationValue = salePrice * part.quantity;
         const expenses = buyFee + sellFee;
+        const gain = round2(realizationValue - acquisitionValue - expenses);
+        const excl = holdingExclusionApplies(asset.class)
+          ? holdingExclusion(part.traded_at, sale.traded_at)
+          : {
+              years: holdingExclusion(part.traded_at, sale.traded_at).years,
+              excludedPct: 0 as const,
+            };
         capitalGains.push({
           assetId,
           assetName: asset.name,
+          assetClass: asset.class,
           isin: asset.isin ?? null,
           country,
           annex,
@@ -244,11 +300,19 @@ export function annualTaxReport(input: {
           acquisitionValue: round2(acquisitionValue),
           realizationValue: round2(realizationValue),
           expenses: round2(expenses),
-          gain: round2(realizationValue - acquisitionValue - expenses),
+          gain,
+          holdingYears: excl.years,
+          excludedPct: excl.excludedPct,
+          taxableGain: round2(gain * (1 - excl.excludedPct)),
           shortTerm: daysBetween(part.traded_at, sale.traded_at) < 365,
         });
       }
     }
+  }
+  if (metalSales) {
+    warnings.push(
+      "Houve vendas de metais preciosos neste ano: ficam fora deste resumo (enquadramento a validar com o contabilista).",
+    );
   }
   capitalGains.sort(
     (a, b) =>
@@ -350,11 +414,20 @@ export function annualTaxReport(input: {
   /* ---------------- Totais e estimativas ---------------- */
   const sum = <T>(rows: T[], f: (r: T) => number) => round2(rows.reduce((s, r) => s + f(r), 0));
   const netGains = sum(capitalGains, (l) => l.gain);
+  const taxableNetGains = sum(capitalGains, (l) => l.taxableGain);
+  const opts: TaxYearOptions = {
+    optedAggregation: input.options?.optedAggregation ?? false,
+    taxableIncome: input.options?.taxableIncome ?? null,
+    marginalRate: input.options?.marginalRate ?? null,
+    manualLossCarryforward: input.options?.manualLossCarryforward ?? 0,
+  };
+  const opted = opts.optedAggregation;
   const totals = {
     realizationValue: sum(capitalGains, (l) => l.realizationValue),
     acquisitionValue: sum(capitalGains, (l) => l.acquisitionValue),
     expenses: sum(capitalGains, (l) => l.expenses),
     netGains,
+    taxableNetGains,
     shortTermNetGains: sum(
       capitalGains.filter((l) => l.shortTerm),
       (l) => l.gain,
@@ -373,7 +446,41 @@ export function annualTaxReport(input: {
   const foreignTaxCredit = round2(
     foreign.reduce((s, l) => s + Math.min(l.taxWithheld, l.gross * PT_AUTONOMOUS_RATE), 0),
   );
-  const capitalGainsTax = round2(Math.max(0, netGains) * PT_AUTONOMOUS_RATE);
+  const mandatory = mandatoryAggregation({
+    year,
+    shortTermGains: totals.shortTermNetGains,
+    taxableIncome: opts.taxableIncome,
+  });
+  if (!mandatory && totals.shortTermNetGains > 0) {
+    warnings.push("Indica o rendimento coletável para verificar o englobamento obrigatório.");
+  }
+  if (totals.shortTermNetGains > 0 && !lastBracketThreshold(year).confirmed) {
+    warnings.push(
+      `Limite do último escalão de ${year} não confirmado: usado o valor mais recente conhecido.`,
+    );
+  }
+  const mandatoryGains = mandatory?.applies ? mandatory.shortTermGains : 0;
+  const capitalGainsTax = round2(
+    Math.max(0, taxableNetGains - mandatoryGains) * PT_AUTONOMOUS_RATE,
+  );
+
+  const carry = lossCarryforward({
+    year,
+    history: input.priorYears ?? [],
+    manual: opts.manualLossCarryforward,
+    currentTaxableGains: taxableNetGains,
+    currentOpted: opted,
+  });
+  if (!opted && carry.available > 0) {
+    warnings.push(
+      `Tens ${carry.available.toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € de menos-valias reportáveis que só podes usar se optares pelo englobamento.`,
+    );
+  }
+  if (opted) {
+    warnings.push(
+      "Ao optar pelo englobamento das mais-valias, a lei obriga a englobar também os restantes rendimentos de capitais da mesma natureza (dividendos e juros).",
+    );
+  }
   const dividendsTaxDue = round2(dividendsTaxPt - foreignTaxCredit);
   // Juros sem retenção em Portugal: 28%, com crédito do imposto retido lá fora.
   const interestTaxDue = round2(
@@ -385,7 +492,7 @@ export function annualTaxReport(input: {
   );
 
   let aggregated: TaxReport["aggregated"] = null;
-  const mr = input.marginalRate;
+  const mr = input.marginalRate ?? opts.marginalRate;
   if (typeof mr === "number" && mr >= 0 && mr < 1) {
     // Englobamento: dividendos de fonte UE/EEE contam 50%; mais-valias 100%.
     const divBase = dividendLines.reduce(
@@ -397,9 +504,50 @@ export function annualTaxReport(input: {
     const allCredit =
       dividendLines.reduce((s, l) => s + l.taxWithheld, 0) +
       interestLines.reduce((s, l) => s + l.taxWithheld, 0);
-    const total = Math.max(0, (Math.max(0, netGains) + divBase + interestBase) * mr - allCredit);
+    // Simulação com englobamento: as menos-valias reportáveis podem ser usadas.
+    const usableCarry = Math.min(carry.available, Math.max(0, taxableNetGains));
+    const total = Math.max(
+      0,
+      (Math.max(0, taxableNetGains - usableCarry) + divBase + interestBase) * mr - allCredit,
+    );
     aggregated = { marginalRate: mr, total: round2(total) };
   }
+
+  const autonomousTotal = round2(capitalGainsTax + dividendsTaxDue + interestTaxDue);
+  let estimate: TaxReport["estimate"];
+  const hasMr = typeof mr === "number" && mr >= 0 && mr < 1;
+  if (opted) {
+    estimate = { mode: "aggregated", total: aggregated?.total ?? null };
+    if (!hasMr)
+      warnings.push("Optaste pelo englobamento: indica a taxa marginal para estimar o imposto.");
+  } else if (mandatory?.applies) {
+    estimate = {
+      mode: "mixed",
+      total: hasMr ? round2(autonomousTotal + mandatory.shortTermGains * (mr as number)) : null,
+    };
+    warnings.push(
+      "Englobamento obrigatório: o saldo de lotes detidos menos de 365 dias é englobado porque o rendimento coletável atinge o último escalão.",
+    );
+    if (!hasMr) warnings.push("Indica a taxa marginal para estimar o imposto do saldo englobado.");
+  } else {
+    estimate = { mode: "autonomous", total: autonomousTotal };
+  }
+
+  const xtbGains = capitalGains.filter((l) => l.assetClass !== "p2p" && l.assetClass !== "metal");
+  const bySource: AppSourceTotals = {
+    xtb: {
+      realizationValue: sum(xtbGains, (l) => l.realizationValue),
+      acquisitionValue: sum(xtbGains, (l) => l.acquisitionValue),
+      expenses: sum(xtbGains, (l) => l.expenses),
+      netGains: sum(xtbGains, (l) => l.gain),
+      dividendsGross: totals.dividendsGross,
+      dividendsTaxWithheld: totals.dividendsTaxWithheld,
+    },
+    scramble: {
+      interestGross: totals.interestGross,
+      interestTaxWithheld: sum(interestLines, (l) => l.taxWithheld),
+    },
+  };
 
   return {
     year,
@@ -414,9 +562,14 @@ export function annualTaxReport(input: {
       foreignTaxCredit,
       dividendsTaxDue,
       interestTaxDue,
-      total: round2(capitalGainsTax + dividendsTaxDue + interestTaxDue),
+      total: autonomousTotal,
     },
     aggregated,
+    mandatoryAggregation: mandatory,
+    lossCarryforward: carry,
+    estimate,
+    optedAggregation: opted,
+    bySource,
     warnings,
   };
 }

@@ -17,3 +17,4 @@
 - ETF manager sync uses the existing authenticated function through the browser session; legacy composition sync must never overwrite manager holdings.
 - External database column extensions live in external-types.ts and are shared by external authenticated clients and helpers, because generated Cloud types describe a different schema and must remain untouched.
 - Calendar chart axes use the shared chart-dates presentation helpers to keep tick selection and tooltip dates consistent without resampling financial series; elapsed-duration axes stay separate.
+- Fiscal rules from the IRS code (holding exclusion, bracket thresholds, loss carryforward, reconciliation) live in the pure tax-rules module; tax-report composes them, so rule changes stay testable in one place.

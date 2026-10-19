@@ -1,5 +1,8 @@
 # Roadmap
 
+- [x] Resumo fiscal (IRS) segundo o CIRS: exclusão por detenção (art. 43.º/5), englobamento obrigatório e opcional, reporte de menos-valias 5 anos, opções do ano fiscal, arquivo de relatórios oficiais com reconciliação, CSV alargado.
+- [ ] Leitor automático dos relatórios XTB/Scramble (quando houver ficheiro real).
+
 - [x] Uniformizar eixos temporais com mês/ano PT-PT e etiquetas mensais/trimestrais; tooltip com data completa quando existe um dia (agregados mensais mantêm mês/ano), sem mudar cálculos; 93 testes e verificação visual em computador/telemóvel com dados de teste.
 
 - [x] FIRE: patamares (Half/Barista, Lean, FIRE, Fat), Coast FIRE (sem mais aportes) e FIRE com 28 % sobre mais-valias, sem schema/RLS; testes, typecheck e build verificados.
