@@ -22,8 +22,18 @@ import { getTaxReport } from "@/lib/tax.functions";
 import type { CapitalGainLine, DividendTaxLine } from "@/lib/tax-report";
 import { taxReportCsv } from "@/lib/csv";
 import { downloadTextFile } from "@/lib/download";
-import { formatDatePt, formatPct, formatQuantity, parseNumberPt } from "@/lib/format";
+import { formatDatePt, formatPct, formatQuantity } from "@/lib/format";
 import { privateEUR } from "@/components/private-value";
+import { TaxYearOptionsPanel } from "@/components/tax-year-options";
+import { TaxDocumentsPanel, useTaxDocuments } from "@/components/tax-documents-panel";
+import { hasOfficialTotals, reconcileDocument } from "@/lib/tax-rules";
+
+const FIXED_NOTICES = [
+  "A exclusão parcial por detenção (art. 43.º, n.º 5) é calculada por lote; confirma com o contabilista a aplicação a lotes adquiridos antes de 2025.",
+  "Anexo G ou J para o XTB: confirma no relatório do XTB (há sucursal em Portugal).",
+  "Englobamento de dividendos a 50 % (art. 40.º-A): aplica-se a lucros distribuídos por entidades residentes em PT/UE/EEE; confirma para distribuições de ETFs.",
+  "FIFO por entidade depositária (art. 43.º, n.º 9): a app aplica FIFO por ativo — correto enquanto cada ativo estiver num só broker.",
+];
 
 export const Route = createFileRoute("/_authenticated/irs")({
   head: () => ({
@@ -48,18 +58,13 @@ function IrsPage() {
   const years = useMemo(() => Array.from({ length: 7 }, (_, i) => thisYear - i), [thisYear]);
 
   const [year, setYear] = useState(thisYear);
-  const [rateText, setRateText] = useState("");
-  const rate = parseNumberPt(rateText);
-  const marginalRate = rateText.trim() !== "" && rate > 0 && rate < 100 ? rate / 100 : null;
-  const rateError =
-    rateText.trim() !== "" && !(rate > 0 && rate < 100)
-      ? "Indica a taxa marginal entre 0 e 100 (ex.: 35,5)."
-      : undefined;
-
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["tax", year, marginalRate],
-    queryFn: () => fetchTax({ data: { year, marginalRate } }),
+    queryKey: ["tax", year],
+    queryFn: () => fetchTax({ data: { year, marginalRate: null } }),
   });
+  const docsQuery = useTaxDocuments(year);
+  const documents = docsQuery.data ?? [];
+  const hasXtbTotals = documents.some((d) => d.source === "xtb" && hasOfficialTotals(d));
 
   const gainColumns: Column<CapitalGainLine>[] = [
     {
@@ -126,9 +131,26 @@ function IrsPage() {
       required: true,
       sortValue: (l) => l.gain,
       cell: (l) => (
-        <span className="flex flex-col items-end">
+        <span className="flex flex-col items-end gap-0.5">
           <Delta value={l.gain}>{privateEUR(l.gain, hidden)}</Delta>
           {l.shortTerm && <Badge tone="warn">&lt; 365 dias</Badge>}
+          {l.excludedPct > 0 && (
+            <Badge tone="info">−{Math.round(l.excludedPct * 100)} % (art. 43.º/5)</Badge>
+          )}
+        </span>
+      ),
+    },
+    {
+      id: "taxable",
+      header: "Ganho tributável",
+      align: "right",
+      sortValue: (l) => l.taxableGain,
+      cell: (l) => (
+        <span className="flex flex-col items-end">
+          {privateEUR(l.taxableGain, hidden)}
+          <span className="text-xs text-muted-foreground">
+            {l.holdingYears} {l.holdingYears === 1 ? "ano" : "anos"}
+          </span>
         </span>
       ),
     },
@@ -162,7 +184,15 @@ function IrsPage() {
           </dd>
         </div>
       </dl>
-      {l.shortTerm && <Badge tone="warn">Detido há menos de 365 dias</Badge>}
+      <div className="flex flex-wrap gap-1">
+        {l.shortTerm && <Badge tone="warn">Detido há menos de 365 dias</Badge>}
+        {l.excludedPct > 0 && (
+          <Badge tone="info">
+            −{Math.round(l.excludedPct * 100)} % (art. 43.º/5) · tributável{" "}
+            {privateEUR(l.taxableGain, hidden)}
+          </Badge>
+        )}
+      </div>
     </div>
   );
 
@@ -248,7 +278,17 @@ function IrsPage() {
             variant="outline"
             disabled={!data}
             onClick={() =>
-              data && downloadTextFile(`resumo-fiscal-${year}.csv`, taxReportCsv(data))
+              data &&
+              downloadTextFile(
+                `resumo-fiscal-${year}.csv`,
+                taxReportCsv(
+                  data,
+                  documents.map((d) => ({
+                    ...d,
+                    reconciliation: hasOfficialTotals(d) ? reconcileDocument(d, data.bySource) : [],
+                  })),
+                ),
+              )
             }
           >
             <Download aria-hidden className="h-4 w-4" />
@@ -258,7 +298,7 @@ function IrsPage() {
       />
 
       <Card>
-        <div className="grid gap-4 sm:grid-cols-2 lg:max-w-xl">
+        <div className="max-w-xs">
           <Field label="Ano fiscal">
             <SelectInput value={year} onChange={(e) => setYear(Number(e.target.value))}>
               {years.map((y) => (
@@ -268,21 +308,17 @@ function IrsPage() {
               ))}
             </SelectInput>
           </Field>
-          <Field
-            label="Taxa marginal de IRS (%)"
-            error={rateError}
-            hint="Opcional: simula o englobamento."
-          >
-            <TextInput
-              inputMode="decimal"
-              autoComplete="off"
-              value={rateText}
-              onChange={(e) => setRateText(e.target.value)}
-              placeholder="ex.: 35,5"
-            />
-          </Field>
         </div>
       </Card>
+
+      {data && (
+        <TaxYearOptionsPanel
+          key={`${year}-${data.settings?.updated_at ?? "novo"}`}
+          year={year}
+          settings={data.settings}
+          onSaved={() => void refetch()}
+        />
+      )}
 
       {isError ? (
         <ErrorState onRetry={() => void refetch()} />
@@ -294,7 +330,12 @@ function IrsPage() {
             <MetricCard
               label="Mais-valias líquidas"
               value={privateEUR(t.netGains, hidden)}
-              sub={<>realização {privateEUR(t.realizationValue, hidden)}</>}
+              sub={
+                <>
+                  tributável {privateEUR(t.taxableNetGains, hidden)} · realização{" "}
+                  {privateEUR(t.realizationValue, hidden)}
+                </>
+              }
               tone={t.netGains > 0 ? "positive" : t.netGains < 0 ? "negative" : "default"}
             />
             <MetricCard
@@ -309,10 +350,19 @@ function IrsPage() {
             />
             <MetricCard
               label="Estimativa de imposto"
-              value={privateEUR(data.autonomous.total, hidden)}
+              value={
+                data.estimate.total == null ? "Sem dados" : privateEUR(data.estimate.total, hidden)
+              }
               sub={
                 <>
-                  tributação autónoma a 28 %
+                  {data.estimate.mode === "aggregated"
+                    ? "com englobamento"
+                    : data.estimate.mode === "mixed"
+                      ? "autónoma + englobamento obrigatório"
+                      : "tributação autónoma a 28 %"}
+                  {data.estimate.mode !== "autonomous" && (
+                    <> · autónoma {privateEUR(data.autonomous.total, hidden)}</>
+                  )}
                   {data.aggregated && (
                     <>
                       {" "}
@@ -323,6 +373,44 @@ function IrsPage() {
                 </>
               }
             />
+          </div>
+
+          {hasXtbTotals && (
+            <div className="rounded-lg border border-info/40 bg-info/10 p-3 text-sm">
+              Tens um relatório oficial do XTB com totais: usa os valores oficiais na declaração e
+              vê a reconciliação em "Relatórios oficiais {year}".
+            </div>
+          )}
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-lg border border-border bg-card p-3 text-sm">
+              <p className="font-medium">
+                Menos-valias reportadas disponíveis:{" "}
+                {privateEUR(data.lossCarryforward.available, hidden)}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {data.optedAggregation
+                  ? `Aplicadas em ${year}: `
+                  : "Só podem ser usadas em anos com englobamento (5 anos). "}
+                {data.optedAggregation && privateEUR(data.lossCarryforward.applied, hidden)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-3 text-sm">
+              <p className="font-medium">Englobamento obrigatório (&lt; 365 dias)</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {data.mandatoryAggregation == null
+                  ? "Indica o rendimento coletável nas opções do ano para verificar."
+                  : data.mandatoryAggregation.applies
+                    ? "Aplica-se: o saldo de curto prazo é englobado à taxa marginal."
+                    : "Não se aplica neste ano."}{" "}
+                {data.mandatoryAggregation && (
+                  <>
+                    Limite do último escalão:{" "}
+                    {privateEUR(data.mandatoryAggregation.threshold, false)}
+                  </>
+                )}
+              </p>
+            </div>
           </div>
 
           {data.warnings.length > 0 && (
@@ -432,6 +520,23 @@ function IrsPage() {
               </ul>
             </section>
           )}
+
+          <TaxDocumentsPanel
+            year={year}
+            appTotals={data.bySource}
+            hidden={hidden}
+            documents={documents}
+            onChanged={() => void docsQuery.refetch()}
+          />
+
+          <div className="rounded-lg border border-border bg-card/50 p-3 text-xs text-muted-foreground">
+            <p className="mb-1 font-medium text-foreground">Notas importantes</p>
+            <ul className="list-inside list-disc space-y-0.5">
+              {FIXED_NOTICES.map((n) => (
+                <li key={n}>{n}</li>
+              ))}
+            </ul>
+          </div>
 
           <p className="text-xs text-muted-foreground">
             Estimativa informativa calculada com os dados registados nesta app (câmbio da data de
