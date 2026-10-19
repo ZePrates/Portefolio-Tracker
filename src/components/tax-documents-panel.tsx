@@ -18,7 +18,7 @@ import {
 } from "@/lib/tax-rules";
 import type { TaxDocument } from "@/integrations/supabase/external-types";
 
-export const SOURCE_LABEL: Record<TaxDocSource, string> = {
+const SOURCE_LABEL: Record<TaxDocSource, string> = {
   xtb: "XTB",
   scramble: "Scramble",
   elementum: "Elementum",

@@ -22,6 +22,7 @@ export const PORTFOLIO_QUERY_KEYS = [
   "dividend-calendar",
   "scramble",
   "tax",
+  "tax-documents",
   "month-close",
 ] as const;
 
