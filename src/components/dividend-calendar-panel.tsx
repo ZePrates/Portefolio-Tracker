@@ -1,16 +1,15 @@
-import { dateXAxis, formatChartTooltipDate } from "@/lib/chart-dates";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
 import { CalendarDays } from "lucide-react";
 import { Badge, Card, ErrorState, KpiGridSkeleton, MetricCard } from "@/components/ui-bits";
 import { DataTable, type Column } from "@/components/data-table";
-import { AXIS_LINE, AXIS_TICK, ChartFrame, ChartTooltip, GRID_PROPS } from "@/components/chart-kit";
+import { DividendCalendarView } from "@/components/dividend-calendar-view";
 import { usePrivateMode } from "@/components/private-mode";
 import { getDividendCalendar } from "@/lib/insights.functions";
+import { todayLisbon } from "@/lib/dates";
 import type { ProjectedDividend } from "@/lib/dividend-calendar";
-import { formatCompact, formatDatePt, formatQuantity } from "@/lib/format";
+import { formatDatePt, formatQuantity } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { privateEUR, privateMoney } from "@/components/private-value";
 
@@ -139,54 +138,17 @@ export function DividendCalendarPanel() {
           </div>
 
           <Card
-            title="Por mês"
+            title="Calendário"
             icon={<CalendarDays aria-hidden className="h-4 w-4 text-primary" />}
             description="Estimativa; os valores reais dependem das decisões de cada empresa."
           >
-            <ChartFrame
-              label={`Dividendos previstos por mês nos próximos ${months} meses`}
-              empty={data.byMonth.length === 0}
-              emptyLabel="Sem pagamentos projetados: faltam dividendos no histórico."
-            >
-              <BarChart data={data.byMonth}>
-                <CartesianGrid {...GRID_PROPS} />
-                <XAxis
-                  dataKey="month"
-                  tick={AXIS_TICK}
-                  axisLine={AXIS_LINE}
-                  tickLine={false}
-                  {...dateXAxis(data.byMonth.map((p) => p.month))}
-                />
-                <YAxis
-                  tick={AXIS_TICK}
-                  axisLine={false}
-                  tickLine={false}
-                  width={44}
-                  tickFormatter={(v: number) => (hidden ? "•" : formatCompact(v))}
-                />
-                <Tooltip
-                  cursor={{ fill: "var(--color-accent)", opacity: 0.4 }}
-                  content={
-                    <ChartTooltip
-                      labelFormatter={formatChartTooltipDate}
-                      valueFormatter={(v) => privateEUR(v, hidden)}
-                    />
-                  }
-                />
-                <Bar
-                  dataKey="net"
-                  name="Líquido"
-                  fill="var(--color-chart-2)"
-                  radius={[4, 4, 0, 0]}
-                />
-                <Bar
-                  dataKey="gross"
-                  name="Bruto"
-                  fill="var(--color-chart-8)"
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ChartFrame>
+            {data.events.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Sem pagamentos projetados: faltam dividendos no histórico.
+              </p>
+            ) : (
+              <DividendCalendarView events={data.events} today={todayLisbon()} months={months} />
+            )}
           </Card>
 
           {data.events.length > 0 && (
