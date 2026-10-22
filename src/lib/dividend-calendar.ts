@@ -53,6 +53,11 @@ export interface DividendCalendar {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+/** Última ex-date projetada para um horizonte de `months` meses. */
+function horizonEnd(today: string, months = 12): string {
+  return addDaysISO(today, Math.round(months * 30.44));
+}
+
 export function projectDividendCalendar(input: {
   assets: CalendarAsset[];
   history: CalendarDividendHistory[];
@@ -60,7 +65,7 @@ export function projectDividendCalendar(input: {
   months?: number;
 }): DividendCalendar {
   const { assets, history, today } = input;
-  const horizon = addDaysISO(today, Math.round((input.months ?? 12) * 30.44));
+  const horizon = horizonEnd(today, input.months);
   const events: ProjectedDividend[] = [];
   const skipped: DividendCalendar["skipped"] = [];
 
@@ -142,4 +147,86 @@ export function projectDividendCalendar(input: {
     totalNet: round2(events.reduce((s, e) => s + e.net, 0)),
     skipped,
   };
+}
+
+/* ------------------------------------------------------------------ */
+/* Vista de calendário                                                 */
+/* ------------------------------------------------------------------ */
+
+/** "2026-11" → "2026-12" (n meses à frente). */
+function addMonthsKey(key: string, n: number): string {
+  const [y, m] = key.split("-").map(Number) as [number, number];
+  const d = new Date(Date.UTC(y, m - 1 + n, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+/**
+ * Semanas de um mês ("YYYY-MM"), de segunda a domingo, com datas ISO;
+ * `null` nas casas que pertencem ao mês anterior ou seguinte.
+ */
+export function buildMonthGrid(monthKey: string): Array<Array<string | null>> {
+  const [y, m] = monthKey.split("-").map(Number) as [number, number];
+  const lead = (new Date(Date.UTC(y, m - 1, 1)).getUTCDay() + 6) % 7;
+  const days = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const cells = Math.ceil((lead + days) / 7) * 7;
+  const weeks: Array<Array<string | null>> = [];
+  for (let i = 0; i < cells; i++) {
+    const d = i - lead + 1;
+    if (i % 7 === 0) weeks.push([]);
+    weeks.at(-1)!.push(d >= 1 && d <= days ? `${monthKey}-${String(d).padStart(2, "0")}` : null);
+  }
+  return weeks;
+}
+
+export interface CalendarMonth {
+  month: string;
+  count: number;
+  net: number;
+  gross: number;
+  /** Ativos que pagam no mês, sem repetidos, pela ordem de pagamento. */
+  assets: string[];
+  byDay: Record<string, ProjectedDividend[]>;
+}
+
+/**
+ * Pagamentos agrupados por mês, do mês atual até ao fim do horizonte (ou ao
+ * último pagamento estimado, que pode cair depois da última ex-date).
+ */
+export function calendarMonths(input: {
+  events: ProjectedDividend[];
+  today: string;
+  months?: number;
+}): CalendarMonth[] {
+  const sorted = [...input.events].sort(
+    (x, y) => x.paymentDate.localeCompare(y.paymentDate) || x.assetName.localeCompare(y.assetName),
+  );
+  const first = input.today.slice(0, 7);
+  const lastPayment = sorted.at(-1)?.paymentDate.slice(0, 7) ?? first;
+  const horizonMonth = horizonEnd(input.today, input.months).slice(0, 7);
+  const last = lastPayment > horizonMonth ? lastPayment : horizonMonth;
+
+  const out: CalendarMonth[] = [];
+  for (let key = first; key <= last; key = addMonthsKey(key, 1)) {
+    const evs = sorted.filter((e) => e.paymentDate.startsWith(key));
+    const byDay: CalendarMonth["byDay"] = {};
+    for (const e of evs) (byDay[e.paymentDate] ??= []).push(e);
+    out.push({
+      month: key,
+      count: evs.length,
+      net: round2(evs.reduce((s, e) => s + e.net, 0)),
+      gross: round2(evs.reduce((s, e) => s + e.gross, 0)),
+      assets: [...new Set(evs.map((e) => e.assetName))],
+      byDay,
+    });
+  }
+  return out;
+}
+
+const LEGAL_SUFFIX =
+  /,?\s+(Inc\.?|Incorporated|Corporation|Corp\.?|Company|Co\.?|PLC|plc|Ltd\.?|Limited|S\.?A\.?|N\.?V\.?|AG|SE)$/;
+
+/** Nome curto para etiquetas: "Realty Income Corporation" → "Realty Income". */
+export function shortCompanyName(name: string): string {
+  const short = name.trim().replace(LEGAL_SUFFIX, "").trim();
+  return short || name;
 }
