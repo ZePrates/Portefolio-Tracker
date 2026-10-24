@@ -1,0 +1,62 @@
+name: Snapshot diário
+
+# Atualiza as cotações e guarda a fotografia da carteira, chamando o endpoint
+# /api/public/cron/daily-snapshot da app publicada. Substitui a tarefa agendada
+# que existia no Lovable (mesma hora: 21:30 UTC).
+#
+# Configuração (Settings > Secrets and variables > Actions):
+#   - Variável  SITE_URL     endereço da app, sem barra final (ex.: https://o-teu-site.vercel.app)
+#   - Segredo   CRON_SECRET  o mesmo valor definido no alojamento (variável CRON_SECRET)
+#
+# Os agendamentos do GitHub só correm a partir do ramo principal, e podem atrasar
+# alguns minutos. Se falhar, o GitHub envia email e a execução aparece a vermelho;
+# para repetir à mão: Actions > Snapshot diário > Run workflow.
+
+on:
+  schedule:
+    - cron: "30 21 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: daily-snapshot
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  snapshot:
+    name: Chamar o endpoint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verificar configuração
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$SITE_URL" ]; then echo "::error::Falta a variável SITE_URL do repositório."; exit 1; fi
+          if [ -z "$CRON_SECRET" ]; then echo "::error::Falta o segredo CRON_SECRET do repositório."; exit 1; fi
+
+      - name: Executar snapshot
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          # O segredo vai por ficheiro de configuração do curl, para não aparecer
+          # na linha de comandos nem nos registos.
+          printf 'header = "Authorization: Bearer %s"\n' "$CRON_SECRET" > "$RUNNER_TEMP/curl.cfg"
+          status=$(curl --silent --show-error --max-time 300 \
+            --config "$RUNNER_TEMP/curl.cfg" \
+            --request POST \
+            --output "$RUNNER_TEMP/resposta.json" \
+            --write-out '%{http_code}' \
+            "${SITE_URL%/}/api/public/cron/daily-snapshot")
+          rm -f "$RUNNER_TEMP/curl.cfg"
+          echo "HTTP $status"
+          cat "$RUNNER_TEMP/resposta.json"; echo
+          # 200 = tudo certo. 207 = falhou para algum utilizador; 5xx = erro geral.
+          # Só o 200 conta como sucesso, para uma falha parcial não passar despercebida.
+          if [ "$status" != "200" ]; then
+            echo "::error::O snapshot não terminou bem (HTTP $status)."
+            exit 1
+          fi

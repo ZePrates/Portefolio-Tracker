@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { authenticateCronRequest } from "@/integrations/supabase/cron-auth";
 
 /**
- * Tarefa diária (agendada no Lovable): atualiza os preços de cada utilizador
+ * Tarefa diária (agendada no GitHub Actions): atualiza os preços de cada utilizador
  * com posições abertas e guarda a fotografia do dia, para os gráficos de
  * Desempenho terem o valor real da carteira mesmo nos dias em que a app não
  * é aberta. Protegida pelo segredo de cron (Authorization: Bearer …).

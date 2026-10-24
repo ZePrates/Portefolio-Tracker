@@ -63,7 +63,7 @@ export function serviceKeyProblem(key: string | undefined): string | null {
 /**
  * Código HTTP da tarefa: 500 se não encontrou nenhum utilizador (chave sem
  * acesso ou base vazia), 207 se algum falhou, 200 se correu tudo. Assim uma
- * execução que não faz nada aparece como falhada no histórico do Lovable.
+ * execução que não faz nada aparece como falhada no histórico do GitHub Actions.
  */
 export function dailySnapshotStatus(result: DailySnapshotResult): number {
   if (result.users === 0) return 500;
