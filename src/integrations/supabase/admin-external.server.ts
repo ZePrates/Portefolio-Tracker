@@ -1,6 +1,6 @@
-// BYO external Supabase: admin client for the external project.
-// Replaces the generated client.server.ts admin client for the exposure cache
-// write, which must never target the managed Lovable Cloud database.
+// BYO external Supabase: admin client for the external project, used for
+// privileged writes (daily snapshot, exposure cache). It must never target the
+// managed Lovable Cloud database.
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 

@@ -26,7 +26,7 @@ Instalar dependências com `bun install --frozen-lockfile`; o `bun.lock` aponta 
 - Os dados reais estão neste projeto, não na Lovable Cloud. `supabase/migrations/` é a fonte de verdade.
 - Alterações de schema só por migração: aplicar com `apply_migration` do Supabase e depois criar o ficheiro em `supabase/migrations/` com o nome **igual à versão registada** (`list_migrations`). Sem isso, o check do Supabase no GitHub falha.
 - Antes de mudar o schema, ver as tabelas existentes. Todas as tabelas têm RLS (`auth.uid() = user_id`); tabelas novas também.
-- `drizzle/` e `drizzle.config.ts` servem só a Lovable Cloud: não usar.
+- Não há outra pasta de migrações: o `drizzle/` da Lovable Cloud foi removido e não deve voltar.
 - A Edge Function `supabase/functions/sync-etf-holdings/` publica-se à parte (`deploy_edge_function`, `verify_jwt = true`); o ficheiro no repositório tem de ficar igual ao publicado.
 
 ## Segredos e configuração
