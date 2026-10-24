@@ -2,7 +2,7 @@
 
 Aplicação pessoal para acompanhar, analisar e projetar uma carteira de investimentos multi-classe de ativos — ações, ETFs, dividendos, REITs, metais preciosos e P2P — pensada para um investidor residente em Portugal (IRS, broker XTB).
 
-**App em produção:** https://portefolio-tracker.lovable.app
+**App em produção:** <https://portefolio-tracker.vercel.app> (Vercel; ver «Publicação» abaixo).
 
 ## O que faz
 
@@ -17,7 +17,7 @@ Aplicação pessoal para acompanhar, analisar e projetar uma carteira de investi
 | **Resumo fiscal (IRS)**                                                | Mais-valias por lote (Anexo G), dividendos e juros (Anexos J e E), estimativa de imposto e simulação de englobamento                                                 |
 | **Importar extrato XTB**                                               | Concilia movimentos com o valor real do broker e confirma dividendos e retenções; idempotente                                                                        |
 
-Uma tarefa diária (21:30 UTC, agendada no Lovable) atualiza as cotações e guarda a fotografia da carteira em `/api/public/cron/daily-snapshot`.
+Uma tarefa diária (21:30 UTC, agendada no GitHub Actions: `.github/workflows/daily-snapshot.yml`) atualiza as cotações e guarda a fotografia da carteira em `/api/public/cron/daily-snapshot`.
 
 > ⚠️ Os cálculos fiscais são uma ajuda ao preenchimento, não aconselhamento fiscal. Confirma sempre no Portal das Finanças.
 
@@ -25,7 +25,8 @@ Uma tarefa diária (21:30 UTC, agendada no Lovable) atualiza as cotações e gua
 
 - **Frontend:** TanStack Start + TypeScript (strict), React Query, Recharts
 - **Backend:** Supabase (Postgres com RLS em todas as tabelas) via server functions com autenticação
-- Construído e mantido no [Lovable](https://lovable.dev) — as alterações no editor sincronizam automaticamente com este repositório, e vice-versa
+- **Alojamento:** Vercel (escalão Hobby, uso pessoal), publicado a partir deste repositório. O agendamento diário corre no GitHub Actions.
+- Começou no [Lovable](https://lovable.dev); deixou de depender dele (configuração do Vite, agendamento e armazenamento da sessão são agora deste repositório).
 
 ## Estrutura
 
@@ -44,7 +45,7 @@ Convenções: valores em EUR guardados em `numeric`; datas `YYYY-MM-DD` no fuso 
 A app usa o projeto Supabase **externo** `azekwmamjovoguauncrg` (definido em `vite.config.ts`), não a base da Lovable Cloud.
 
 - **`supabase/migrations/` é a fonte de verdade** dessa base. Cada ficheiro tem de ter **exatamente** a versão registada no Supabase (`supabase_migrations.schema_migrations`; ver `list_migrations`). O `apply_migration` regista a hora a que a migração é aplicada, por isso o nome do ficheiro faz-se depois, com essa versão. Se faltar um ficheiro, o check do Supabase no GitHub falha com "Remote migration versions not found".
-- **`drizzle/` é gerido pelo Lovable** para a base da Lovable Cloud (`LOVABLE_DB_MIGRATION_URL`), que não guarda os dados da carteira. Não se edita à mão.
+- A antiga pasta `drizzle/` (migrações da base da Lovable Cloud, que não guarda os dados da carteira) foi removida, com as dependências `drizzle-kit`, `drizzle-orm` e `postgres`.
 - **`supabase/functions/sync-etf-holdings/`** é a Edge Function do botão "Sincronizar com gestoras". Corre com a sessão do utilizador e publica-se à parte no projeto externo (`deploy_edge_function`, `verify_jwt = true`); o ficheiro no repositório tem de ficar igual ao publicado. Gestoras com lista completa: **iShares**, **Vanguard**, **Xtrackers**, **Global X** e **VanEck**. A VanEck só mostra a composição depois de um aviso de investidor: a função envia os cookies de "investidor particular em Portugal", que o utilizador autorizou a 15/10/2026. No Excel da Xtrackers (DWS) as ações vêm com o tipo "Equities"; a leitura está em `dws.ts`, com testes. A BNP Paribas tem a ficha do fundo avariada no próprio site (certificado TLS errado e 403) e a WisdomTree bloqueia pedidos automáticos (Cloudflare). Por isso a composição destes dois ETFs foi carregada à mão a 15/10/2026: a da WisdomTree a partir do CSV do site (`manager_slug = 'wisdomtree'`) e a da BNP a partir do relatório anual, com as posições a 31/12/2025 (`manager_slug = 'bnpparibas'`). O sync não lhes toca; para os atualizar, volta a carregar-se um ficheiro novo.
 - Todas as tabelas têm RLS: cada utilizador só lê e escreve as suas linhas (`auth.uid() = user_id`). A `security_profiles` é só de leitura para utilizadores autenticados.
 
@@ -72,9 +73,24 @@ bun audit             # vulnerabilidades das dependências
 
 O relatório da auditoria de código, dados e funcionalidade está em [docs/AUDITORIA-CODIGO.md](docs/AUDITORIA-CODIGO.md).
 
-## Continuar no Lovable
+## Publicação (Vercel + GitHub Actions)
 
-Para desenvolver via prompt em vez de código, usa o [editor Lovable](https://lovable.dev/projects/fb89b30f-b81a-4611-baa2-9ab7f69a190f) — descreve o que queres construir e o Lovable trata da implementação, sincronizando diretamente com o `main` deste repositório.
+Cada `push` ao `main` volta a publicar sozinho. Configuração única:
+
+**1. Vercel** — _Add New > Project_, importar este repositório. O Nitro deteta a Vercel e gera o formato certo (Node 22); o _Build Command_ é `bun run build` e o _Install Command_ `bun install --frozen-lockfile` (se a Vercel não detetar o Bun sozinha). Em _Settings > Environment Variables_ (Production e Preview):
+
+| Variável                        | Para quê                                                                                        |
+| ------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `EXTERNAL_SUPABASE_SERVICE_KEY` | Chave de serviço do Supabase, usada só pelo snapshot diário. **Segredo: nunca no repositório.** |
+| `CRON_SECRET`                   | Segredo que autentica o pedido do agendamento (gera um valor longo e aleatório).                |
+
+O URL e a chave pública (`publishable`) do Supabase estão em `vite.config.ts` e não precisam de configuração.
+
+**2. GitHub** — _Settings > Secrets and variables > Actions_: variável `SITE_URL` (endereço da app, sem barra final) e segredo `CRON_SECRET` (o mesmo valor da Vercel). Para testar: _Actions > Snapshot diário > Run workflow_; só o HTTP 200 conta como sucesso.
+
+**3. Supabase** — _Authentication > URL Configuration_: pôr o endereço da app em _Site URL_ e nos _Redirect URLs_, senão o login e os emails de confirmação falham.
+
+Para ver o resultado de uma branch antes de a juntar ao `main`, a Vercel cria um _preview_ por branch.
 
 ## Design system
 
