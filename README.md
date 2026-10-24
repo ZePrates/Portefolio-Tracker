@@ -2,7 +2,7 @@
 
 Aplicação pessoal para acompanhar, analisar e projetar uma carteira de investimentos multi-classe de ativos — ações, ETFs, dividendos, REITs, metais preciosos e P2P — pensada para um investidor residente em Portugal (IRS, broker XTB).
 
-**App em produção:** endereço da Vercel (ver «Publicação» abaixo).
+**App em produção:** <https://portefolio-tracker.vercel.app> (Vercel; ver «Publicação» abaixo).
 
 ## O que faz
 
