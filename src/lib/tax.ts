@@ -138,8 +138,10 @@ export function withholdingAmount(grossEur: number, rate: number): number {
 }
 
 /**
- * Desfasamento típico entre a data ex-dividendo e o pagamento. O Yahoo só
- * publica a ex-date; a data de pagamento real vem do extrato do broker.
+ * Desfasamento por omissão entre a data ex-dividendo e o pagamento, usado
+ * enquanto o ativo não tem pagamentos confirmados que cheguem para medir o
+ * seu (ver `paymentLagByAsset`). O Yahoo só publica a ex-date; a data de
+ * pagamento real vem do extrato do broker.
  */
 export const DEFAULT_PAYMENT_LAG_DAYS = 14;
 
@@ -147,4 +149,71 @@ export function estimatePaymentDate(exDate: string, lagDays = DEFAULT_PAYMENT_LA
   const d = new Date(`${exDate.slice(0, 10)}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + lagDays);
   return d.toISOString().slice(0, 10);
+}
+
+/** Pagamentos confirmados mínimos de um ativo para confiar no seu desfasamento. */
+export const MIN_LAG_SAMPLES = 2;
+/** Só os pagamentos confirmados mais recentes contam: o desfasamento muda devagar. */
+const MAX_LAG_SAMPLES = 8;
+/** Fora deste intervalo (dias) o par ex-date/pagamento é dado mau, não desfasamento. */
+const MIN_PLAUSIBLE_LAG_DAYS = 1;
+const MAX_PLAUSIBLE_LAG_DAYS = 60;
+
+export interface PaymentLagRecord {
+  asset_id?: string | null;
+  ex_date?: string | null;
+  payment_date?: string | null;
+  /** Só os registos confirmados (`false`) medem o desfasamento real. */
+  payment_date_estimated?: boolean | null;
+}
+
+function daysBetweenISO(fromIso: string, toIso: string): number {
+  const from = Date.parse(`${fromIso.slice(0, 10)}T00:00:00Z`);
+  const to = Date.parse(`${toIso.slice(0, 10)}T00:00:00Z`);
+  return Math.round((to - from) / 86_400_000);
+}
+
+/**
+ * Desfasamento típico (mediana, em dias) entre ex-date e pagamento de UM
+ * ativo, medido nos pagamentos confirmados (extrato do broker). Devolve
+ * `null` se houver menos de `MIN_LAG_SAMPLES` amostras plausíveis, para quem
+ * chama cair nos `DEFAULT_PAYMENT_LAG_DAYS`.
+ */
+export function medianPaymentLag(records: readonly PaymentLagRecord[]): number | null {
+  const samples = records
+    .filter((r) => r.payment_date_estimated === false && r.ex_date && r.payment_date)
+    .map((r) => ({
+      exDate: r.ex_date!.slice(0, 10),
+      lag: daysBetweenISO(r.ex_date!, r.payment_date!),
+    }))
+    .filter((s) => s.lag >= MIN_PLAUSIBLE_LAG_DAYS && s.lag <= MAX_PLAUSIBLE_LAG_DAYS)
+    .sort((a, b) => b.exDate.localeCompare(a.exDate))
+    .slice(0, MAX_LAG_SAMPLES)
+    .map((s) => s.lag)
+    .sort((a, b) => a - b);
+  if (samples.length < MIN_LAG_SAMPLES) return null;
+  const mid = Math.floor(samples.length / 2);
+  return samples.length % 2 === 1
+    ? samples[mid]!
+    : Math.round((samples[mid - 1]! + samples[mid]!) / 2);
+}
+
+/**
+ * Desfasamento por ativo (`asset_id` → dias). Só inclui ativos com amostras
+ * suficientes; para os restantes, `estimatePaymentDate` usa o valor por omissão.
+ */
+export function paymentLagByAsset(records: readonly PaymentLagRecord[]): Map<string, number> {
+  const byAsset = new Map<string, PaymentLagRecord[]>();
+  for (const r of records) {
+    if (!r.asset_id) continue;
+    const list = byAsset.get(r.asset_id) ?? [];
+    list.push(r);
+    byAsset.set(r.asset_id, list);
+  }
+  const out = new Map<string, number>();
+  for (const [assetId, list] of byAsset) {
+    const lag = medianPaymentLag(list);
+    if (lag != null) out.set(assetId, lag);
+  }
+  return out;
 }

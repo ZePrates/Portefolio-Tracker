@@ -2,12 +2,19 @@
  * Calendário e projeção de dividendos para os próximos meses — lógica pura.
  * Baseia-se na cadência real de cada ativo (ex-dates do histórico), no
  * último dividendo por ação, na quantidade atual e na retenção na fonte.
+ * A data de pagamento usa o desfasamento mediano dos pagamentos confirmados
+ * de cada ativo (14 dias se ainda não houver amostras).
  * São PROJEÇÕES (sinalizadas): o valor real só se conhece no pagamento.
  */
 
 import { addDaysISO } from "@/lib/dates";
 import { currentRateOf } from "@/lib/fx";
-import { estimatePaymentDate, withholdingRateFor, type TaxableAsset } from "@/lib/tax";
+import {
+  estimatePaymentDate,
+  paymentLagByAsset,
+  withholdingRateFor,
+  type TaxableAsset,
+} from "@/lib/tax";
 import { inferPaymentsPerYear } from "@/lib/yield";
 
 export interface CalendarAsset extends TaxableAsset {
@@ -27,6 +34,9 @@ export interface CalendarDividendHistory {
   per_share_native?: number | null;
   currency?: string | null;
   fx_rate?: number | null;
+  /** Com `payment_date_estimated`, permitem medir o desfasamento real de cada ativo. */
+  payment_date?: string | null;
+  payment_date_estimated?: boolean | null;
 }
 
 export interface ProjectedDividend {
@@ -68,6 +78,7 @@ export function projectDividendCalendar(input: {
   const horizon = horizonEnd(today, input.months);
   const events: ProjectedDividend[] = [];
   const skipped: DividendCalendar["skipped"] = [];
+  const lagByAsset = paymentLagByAsset(history);
 
   for (const a of assets) {
     const qty = Number(a.quantity) || 0;
@@ -116,7 +127,7 @@ export function projectDividendCalendar(input: {
         assetId: a.id,
         assetName: a.name,
         exDate,
-        paymentDate: estimatePaymentDate(exDate),
+        paymentDate: estimatePaymentDate(exDate, lagByAsset.get(a.id)),
         perShareNative: perShare,
         currency,
         quantity: qty,

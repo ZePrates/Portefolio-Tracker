@@ -91,6 +91,58 @@ describe("projectDividendCalendar", () => {
   });
 });
 
+describe("projectDividendCalendar — desfasamento por ativo", () => {
+  /** Histórico trimestral já pago, em que cada pagamento chegou `lag` dias depois da ex-date. */
+  const paid = (assetId: string, lag: number) =>
+    quarterly(assetId, "2026-09-01", 1).map((h) => {
+      const pay = new Date(`${h.ex_date}T00:00:00Z`);
+      pay.setUTCDate(pay.getUTCDate() + lag);
+      return {
+        ...h,
+        payment_date: pay.toISOString().slice(0, 10),
+        payment_date_estimated: false,
+      };
+    });
+
+  const lagOf = (e: ProjectedDividend) =>
+    Math.round(
+      (Date.parse(`${e.paymentDate}T00:00:00Z`) - Date.parse(`${e.exDate}T00:00:00Z`)) / 86_400_000,
+    );
+
+  it("usa o desfasamento real de cada ativo em vez dos 14 dias fixos", () => {
+    const cal = projectDividendCalendar({
+      assets: [asset({ id: "kmb" }), asset({ id: "o" })],
+      history: [...paid("kmb", 28), ...paid("o", 15)],
+      today: TODAY,
+    });
+    const kmb = cal.events.filter((e) => e.assetId === "kmb");
+    const o = cal.events.filter((e) => e.assetId === "o");
+    expect(kmb.length).toBeGreaterThan(0);
+    expect(o.length).toBeGreaterThan(0);
+    expect(kmb.every((e) => lagOf(e) === 28)).toBe(true);
+    expect(o.every((e) => lagOf(e) === 15)).toBe(true);
+  });
+
+  it("sem pagamentos confirmados mantém os 14 dias por omissão", () => {
+    const cal = projectDividendCalendar({
+      assets: [asset({ id: "o" })],
+      history: quarterly("o", "2026-09-01", 1),
+      today: TODAY,
+    });
+    expect(cal.events.length).toBeGreaterThan(0);
+    expect(cal.events.every((e) => lagOf(e) === 14)).toBe(true);
+  });
+
+  it("estimativas anteriores não medem o desfasamento (não se alimenta de si própria)", () => {
+    const cal = projectDividendCalendar({
+      assets: [asset({ id: "o" })],
+      history: paid("o", 28).map((h) => ({ ...h, payment_date_estimated: true })),
+      today: TODAY,
+    });
+    expect(cal.events.every((e) => lagOf(e) === 14)).toBe(true);
+  });
+});
+
 describe("buildMonthGrid", () => {
   it("começa à segunda-feira e preenche com null fora do mês", () => {
     // 1 de novembro de 2026 é domingo: 6 vazios antes.
