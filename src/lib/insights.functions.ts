@@ -21,7 +21,9 @@ export const getDividendCalendar = createServerFn({ method: "GET" })
         ),
       sb
         .from("dividends")
-        .select("asset_id, ex_date, per_share_native, currency, fx_rate")
+        .select(
+          "asset_id, ex_date, per_share_native, currency, fx_rate, payment_date, payment_date_estimated",
+        )
         .not("ex_date", "is", null),
       sb.from("asset_profiles").select("asset_id, domicile_country"),
     ]);

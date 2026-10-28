@@ -13,6 +13,8 @@ import { todayLisbon } from "@/lib/dates";
 import { dbError } from "@/lib/errors";
 import {
   estimatePaymentDate,
+  medianPaymentLag,
+  paymentLagByAsset,
   withholdingAmount,
   withholdingRateFor,
   type TaxableAsset,
@@ -44,6 +46,7 @@ interface ExistingDividendRow {
   source: string;
   source_event_id: string | null;
   ex_date: string | null;
+  payment_date: string | null;
   payment_date_estimated: boolean;
 }
 
@@ -107,8 +110,10 @@ async function loadDomiciles(supabase: SB, assetIds: string[]): Promise<Map<stri
  * Sincroniza os dividendos de um ativo a partir do Yahoo Finance.
  * Idempotente: identifica cada evento por `source_event_id` e nunca duplica.
  * A quantidade elegível é sempre reconstruída a partir do histórico de compras/vendas.
- * O Yahoo só publica a ex-date: a data de pagamento é estimada (sinalizada) e a
- * retenção na fonte é a do ativo ou a do país de domicílio (ver `lib/tax.ts`).
+ * O Yahoo só publica a ex-date: a data de pagamento é estimada (sinalizada) com
+ * o desfasamento mediano dos pagamentos já confirmados do ativo (14 dias se
+ * ainda não houver amostras) e a retenção na fonte é a do ativo ou a do país
+ * de domicílio (ver `lib/tax.ts`).
  * Registos confirmados (manuais, importados do broker) nunca são sobrepostos.
  */
 async function syncAsset(
@@ -130,6 +135,14 @@ async function syncAsset(
     return { ...base, status: "skipped", reason: "Sem histórico de compras registado." };
   }
 
+  const { data: existing, error: exErr } = await supabase
+    .from("dividends")
+    .select("id, source, source_event_id, ex_date, payment_date, payment_date_estimated")
+    .eq("asset_id", asset.id);
+  if (exErr) throw dbError(exErr);
+  // Desfasamento real deste ativo, medido nos pagamentos confirmados pelo extrato.
+  const lagDays = medianPaymentLag(existing ?? []) ?? undefined;
+
   const quote = await fetchYahoo(symbol, "10y");
   if (!quote) return { ...base, status: "unavailable", reason: "Sem dados do Yahoo Finance." };
   const { currency, factor } = normalize(quote);
@@ -144,7 +157,7 @@ async function syncAsset(
     if (rate == null) continue; // sem taxa fiável: não inventar valor
     events.push({
       exDate: d.date,
-      paymentDate: estimatePaymentDate(d.date),
+      paymentDate: estimatePaymentDate(d.date, lagDays),
       perShareNative,
       currency,
       fxRate: rate,
@@ -154,12 +167,6 @@ async function syncAsset(
 
   const computed = computeDividendHistory(trades, events, today);
   const wht = withholdingRateFor(asset);
-
-  const { data: existing, error: exErr } = await supabase
-    .from("dividends")
-    .select("id, source, source_event_id, ex_date, payment_date_estimated")
-    .eq("asset_id", asset.id);
-  if (exErr) throw dbError(exErr);
 
   const byEventId = new Map<string, ExistingDividendRow>();
   const byExDate = new Map<string, ExistingDividendRow>();
@@ -324,6 +331,17 @@ export const recalculateDividends = createServerFn({ method: "POST" })
     if (assetsRes.error) throw dbError(assetsRes.error);
     const assetById = new Map((assetsRes.data ?? []).map((a) => [a.id, a]));
 
+    // Desfasamento por ativo, medido nos pagamentos confirmados (de qualquer origem).
+    const confirmedRes = ids.length
+      ? await context.supabase
+          .from("dividends")
+          .select("asset_id, ex_date, payment_date, payment_date_estimated")
+          .in("asset_id", ids)
+          .eq("payment_date_estimated", false)
+      : { data: [], error: null };
+    if (confirmedRes.error) throw dbError(confirmedRes.error);
+    const lagByAsset = paymentLagByAsset(confirmedRes.data ?? []);
+
     const today = todayLisbon();
     let corrected = 0;
     let dropped = 0;
@@ -335,7 +353,7 @@ export const recalculateDividends = createServerFn({ method: "POST" })
       const perShareNative = Number(d.per_share_native ?? d.per_share ?? 0);
       const rate = Number(d.fx_rate ?? 1) || 1;
       const paymentDate = d.payment_date_estimated
-        ? estimatePaymentDate(d.ex_date)
+        ? estimatePaymentDate(d.ex_date, lagByAsset.get(d.asset_id))
         : (d.payment_date ?? d.paid_at);
       const [computed] = computeDividendHistory(
         trades,
