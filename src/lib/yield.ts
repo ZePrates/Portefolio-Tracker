@@ -31,11 +31,10 @@ function last12Months(dividends: DividendEvent[], now: Date): DividendEvent[] {
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 }
 
-/**
- * Infere pagamentos por ano (12/4/2/1) a partir dos intervalos médios entre
- * ex-dates. Devolve null quando o histórico é insuficiente ou irregular.
- */
-export function inferPaymentsPerYear(dividends: DividendEvent[]): number | null {
+/** Intervalos recentes usados para detetar a cadência atual. */
+const RECENT_INTERVALS = 4;
+
+function paymentIntervals(dividends: DividendEvent[]): number[] | null {
   const dates = [...new Set(dividends.map((d) => d.date))].sort();
   if (dates.length < 3) return null;
   const intervals: number[] = [];
@@ -47,6 +46,32 @@ export function inferPaymentsPerYear(dividends: DividendEvent[]): number | null 
     // Ignora intervalos curtos (ex.: pagamentos especiais colados ao regular).
     if (days >= 20) intervals.push(days);
   }
+  return intervals;
+}
+
+/** Cadência de TODO o histórico (sem dar prioridade aos pagamentos recentes). */
+function historicalPaymentsPerYear(dividends: DividendEvent[]): number | null {
+  const intervals = paymentIntervals(dividends);
+  return intervals ? cadenceOf(intervals) : null;
+}
+
+/**
+ * Infere pagamentos por ano (12/4/2/1). Dá prioridade à cadência dos
+ * pagamentos mais recentes, para apanhar mudanças de política (ex.: STAG
+ * passou de mensal a trimestral em 2026); se os intervalos recentes forem
+ * irregulares, recai no histórico completo. Null quando não é possível inferir.
+ */
+export function inferPaymentsPerYear(dividends: DividendEvent[]): number | null {
+  const intervals = paymentIntervals(dividends);
+  if (!intervals) return null;
+  if (intervals.length >= 3) {
+    const recent = cadenceOf(intervals.slice(-RECENT_INTERVALS));
+    if (recent != null) return recent;
+  }
+  return cadenceOf(intervals);
+}
+
+function cadenceOf(intervals: number[]): number | null {
   if (intervals.length === 0) return null;
   // Mediana: robusta a gaps deixados por pagamentos em falta na fonte.
   const sorted = [...intervals].sort((a, b) => a - b);
@@ -76,6 +101,8 @@ export function ttmDividends(dividends: DividendEvent[], now: Date = new Date())
 
 /**
  * Estimativa do dividendo anual por ação:
+ * - mudança de cadência (recente ≠ histórica) → dividendo mais recente × cadência atual,
+ *   porque a soma dos últimos 12 meses mistura os dois regimes;
  * - último ano completo face à cadência → soma real (TTM);
  * - pagamentos em falta → dividendo mais recente × cadência;
  * - sem dados → null (nunca inventar).
@@ -88,8 +115,11 @@ export function estimateAnnualDividend(
   if (last12.length === 0) return null;
   const ttm = last12.reduce((s, d) => s + d.amount, 0);
   const perYear = inferPaymentsPerYear(dividends);
-  if (perYear == null || last12.length >= perYear) return ttm;
+  if (perYear == null) return ttm;
   const latest = last12[last12.length - 1];
+  const historical = historicalPaymentsPerYear(dividends);
+  const cadenceChanged = historical != null && historical !== perYear;
+  if (!cadenceChanged && last12.length >= perYear) return ttm;
   if (!latest || !(latest.amount > 0)) return ttm;
   return latest.amount * perYear;
 }
