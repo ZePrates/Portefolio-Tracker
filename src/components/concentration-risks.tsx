@@ -65,8 +65,8 @@ export function ConcentrationRisks({
       </div>
       <p className="mt-4 text-xs text-muted-foreground">
         A correspondência entre uma ação detida diretamente e a mesma empresa dentro de um ETF é
-        feita pelo nome, por isso é aproximada. São indicadores quantitativos, não aconselhamento
-        financeiro.
+        feita pelo ISIN; quando a fonte não o publica, pelo ticker ou pelo nome, e aí é aproximada.
+        São indicadores quantitativos, não aconselhamento financeiro.
       </p>
     </Card>
   );
