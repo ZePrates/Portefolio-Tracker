@@ -68,6 +68,16 @@ describe("planPriceUpdate", () => {
     expect(res.ok && res.patch.current_price).toBe(30);
   });
 
+  it("grava a frequência de dividendos quando foi inferida", () => {
+    const res = planPriceUpdate(asset(), quote({ dividendFrequency: "Trimestral" }), 0.9, now);
+    expect(res.ok && res.patch.dividend_frequency).toBe("Trimestral");
+  });
+
+  it("não apaga a frequência anterior quando não é possível inferir", () => {
+    const res = planPriceUpdate(asset(), quote({ dividendFrequency: null }), 0.9, now);
+    expect(res.ok && "dividend_frequency" in res.patch).toBe(false);
+  });
+
   it("não destrói o preço anterior quando a API falha", () => {
     expect(planPriceUpdate(asset(), null, 0.9, now)).toEqual({
       ok: false,
