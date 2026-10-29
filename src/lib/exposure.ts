@@ -19,8 +19,14 @@ import {
   type Slice,
 } from "@/lib/exposure-types";
 import { companyNameKey, readableCompanyName } from "@/lib/exposure-display";
+import { isValidIsin } from "@/lib/identifiers";
 
 const EQUITY_CLASSES = new Set(["reit", "acao_dividendo", "acao_crescimento"]);
+
+const isinKey = (s?: string | null) => {
+  const v = s?.trim().toUpperCase();
+  return v && isValidIsin(v) ? v : undefined;
+};
 
 export interface ExposureReport {
   total: number;
@@ -135,30 +141,47 @@ export function computeExposure(positions: PositionInput[]): ExposureReport {
   const currencyB: Bucket = new Map();
 
   const companies = new Map<string, CompanyExposure>();
-  // Resolve ticker-less names to a ticker only when the name is unambiguous.
+  // Identidade da empresa: o ISIN é a chave mais forte. Ticker e nome só servem
+  // para chegar a um ISIN (ou a um ticker) quando a correspondência é única, para
+  // não juntar títulos diferentes (ex.: Alphabet A e C têm ISINs distintos).
   const nameSymbols = new Map<string, Set<string>>();
+  const tickerIsins = new Map<string, Set<string>>();
+  const nameIsins = new Map<string, Set<string>>();
+  const addTo = (m: Map<string, Set<string>>, k: string, v: string) => {
+    const s = m.get(k) ?? new Set<string>();
+    s.add(v);
+    m.set(k, s);
+  };
+  const unique = (s: Set<string> | undefined) => (s?.size === 1 ? [...s][0] : undefined);
   for (const p of active) {
     const entries =
       p.class === "etf"
         ? p.holdings
             .filter((h) => h.asset_class == null || h.asset_class.toLowerCase() === "equity")
-            .map((h) => ({ name: h.name, symbol: h.symbol }))
+            .map((h) => ({ name: h.name, symbol: h.symbol, isin: h.isin }))
         : EQUITY_CLASSES.has(p.class)
-          ? [{ name: p.name, symbol: p.ticker }]
+          ? [{ name: p.name, symbol: p.ticker, isin: p.isin }]
           : [];
     for (const entry of entries) {
-      if (!entry.symbol?.trim()) continue;
       const name = companyNameKey(entry.name);
-      const symbols = nameSymbols.get(name) ?? new Set<string>();
-      symbols.add(entry.symbol.trim().toUpperCase());
-      nameSymbols.set(name, symbols);
+      const ticker = entry.symbol?.trim().toUpperCase() || null;
+      const isin = isinKey(entry.isin);
+      if (ticker) addTo(nameSymbols, name, ticker);
+      if (isin) {
+        if (ticker) addTo(tickerIsins, ticker, isin);
+        if (name) addTo(nameIsins, name, isin);
+      }
     }
   }
-  const companyKey = (name: string, symbol: string | null) => {
-    const ticker = symbol?.trim().toUpperCase();
+  const companyKey = (name: string, symbol: string | null, isin?: string | null) => {
+    const ticker = symbol?.trim().toUpperCase() || undefined;
     const normalized = companyNameKey(name);
-    const candidates = nameSymbols.get(normalized);
-    const matched = candidates?.size === 1 ? [...candidates][0] : undefined;
+    const resolvedIsin =
+      isinKey(isin) ??
+      (ticker ? unique(tickerIsins.get(ticker)) : undefined) ??
+      (!ticker || !tickerIsins.has(ticker) ? unique(nameIsins.get(normalized)) : undefined);
+    if (resolvedIsin) return `isin:${resolvedIsin}`;
+    const matched = unique(nameSymbols.get(normalized));
     return ticker || matched ? `ticker:${ticker || matched}` : `name:${normalized}`;
   };
   let knownCountryAmount = 0;
@@ -172,7 +195,7 @@ export function computeExposure(positions: PositionInput[]): ExposureReport {
         const w = Number(h.weight) || 0;
         if (w <= 0 || (h.asset_class != null && h.asset_class.toLowerCase() !== "equity")) continue;
         const amount = p.value * w;
-        const key = companyKey(h.name, h.symbol);
+        const key = companyKey(h.name, h.symbol, h.isin);
         const c = companies.get(key) ?? {
           name: readableCompanyName(h.name),
           symbol: h.symbol?.trim().toUpperCase() ?? null,
@@ -193,7 +216,7 @@ export function computeExposure(positions: PositionInput[]): ExposureReport {
         companies.set(key, c);
       }
     } else if (EQUITY_CLASSES.has(p.class)) {
-      const key = companyKey(p.name, p.ticker);
+      const key = companyKey(p.name, p.ticker, p.isin);
       const country = [...weightsFor(p, "country").keys()][0] ?? null;
       const sector = [...weightsFor(p, "sector").keys()][0] ?? null;
       const c = companies.get(key) ?? {

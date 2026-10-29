@@ -183,12 +183,17 @@ export function classifyCashType(label: string): ScrambleCashType {
   const t = norm(label);
   if (/juros aumentad|increased (interest|income)/.test(t)) return "interest_increased";
   if (/juros|interest/.test(t)) return "interest";
-  if (/(bonus|bonus).*(nao monetario|non.?cash|non.?monetary)/.test(t)) return "bonus_noncash";
+  if (
+    /bonus.*(nao monetario|non.?cash|non.?monetary)|(nao monetario|non.?cash|non.?monetary).*bonus/.test(
+      t,
+    )
+  )
+    return "bonus_noncash";
   if (/bonus|reward|recompensa/.test(t)) return "bonus_cash";
   if (/reembolso do principal|principal/.test(t)) return "principal";
   if (/cessao|credito|claim|adquirid/.test(t)) return "purchase";
   if (/levantamento|withdraw|saque|retirada/.test(t)) return "withdrawal";
-  if (/deposito|deposit|recarga|top.?up/.test(t)) return "deposit";
+  if (/deposito|deposit|recarga|top.?up|pay.?in/.test(t)) return "deposit";
   if (/taxa|comissao|fee|iva|vat/.test(t)) return "fee";
   return "other";
 }

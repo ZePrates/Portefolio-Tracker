@@ -187,6 +187,70 @@ describe("exposição direta + indireta (cenário de referência)", () => {
   });
 });
 
+describe("identidade da empresa por ISIN", () => {
+  const NVDA = "US67066G1040";
+  const h = (name: string, symbol: string | null, weight: number, isin: string | null) => ({
+    name,
+    symbol,
+    isin,
+    weight,
+    country: "United States",
+    sector: "Technology",
+  });
+
+  it("junta a mesma empresa com tickers diferentes entre emissores quando o ISIN coincide", () => {
+    const r = computeExposure([
+      etf({ assetId: "e1", holdings: [h("NVIDIA CORP", "NVDA", 0.05, NVDA)] }),
+      etf({ assetId: "e2", name: "S&P 500", holdings: [h("NVIDIA", "NVDA UW", 0.07, NVDA)] }),
+    ]);
+    expect(r.companies).toHaveLength(1);
+    expect(r.companies[0]?.amount).toBeCloseTo(1200, 6);
+  });
+
+  it("liga uma linha sem ISIN ao ISIN pelo ticker, e uma sem ticker pelo nome", () => {
+    const r = computeExposure([
+      etf({ assetId: "e1", holdings: [h("NVIDIA Corp", "NVDA", 0.05, NVDA)] }),
+      etf({ assetId: "e2", name: "B", holdings: [h("Nvidia", "NVDA", 0.01, null)] }),
+      etf({ assetId: "e3", name: "C", holdings: [h("NVIDIA", null, 0.02, null)] }),
+    ]);
+    expect(r.companies).toHaveLength(1);
+    expect(r.companies[0]?.amount).toBeCloseTo(800, 6);
+  });
+
+  it("posição direta com ISIN junta-se à exposição via ETF", () => {
+    const r = computeExposure([
+      stock({ name: "NVIDIA", ticker: "NVDA.US", isin: NVDA, value: 1000 }),
+      etf({ holdings: [h("NVIDIA CORP", "NVDA", 0.05, NVDA)] }),
+    ]);
+    const nvda = r.companies.filter((c) => c.name.toLowerCase().includes("nvidia"));
+    expect(nvda).toHaveLength(1);
+    expect(nvda[0]?.direct).toBeCloseTo(1000, 6);
+    expect(nvda[0]?.indirect).toBeCloseTo(500, 6);
+  });
+
+  it("não junta classes de ações com ISINs diferentes (Alphabet A e C)", () => {
+    const r = computeExposure([
+      etf({
+        holdings: [
+          h("Alphabet Inc Class A", "GOOGL", 0.02, "US02079K3059"),
+          h("Alphabet Inc Class C", "GOOG", 0.018, "US02079K1079"),
+          h("ALPHABET INC", null, 0.01, null),
+        ],
+      }),
+    ]);
+    // A linha sem ticker nem ISIN tem nome ambíguo: não é atribuída a nenhuma das duas.
+    expect(r.companies).toHaveLength(3);
+  });
+
+  it("ignora ISINs inválidos e recai no ticker", () => {
+    const r = computeExposure([
+      etf({ assetId: "e1", holdings: [h("Apple", "AAPL", 0.05, "lixo")] }),
+      etf({ assetId: "e2", name: "B", holdings: [h("Apple Inc", "AAPL", 0.05, null)] }),
+    ]);
+    expect(r.companies).toHaveLength(1);
+  });
+});
+
 describe("mergeByKey", () => {
   it("soma pesos de linhas com a mesma chave e mantém a ordem", () => {
     const out = mergeByKey(
