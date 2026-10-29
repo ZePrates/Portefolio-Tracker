@@ -83,6 +83,7 @@ Cada `push` ao `main` volta a publicar sozinho. Configuração única:
 | ------------------------------- | ----------------------------------------------------------------------------------------------- |
 | `EXTERNAL_SUPABASE_SERVICE_KEY` | Chave de serviço do Supabase, usada só pelo snapshot diário. **Segredo: nunca no repositório.** |
 | `CRON_SECRET`                   | Segredo que autentica o pedido do agendamento (gera um valor longo e aleatório).                |
+| `FINNHUB_API_KEY`               | Opcional. Chave gratuita do [Finnhub](https://finnhub.io) para o cartão "Próximos resultados".  |
 
 O URL e a chave pública (`publishable`) do Supabase estão em `vite.config.ts` e não precisam de configuração.
 

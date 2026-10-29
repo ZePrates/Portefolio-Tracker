@@ -17,6 +17,7 @@ import { getDividendCalendar } from "@/lib/insights.functions";
 import { PassiveIncomeCard } from "@/components/passive-income-card";
 import { AllocationCard } from "@/components/allocation-card";
 import { FireCard } from "@/components/fire-card";
+import { EarningsCard } from "@/components/earnings-card";
 import { ExposureCard, PerformanceCard } from "@/components/performance-exposure-cards";
 import { getAllocation, getFireProgress } from "@/lib/goals.functions";
 import { DashboardHero, DashboardHeroSkeleton } from "@/components/dashboard-hero";
@@ -558,6 +559,8 @@ function DashboardPage() {
             .slice(0, 5)}
         />
       </div>
+
+      <EarningsCard />
     </div>
   );
 }

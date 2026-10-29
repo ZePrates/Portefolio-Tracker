@@ -20,6 +20,7 @@ export const PORTFOLIO_QUERY_KEYS = [
   "asset-exposure",
   "data-quality",
   "dividend-calendar",
+  "earnings-calendar",
   "scramble",
   "tax",
   "tax-documents",

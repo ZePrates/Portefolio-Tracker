@@ -33,12 +33,13 @@ Instalar dependências com `bun install --frozen-lockfile`; o `bun.lock` aponta 
 
 Nunca pedir segredos no chat nem os escrever em ficheiros do repositório. Só dizer onde se definem:
 
-| Onde                          | Nome                                              | Para quê                                           |
-| ----------------------------- | ------------------------------------------------- | -------------------------------------------------- |
-| Vercel (Production e Preview) | `EXTERNAL_SUPABASE_SERVICE_KEY`                   | chave `sb_secret_…`, usada só pelo snapshot diário |
-| Vercel (Production e Preview) | `CRON_SECRET` (e `CRON_SECRET_PREVIOUS` ao rodar) | autentica o pedido do agendamento                  |
-| GitHub Actions (variável)     | `SITE_URL`                                        | endereço de produção, sem barra final              |
-| GitHub Actions (segredo)      | `CRON_SECRET`                                     | o mesmo valor da Vercel                            |
+| Onde                          | Nome                                              | Para quê                                                              |
+| ----------------------------- | ------------------------------------------------- | --------------------------------------------------------------------- |
+| Vercel (Production e Preview) | `EXTERNAL_SUPABASE_SERVICE_KEY`                   | chave `sb_secret_…`, usada só pelo snapshot diário                    |
+| Vercel (Production e Preview) | `CRON_SECRET` (e `CRON_SECRET_PREVIOUS` ao rodar) | autentica o pedido do agendamento                                     |
+| Vercel (Production e Preview) | `FINNHUB_API_KEY`                                 | calendário de resultados (opcional; sem ela o cartão fica desativado) |
+| GitHub Actions (variável)     | `SITE_URL`                                        | endereço de produção, sem barra final                                 |
+| GitHub Actions (segredo)      | `CRON_SECRET`                                     | o mesmo valor da Vercel                                               |
 
 O URL e a chave pública do Supabase estão em `vite.config.ts` (são públicos).
 
