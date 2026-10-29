@@ -25,6 +25,7 @@ import {
   contributionByAsset,
   drawdown,
   performanceByClass,
+  returnsByClass,
   periodPerformance,
   buildSnapshotSeries,
   capitalEvolution,
@@ -83,6 +84,8 @@ function Card({
 }
 
 const pct = (v: number | null) => (v == null ? "Dados não disponíveis" : formatPct(v, 2));
+/** Versão curta para colunas de tabela; o motivo da indisponibilidade vai no title. */
+const shortPct = (v: number | null) => (v == null ? "—" : formatPct(v, 1));
 
 function PerformancePage() {
   const { hidden } = usePrivateMode();
@@ -121,6 +124,13 @@ function PerformancePage() {
   const classes = useMemo(
     () => performanceByClass(assets, dividends, range),
     [assets, dividends, range],
+  );
+  const classReturns = useMemo(
+    () =>
+      new Map(
+        returnsByClass(assets, transactions, dividends, snapshots, range).map((r) => [r.class, r]),
+      ),
+    [assets, transactions, dividends, snapshots, range],
   );
   const [benchScope, setBenchScope] = useState<BenchmarkScope>("total");
   const benchmark = useMemo(
@@ -449,7 +459,21 @@ function PerformancePage() {
                     <th className="py-2 text-right">Investido</th>
                     <th className="py-2 text-right">Valor</th>
                     <th className="py-2 text-right">Resultado</th>
-                    <th className="py-2 text-right">Retorno</th>
+                    <th className="py-2 text-right" title="Resultado total / capital investido">
+                      Retorno
+                    </th>
+                    <th
+                      className="py-2 text-right"
+                      title="Retorno ponderado no tempo no período: neutraliza o efeito dos aportes"
+                    >
+                      TWR
+                    </th>
+                    <th
+                      className="py-2 text-right"
+                      title="Retorno anualizado do dinheiro investido, desde o início"
+                    >
+                      XIRR/ano
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -469,6 +493,18 @@ function PerformancePage() {
                         {privateEUR(c.totalResult, hidden)}
                       </td>
                       <td className="py-2 text-right">{pct(c.returnPct)}</td>
+                      <td
+                        className="py-2 text-right"
+                        title={classReturns.get(c.class)?.twr.unavailable ?? undefined}
+                      >
+                        {shortPct(classReturns.get(c.class)?.twr.totalPct ?? null)}
+                      </td>
+                      <td
+                        className="py-2 text-right"
+                        title={classReturns.get(c.class)?.mwr.unavailable ?? undefined}
+                      >
+                        {shortPct(classReturns.get(c.class)?.mwr.annualizedPct ?? null)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
