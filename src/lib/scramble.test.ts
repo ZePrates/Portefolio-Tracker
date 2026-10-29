@@ -142,6 +142,17 @@ describe("leitura dos CSV", () => {
     expect(classifyCashType("Taxa de serviço Scramble")).toBe("fee");
   });
 
+  it("reconhece os rótulos reais do extrato em inglês", () => {
+    // "Investor pay-in" é o depósito da Scramble; antes caía em "other" e o investido ficava a 0.
+    expect(classifyCashType("Investor pay-in")).toBe("deposit");
+    // Ordem "non-cash" antes de "bonus" também é bónus não monetário.
+    expect(classifyCashType("Non-cash bonus received")).toBe("bonus_noncash");
+    expect(classifyCashType("Bónus não monetário recebido")).toBe("bonus_noncash");
+    expect(classifyCashType("Purchased claim assignment rights")).toBe("purchase");
+    expect(classifyCashType("Principal repayment")).toBe("principal");
+    expect(classifyCashType("Increased interest received")).toBe("interest_increased");
+  });
+
   it("converte nomes de ronda", () => {
     expect(parseRoundKey("September 2026")).toBe("2026-09");
     expect(parseRoundKey("março 2026")).toBe("2026-03");
