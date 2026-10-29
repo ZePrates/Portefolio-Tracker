@@ -12,7 +12,9 @@ import {
   type EarningsEvent,
 } from "@/lib/earnings";
 
-const FINNHUB_URL = "https://api.finnhub.io/api/v1/calendar/earnings";
+import { FINNHUB_API, finnhubKey } from "@/lib/finnhub";
+
+const FINNHUB_URL = `${FINNHUB_API}/calendar/earnings`;
 
 export interface EarningsCalendarResult {
   /** false quando FINNHUB_API_KEY não está definida (o cartão explica como ativar). */
@@ -32,7 +34,7 @@ export interface EarningsCalendarResult {
 export const getEarningsCalendar = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<EarningsCalendarResult> => {
-    const key = process.env["FINNHUB_API_KEY"]?.trim();
+    const key = finnhubKey();
     if (!key) return { configured: false, events: [], failed: [], checked: 0 };
 
     const { data, error } = await context.supabase

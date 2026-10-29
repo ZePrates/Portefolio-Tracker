@@ -19,6 +19,8 @@ export interface Quote {
   annualYield?: number | null;
   /** Frequência de dividendos inferida dos pagamentos recentes ("Mensal", "Trimestral", …). */
   dividendFrequency?: string | null;
+  /** Yield de referência de uma segunda fonte (Finnhub), em %, para verificação cruzada. */
+  referenceYield?: number | null;
 }
 
 export interface PriceablePosition {
@@ -44,6 +46,9 @@ export interface PricePatch {
   annual_yield?: number;
   /** Presente apenas quando a cadência foi inferida; nunca apaga o valor anterior. */
   dividend_frequency?: string;
+  /** Presentes só quando a segunda fonte respondeu; nunca apagam o valor anterior. */
+  reference_yield?: number;
+  reference_yield_at?: string;
 }
 
 export type PlanResult = { ok: true; patch: PricePatch } | { ok: false; error: string };
@@ -111,6 +116,14 @@ export function planPriceUpdate(
     patch.annual_yield = quote.annualYield;
   }
   if (quote.dividendFrequency) patch.dividend_frequency = quote.dividendFrequency;
+  if (
+    quote.referenceYield != null &&
+    Number.isFinite(quote.referenceYield) &&
+    quote.referenceYield >= 0
+  ) {
+    patch.reference_yield = quote.referenceYield;
+    patch.reference_yield_at = iso;
+  }
   return { ok: true, patch };
 }
 

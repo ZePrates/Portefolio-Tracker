@@ -7,6 +7,8 @@ type ExtraColumns = {
     custodian: string | null;
     plan_name: string | null;
     vault_ref: string | null;
+    reference_yield: number | null;
+    reference_yield_at: string | null;
   };
   transactions: { premium_rate: number | null };
   asset_expenses: { grams_deducted: number; price_per_gram: number | null };
