@@ -614,6 +614,72 @@ export function performanceByClass(
 }
 
 /* ------------------------------------------------------------------ */
+/* TWR / XIRR por classe                                               */
+/* ------------------------------------------------------------------ */
+
+export interface ClassReturns {
+  class: AssetClass;
+  /** TWR acumulado no período, em %, a partir das fotografias da classe. */
+  twr: TwrResult;
+  /** XIRR anualizado desde o início, em %. */
+  mwr: XirrResult;
+}
+
+/** Classes sem fluxos no ledger de transações (o P2P usa o extrato próprio). */
+const NO_LEDGER_CLASSES = new Set<AssetClass>(["p2p"]);
+
+/**
+ * TWR e XIRR por classe, com as mesmas funções da carteira total, mas só com
+ * as transações, dividendos e fotografias (scope "class:<classe>") da classe.
+ * Para classes sem ledger, ambos ficam indisponíveis: sem fluxos, os aportes
+ * contariam como rendimento.
+ */
+export function returnsByClass(
+  assets: Asset[],
+  transactions: PerfTransaction[],
+  dividends: DividendRecord[],
+  snapshots: Array<{ snapshotDate: string; scope: string; marketValue: number | null }>,
+  range: DateRange,
+  today = todayISO(),
+): ClassReturns[] {
+  const classOf = new Map(assets.map((a) => [a.id, a.class]));
+  return CLASS_ORDER.filter((c) => assets.some((a) => a.class === c)).map((c) => {
+    if (NO_LEDGER_CLASSES.has(c)) {
+      const reason = "Sem movimentos no ledger de transações.";
+      return {
+        class: c,
+        twr: { totalPct: null, periods: [], unavailable: reason, methodology: "twr" },
+        mwr: { annualizedPct: null, unavailable: reason, methodology: "mwr" },
+      };
+    }
+    const tx = transactions.filter((t) => t.asset_id && classOf.get(t.asset_id) === c);
+    const divs = dividends.filter((d) => d.asset_id && classOf.get(d.asset_id) === c);
+    const value = assets
+      .filter((a) => a.class === c && isOpenPosition(a))
+      .reduce((s, a) => s + assetCurrentValue(a), 0);
+    // Fotografias anteriores à primeira transação da classe não são explicáveis
+    // pelo ledger (ex.: reconstruções com posições entretanto apagadas) e, sem
+    // fluxos que as liguem, a entrada do primeiro aporte parecia uma queda de ~100%.
+    const firstFlow = tx.reduce<string | null>((m, t) => {
+      const d = t.traded_at.slice(0, 10);
+      return m == null || d < m ? d : m;
+    }, null);
+    const valuations = valuationsFromSnapshots(snapshots, `class:${c}`).filter(
+      (v) =>
+        v.date >= range.from && v.date <= range.to && (firstFlow == null || v.date >= firstFlow),
+    );
+    const flows = twrFlows(tx, divs, today).filter(
+      (f) => f.date >= range.from && f.date <= range.to,
+    );
+    return {
+      class: c,
+      twr: twr(valuations, flows),
+      mwr: xirr(xirrFlows(tx, divs, value, today)),
+    };
+  });
+}
+
+/* ------------------------------------------------------------------ */
 /* Resultado consolidado do período                                    */
 /* ------------------------------------------------------------------ */
 

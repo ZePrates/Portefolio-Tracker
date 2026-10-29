@@ -9,6 +9,7 @@ import {
   performanceByClass,
   periodPerformance,
   returnStats,
+  returnsByClass,
   twr,
   xirr,
   xirrFlows,
@@ -369,5 +370,70 @@ describe("capitalEvolution", () => {
 
   it("sem dados → vazio", () => {
     expect(capitalEvolution([], [], 0, "2026-04-01")).toEqual([]);
+  });
+});
+
+describe("TWR / XIRR por classe", () => {
+  const assets = [
+    asset({ id: "e", class: "etf", quantity: 2, current_value: 2310, invested_amount: 2000 }),
+    asset({ id: "r", class: "reit", quantity: 1, current_value: 900, invested_amount: 1000 }),
+    asset({ id: "p", class: "p2p", quantity: 0, current_value: 630, invested_amount: 600 }),
+  ];
+  const tx = [
+    buy("2026-01-01", 1, 1000, "e"),
+    buy("2026-06-01", 1, 1000, "e"),
+    buy("2026-01-01", 1, 1000, "r"),
+  ];
+  const snaps = [
+    { snapshotDate: "2026-01-01", scope: "class:etf", marketValue: 1000 },
+    { snapshotDate: "2026-06-01", scope: "class:etf", marketValue: 2100 },
+    { snapshotDate: "2026-09-10", scope: "class:etf", marketValue: 2310 },
+    { snapshotDate: "2026-01-01", scope: "class:reit", marketValue: 1000 },
+    { snapshotDate: "2026-09-10", scope: "class:reit", marketValue: 900 },
+    { snapshotDate: "2026-03-14", scope: "class:p2p", marketValue: 100 },
+    { snapshotDate: "2026-09-10", scope: "class:p2p", marketValue: 630 },
+  ];
+  const byClass = (c: string) =>
+    returnsByClass(assets, tx, [], snaps, ALL, TODAY).find((r) => r.class === c)!;
+
+  it("TWR da classe neutraliza os aportes da própria classe", () => {
+    // +10% antes do 2.º aporte, +10% depois → 1,1 × 1,1 − 1 = 21%
+    expect(byClass("etf").twr.totalPct).toBeCloseTo(21, 6);
+  });
+
+  it("os fluxos de uma classe não contaminam outra", () => {
+    expect(byClass("reit").twr.totalPct).toBeCloseTo(-10, 6);
+  });
+
+  it("XIRR da classe usa só as suas transações e o seu valor atual", () => {
+    expect(byClass("etf").mwr.annualizedPct).toBeGreaterThan(0);
+    expect(byClass("reit").mwr.annualizedPct).toBeLessThan(0);
+  });
+
+  it("P2P sem ledger: TWR e XIRR indisponíveis (aportes não contam como rendimento)", () => {
+    const p = byClass("p2p");
+    expect(p.twr.totalPct).toBeNull();
+    expect(p.mwr.annualizedPct).toBeNull();
+    expect(p.twr.unavailable).toMatch(/ledger/);
+  });
+
+  it("ignora fotografias da classe anteriores à primeira transação (posição fantasma)", () => {
+    // Reconstrução com 187 € numa classe antes de qualquer compra no ledger:
+    // sem esta regra, a compra de 296 € (valor passa a 296) dava −99,6%.
+    const a = [asset({ id: "d", class: "acao_dividendo", quantity: 1, current_value: 330 })];
+    const t = [buy("2025-09-15", 1, 296, "d")];
+    const s = [
+      { snapshotDate: "2025-02-17", scope: "class:acao_dividendo", marketValue: 297 },
+      { snapshotDate: "2025-09-14", scope: "class:acao_dividendo", marketValue: 187 },
+      { snapshotDate: "2025-09-15", scope: "class:acao_dividendo", marketValue: 296 },
+      { snapshotDate: "2026-09-10", scope: "class:acao_dividendo", marketValue: 330 },
+    ];
+    const r = returnsByClass(a, t, [], s, ALL, TODAY)[0]!;
+    expect(r.twr.totalPct).toBeCloseTo((330 / 296 - 1) * 100, 6);
+  });
+
+  it("só devolve classes que existem na carteira", () => {
+    const classes = returnsByClass(assets, tx, [], snaps, ALL, TODAY).map((r) => r.class);
+    expect(classes).not.toContain("metal");
   });
 });
