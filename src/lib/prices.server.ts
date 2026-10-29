@@ -71,13 +71,15 @@ export async function refreshPrices(supabase: PricesDb, userId: string, data: Pr
       const q = await fetchYahoo(symbol, "5y");
       if (!q) return null;
       const { price, currency, factor } = normalize(q);
-      const { annualYieldPercent } = await import("@/lib/yield");
+      const { annualYieldPercent, frequencyLabel, inferPaymentsPerYear } =
+        await import("@/lib/yield");
       const dividends = q.dividends.map((d) => ({ ...d, amount: d.amount * factor }));
       return {
         price,
         currency,
         source: `yahoo:${symbol}`,
         annualYield: annualYieldPercent(dividends, price),
+        dividendFrequency: frequencyLabel(inferPaymentsPerYear(dividends)),
       };
     },
     (currency) => getRateToEUR(currency, rateCache),

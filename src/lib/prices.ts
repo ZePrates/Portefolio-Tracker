@@ -17,6 +17,8 @@ export interface Quote {
   unit?: MetalUnit;
   /** Yield anual estimado em % (apenas títulos com dividendos). */
   annualYield?: number | null;
+  /** Frequência de dividendos inferida dos pagamentos recentes ("Mensal", "Trimestral", …). */
+  dividendFrequency?: string | null;
 }
 
 export interface PriceablePosition {
@@ -40,6 +42,8 @@ export interface PricePatch {
   fx_updated_at: string;
   /** Presente apenas quando a fonte devolveu dividendos. */
   annual_yield?: number;
+  /** Presente apenas quando a cadência foi inferida; nunca apaga o valor anterior. */
+  dividend_frequency?: string;
 }
 
 export type PlanResult = { ok: true; patch: PricePatch } | { ok: false; error: string };
@@ -106,6 +110,7 @@ export function planPriceUpdate(
   if (quote.annualYield != null && Number.isFinite(quote.annualYield) && quote.annualYield > 0) {
     patch.annual_yield = quote.annualYield;
   }
+  if (quote.dividendFrequency) patch.dividend_frequency = quote.dividendFrequency;
   return { ok: true, patch };
 }
 
