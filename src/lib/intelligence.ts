@@ -126,7 +126,15 @@ export function portfolioIntelligence(
   let topCompanies: CompanyExposure[] = [];
 
   if (positions && positions.length > 0) {
-    const { companies, unknownWeight } = computeLookThrough(positions, total);
+    const { companies: byName, unknownWeight } = computeLookThrough(positions, total);
+    // O relatório de exposição identifica a empresa por ISIN (com ticker e nome
+    // como recurso), o que junta duplicados como "NVIDIA" / "NVIDIA Corp" que a
+    // correspondência só por nome separa. Usa-se sempre que existir.
+    const companies: CompanyExposure[] = exposure?.companies.length
+      ? exposure.companies
+          .map((c) => ({ label: c.name, weight: c.pct / 100 }))
+          .sort((a, b) => b.weight - a.weight)
+      : byName;
     topCompanies = companies.slice(0, 8);
     largestCompany = (companies[0]?.weight ?? 0) * 100;
     top5Companies = companies.slice(0, 5).reduce((s, c) => s + c.weight, 0) * 100;

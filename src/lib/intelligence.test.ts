@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { portfolioIntelligence, computeLookThrough } from "@/lib/intelligence";
 import type { AssetClass } from "@/lib/portfolio-types";
 import type { PositionInput } from "@/lib/exposure-types";
+import { computeExposure } from "@/lib/exposure";
 
 const a = (id: string, v: number, c: AssetClass, name = id) => ({
   id,
@@ -156,3 +157,57 @@ describe("exposure coverage (dimensão geografia/setor, não muda com esta corre
     expect(r.risks.some((x) => x.includes("cobertura de 70,0\u00a0%"))).toBe(true);
     expect(r.recommendations.some((x) => x.includes("dados de exposição"))).toBe(true);
   }));
+
+describe("concentração por empresa usa a identidade por ISIN do relatório de exposição", () => {
+  it("junta a mesma empresa com nomes diferentes entre ETFs (NVIDIA Corp / NVIDIA Corp Ord Shs)", () => {
+    const NVDA = "US67066G1040";
+    const filler = (n: number) =>
+      Array.from({ length: n }, (_, i) => ({
+        name: `Outra ${i}`,
+        symbol: `O${i}`,
+        isin: null,
+        weight: 0.9 / n,
+        country: "United States",
+        sector: "Technology",
+      }));
+    const positions = [
+      pos({
+        assetId: "e1",
+        value: 5000,
+        holdings: [
+          {
+            name: "NVIDIA CORP",
+            symbol: "NVDA",
+            isin: NVDA,
+            weight: 0.08,
+            country: "United States",
+            sector: "Technology",
+          },
+          ...filler(30),
+        ],
+      }),
+      pos({
+        assetId: "e2",
+        value: 5000,
+        holdings: [
+          {
+            name: "NVIDIA CORP ORD SHS",
+            symbol: "NVDA UW",
+            isin: NVDA,
+            weight: 0.08,
+            country: "United States",
+            sector: "Technology",
+          },
+          ...filler(30),
+        ],
+      }),
+    ];
+    const assets = [a("e1", 5000, "etf"), a("e2", 5000, "etf")];
+    // Pelo nome normalizado ficam "NVIDIA" e "NVIDIA ORD SHS" (duas empresas de 4%);
+    // o relatório junta-as pelo ISIN: 400 € + 400 € = 8% da carteira.
+    const r = portfolioIntelligence(assets, computeExposure(positions), positions);
+    expect(r.metrics.largestCompany).toBeCloseTo(8, 6);
+    expect(r.topCompanies[0]?.label.toLowerCase()).toContain("nvidia");
+    expect(r.topCompanies.filter((c) => c.label.toLowerCase().includes("nvidia"))).toHaveLength(1);
+  });
+});
