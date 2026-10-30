@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dataQualityAlerts, type DqAsset, type DqInput } from "./data-quality";
+import { dataQualityAlerts, yieldMismatch, type DqAsset, type DqInput } from "./data-quality";
 
 const TODAY = "2026-10-07";
 
@@ -138,5 +138,35 @@ describe("dataQualityAlerts", () => {
     expect(at("2026-10-05")).toEqual([]);
     // P2P manual (sem movimentos importados) não é avisado.
     expect(codes(base({ assets: [p2p] }))).toEqual([]);
+  });
+});
+
+describe("verificação cruzada do yield (Finnhub)", () => {
+  it("STAG: 12,5% calculado vs 4,7% de referência gera aviso", () => {
+    const alerts = dataQualityAlerts(
+      base({
+        assets: [asset({ id: "s", name: "STAG", annual_yield: 12.54, reference_yield: 4.66 })],
+      }),
+    );
+    const a = alerts.find((x) => x.code === "yield_mismatch");
+    expect(a?.severity).toBe("warning");
+    expect(a?.assetId).toBe("s");
+    expect(a?.message).toContain("Finnhub");
+  });
+
+  it("diferenças pequenas ou só relativas não avisam", () => {
+    expect(yieldMismatch(6.0, 6.4)).toBeNull(); // 0,4 pp
+    expect(yieldMismatch(0.4, 1.2)).toBeNull(); // 0,8 pp, apesar de 3×
+    expect(yieldMismatch(10, 11.6)).toBeNull(); // 1,6 pp mas só 14%
+    expect(yieldMismatch(4.7, 12.5)).toEqual({ ours: 4.7, reference: 12.5 });
+  });
+
+  it("sem referência, ou sem dividendo num dos lados, não avisa", () => {
+    expect(yieldMismatch(4, null)).toBeNull();
+    expect(yieldMismatch(4, 0)).toBeNull();
+    expect(yieldMismatch(null, 4)).toBeNull();
+    expect(
+      codes(base({ assets: [asset({ id: "x", annual_yield: 5, reference_yield: null })] })),
+    ).not.toContain("yield_mismatch");
   });
 });

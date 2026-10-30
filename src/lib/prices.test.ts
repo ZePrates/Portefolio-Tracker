@@ -73,6 +73,19 @@ describe("planPriceUpdate", () => {
     expect(res.ok && res.patch.dividend_frequency).toBe("Trimestral");
   });
 
+  it("grava o yield de referência com a data, incluindo 0 (sem dividendo)", () => {
+    const res = planPriceUpdate(asset(), quote({ referenceYield: 4.66 }), 0.9, now);
+    expect(res.ok && res.patch.reference_yield).toBe(4.66);
+    expect(res.ok && res.patch.reference_yield_at).toBe(now.toISOString());
+    const zero = planPriceUpdate(asset(), quote({ referenceYield: 0 }), 0.9, now);
+    expect(zero.ok && zero.patch.reference_yield).toBe(0);
+  });
+
+  it("sem resposta da segunda fonte, não toca no yield de referência", () => {
+    const res = planPriceUpdate(asset(), quote({ referenceYield: null }), 0.9, now);
+    expect(res.ok && "reference_yield" in res.patch).toBe(false);
+  });
+
   it("não apaga a frequência anterior quando não é possível inferir", () => {
     const res = planPriceUpdate(asset(), quote({ dividendFrequency: null }), 0.9, now);
     expect(res.ok && "dividend_frequency" in res.patch).toBe(false);
