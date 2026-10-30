@@ -1,11 +1,28 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  cronSnapshotDate,
   dailySnapshotStatus,
   planOpenAppSnapshot,
   priceFreshness,
   runDailySnapshots,
   serviceKeyProblem,
 } from "@/lib/daily-snapshot";
+
+describe("cronSnapshotDate", () => {
+  it("execução atrasada para depois da meia-noite conta para o dia anterior", () => {
+    // 27/10 00:42 UTC (= Lisboa, sem horário de verão) → fotografia de 26/10.
+    expect(cronSnapshotDate(new Date("2026-10-27T00:42:21Z"))).toBe("2026-10-26");
+    expect(cronSnapshotDate(new Date("2026-10-29T01:10:05Z"))).toBe("2026-10-28");
+  });
+
+  it("execução à hora marcada fica no próprio dia", () => {
+    expect(cronSnapshotDate(new Date("2026-10-29T21:30:00Z"))).toBe("2026-10-29");
+    // Horário de verão: 21:30 UTC = 22:30 em Lisboa.
+    expect(cronSnapshotDate(new Date("2026-07-15T21:30:00Z"))).toBe("2026-07-15");
+    // Atraso de 3 h em pleno verão: 00:30 UTC = 01:30 em Lisboa → dia anterior.
+    expect(cronSnapshotDate(new Date("2026-07-16T00:30:00Z"))).toBe("2026-07-15");
+  });
+});
 
 describe("runDailySnapshots", () => {
   it("atualiza preços e tira a fotografia de cada utilizador (sem duplicados)", async () => {

@@ -31,7 +31,7 @@ jobs:
         run: bun run test
 
       - name: Auditoria de dependências (informativa)
-        # Não bloqueia: as vulnerabilidades restantes são de ferramentas de
-        # build/dev (esbuild, devtools, postcss). Ver docs/AUDITORIA-CODIGO.md.
+        # Não bloqueia: a única vulnerabilidade restante (30/10/2026) é o zod 3,
+        # cuja correção só existe no zod 4 (migração maior). Ver docs/AUDITORIA-2026-10-30.md.
         continue-on-error: true
         run: bun audit
