@@ -14,8 +14,10 @@ export const Route = createFileRoute("/api/public/cron/daily-snapshot")({
         const denied = await authenticateCronRequest(request);
         if (denied) return denied;
 
-        const { runDailySnapshots, serviceKeyProblem, dailySnapshotStatus } =
+        const { runDailySnapshots, serviceKeyProblem, dailySnapshotStatus, cronSnapshotDate } =
           await import("@/lib/daily-snapshot");
+        // Fixada no início: com vários utilizadores, a meia-noite não divide a execução.
+        const snapshotDate = cronSnapshotDate();
         const keyProblem = serviceKeyProblem(process.env["EXTERNAL_SUPABASE_SERVICE_KEY"]);
         if (keyProblem) return Response.json({ error: keyProblem }, { status: 500 });
 
@@ -45,9 +47,9 @@ export const Route = createFileRoute("/api/public/cron/daily-snapshot")({
             const r = await refreshPrices(db, userId, { class: null, assetId: null });
             return { updated: r.updated, failed: r.failed };
           },
-          takeSnapshot: (userId) => takeSnapshot(db, userId),
+          takeSnapshot: (userId) => takeSnapshot(db, userId, snapshotDate),
         });
-        return Response.json(result, { status: dailySnapshotStatus(result) });
+        return Response.json({ ...result, snapshotDate }, { status: dailySnapshotStatus(result) });
       },
     },
   },

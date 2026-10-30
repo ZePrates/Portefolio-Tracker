@@ -25,7 +25,12 @@ export interface PortfolioSnapshotRow {
  * Best-effort — nunca lança: uma falha ao gravar a fotografia não deve
  * impedir a atualização de preços que a despoletou.
  */
-export async function takeSnapshot(supabase: SB, userId: string): Promise<void> {
+export async function takeSnapshot(
+  supabase: SB,
+  userId: string,
+  /** Data da fotografia; por omissão, hoje em Lisboa. */
+  date?: string,
+): Promise<void> {
   try {
     const { data } = await supabase
       .from("assets")
@@ -39,7 +44,7 @@ export async function takeSnapshot(supabase: SB, userId: string): Promise<void> 
     const open = assets.filter((a) => isOpenPosition(a as Asset));
     if (open.length === 0) return;
 
-    const today = todayLisbon();
+    const today = date ?? todayLisbon();
     const byClass = new Map<string, { invested: number; value: number }>();
     let totalInvested = 0;
     let totalValue = 0;

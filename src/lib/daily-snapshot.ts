@@ -5,6 +5,8 @@
  * ser testada sem rede nem base de dados.
  */
 
+import { todayLisbon } from "@/lib/dates";
+
 export interface DailySnapshotDeps {
   listUserIds: () => Promise<string[]>;
   refreshPrices: (userId: string) => Promise<{ updated: number; failed: string[] }>;
@@ -52,6 +54,19 @@ export async function runDailySnapshots(deps: DailySnapshotDeps): Promise<DailyS
  * A chave publicável (sb_publishable_) está sujeita ao RLS: as leituras vêm
  * vazias e a tarefa acabaria "com sucesso" sem fazer nada.
  */
+/** Horas de atraso aceites: uma execução até às 06:00 ainda pertence ao dia anterior. */
+export const CRON_LATE_HOURS = 6;
+
+/**
+ * Data da fotografia da tarefa diária. O agendamento é às 21:30 UTC, mas o
+ * GitHub atrasa-o com frequência para depois da meia-noite (ex.: 01:10), e a
+ * fotografia de 26/10 ficava gravada como 27/10 e o dia 26 em falta.
+ * A data é a de Lisboa CRON_LATE_HOURS horas antes da execução.
+ */
+export function cronSnapshotDate(now: Date = new Date()): string {
+  return todayLisbon(new Date(now.getTime() - CRON_LATE_HOURS * 3_600_000));
+}
+
 export function serviceKeyProblem(key: string | undefined): string | null {
   if (!key) return "EXTERNAL_SUPABASE_SERVICE_KEY em falta: sem acesso à base de dados.";
   if (key.startsWith("sb_publishable_")) {
