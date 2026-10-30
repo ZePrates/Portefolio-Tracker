@@ -101,15 +101,16 @@ O `.env` que esteve no histórico (F5) tinha só `SUPABASE_URL`, `PROJECT_ID` e 
 
 ## 7. Trabalho de 29–30/10/2026
 
-| PR   | Mudança                                                                    |
-| ---- | -------------------------------------------------------------------------- |
-| #72  | Depósitos P2P ("Investor pay-in") e look-through agrupado por ISIN         |
-| —    | 14 movimentos da Scramble reclassificados na BD (investido do P2P = 600 €) |
-| #73  | Yield com mudança de cadência dos dividendos (STAG mensal → trimestral)    |
-| #74  | Atualização de preços grava a frequência dos dividendos                    |
-| #75  | TWR e XIRR por classe                                                      |
-| #76  | Riscos de concentração com a identidade ISIN                               |
-| #77  | Calendário de resultados (Finnhub)                                         |
-| #78  | Verificação cruzada do yield com o Finnhub                                 |
-| —    | 210 fotografias fantasma apagadas                                          |
-| este | Data do snapshot diário, `bun audit fix`, esta auditoria                   |
+| PR       | Mudança                                                                                                                                                                                             |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #72      | Depósitos P2P ("Investor pay-in") e look-through agrupado por ISIN                                                                                                                                  |
+| —        | 14 movimentos da Scramble reclassificados na BD (investido do P2P = 600 €)                                                                                                                          |
+| #73      | Yield com mudança de cadência dos dividendos (STAG mensal → trimestral)                                                                                                                             |
+| #74      | Atualização de preços grava a frequência dos dividendos                                                                                                                                             |
+| #75      | TWR e XIRR por classe                                                                                                                                                                               |
+| #76      | Riscos de concentração com a identidade ISIN                                                                                                                                                        |
+| #77      | Calendário de resultados (Finnhub)                                                                                                                                                                  |
+| #78      | Verificação cruzada do yield com o Finnhub                                                                                                                                                          |
+| —        | 210 fotografias fantasma apagadas                                                                                                                                                                   |
+| este     | Data do snapshot diário, `bun audit fix`, esta auditoria                                                                                                                                            |
+| seguinte | Yield real a partir dos dividendos recebidos (XTB): especiais à parte, 4 yields no ecrã do ativo; sai a verificação pelo Finnhub (#78), que errava em 6 de 6 casos por usar cotações desatualizadas |

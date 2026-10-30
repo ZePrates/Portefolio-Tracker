@@ -79,11 +79,11 @@ Cada `push` ao `main` volta a publicar sozinho. Configuração única:
 
 **1. Vercel** — _Add New > Project_, importar este repositório. O Nitro deteta a Vercel e gera o formato certo (Node 22); o _Build Command_ é `bun run build` e o _Install Command_ `bun install --frozen-lockfile` (se a Vercel não detetar o Bun sozinha). Em _Settings > Environment Variables_ (Production e Preview):
 
-| Variável                        | Para quê                                                                                                                        |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `EXTERNAL_SUPABASE_SERVICE_KEY` | Chave de serviço do Supabase, usada só pelo snapshot diário. **Segredo: nunca no repositório.**                                 |
-| `CRON_SECRET`                   | Segredo que autentica o pedido do agendamento (gera um valor longo e aleatório).                                                |
-| `FINNHUB_API_KEY`               | Opcional. Chave gratuita do [Finnhub](https://finnhub.io) para o cartão "Próximos resultados" e a verificação cruzada do yield. |
+| Variável                        | Para quê                                                                                        |
+| ------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `EXTERNAL_SUPABASE_SERVICE_KEY` | Chave de serviço do Supabase, usada só pelo snapshot diário. **Segredo: nunca no repositório.** |
+| `CRON_SECRET`                   | Segredo que autentica o pedido do agendamento (gera um valor longo e aleatório).                |
+| `FINNHUB_API_KEY`               | Opcional. Chave gratuita do [Finnhub](https://finnhub.io) para o cartão "Próximos resultados".  |
 
 O URL e a chave pública (`publishable`) do Supabase estão em `vite.config.ts` e não precisam de configuração.
 
