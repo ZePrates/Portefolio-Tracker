@@ -43,25 +43,26 @@ export async function refreshPrices(supabase: PricesDb, userId: string, data: Pr
 
   const rateCache = new Map<string, number | null>();
 
-  const { finnhubKey, FINNHUB_API, parseReferenceYield } = await import("@/lib/finnhub");
-  const { finnhubSymbol } = await import("@/lib/earnings");
-  const { fetchWithTimeout } = await import("@/lib/http");
-  const fhKey = finnhubKey();
-  /** Yield de referência do Finnhub; null sem chave, fora dos EUA ou em erro (nunca falha o preço). */
-  const fetchReferenceYield = async (row: Row): Promise<number | null> => {
-    const sym = fhKey ? finnhubSymbol(row) : null;
-    if (!fhKey || !sym) return null;
-    try {
-      const res = await fetchWithTimeout(
-        `${FINNHUB_API}/stock/metric?symbol=${encodeURIComponent(sym)}&metric=all`,
-        { headers: { "X-Finnhub-Token": fhKey } },
-        { retries: 0 },
+  // Dividendos efetivamente recebidos (extrato XTB): fonte principal do yield.
+  const { realYield } = await import("@/lib/real-yield");
+  const { todayLisbon } = await import("@/lib/dates");
+  const today = todayLisbon();
+  const linesByAsset = new Map<string, import("@/lib/real-yield").DividendLine[]>();
+  if (targets.length > 0) {
+    const { data: divRows, error: divErr } = await supabase
+      .from("dividends")
+      .select("asset_id, ex_date, payment_date, paid_at, per_share_native, status, source")
+      .eq("user_id", userId)
+      .in(
+        "asset_id",
+        targets.map((t) => t.id),
       );
-      return res.ok ? parseReferenceYield(await res.json()) : null;
-    } catch {
-      return null;
+    if (divErr) throw new Error(divErr.message);
+    for (const d of divRows ?? []) {
+      if (!d.asset_id) continue;
+      linesByAsset.set(d.asset_id, [...(linesByAsset.get(d.asset_id) ?? []), d]);
     }
-  };
+  }
 
   const assets: PriceablePosition[] = targets.map((a) => ({
     id: a.id,
@@ -87,8 +88,6 @@ export async function refreshPrices(supabase: PricesDb, userId: string, data: Pr
         );
       const symbol = yahooSymbolFor(row);
       if (!symbol) return null;
-      // Segunda fonte para o yield (só ações/REITs dos EUA), em paralelo com o Yahoo.
-      const refYield = fetchReferenceYield(row);
       // 5 anos para ter histórico de dividendos suficiente para o yield estimado.
       const q = await fetchYahoo(symbol, "5y");
       if (!q) return null;
@@ -96,13 +95,15 @@ export async function refreshPrices(supabase: PricesDb, userId: string, data: Pr
       const { annualYieldPercent, frequencyLabel, inferPaymentsPerYear } =
         await import("@/lib/yield");
       const dividends = q.dividends.map((d) => ({ ...d, amount: d.amount * factor }));
+      // Com pagamentos suficientes no extrato, o yield vem do que foi recebido
+      // (regular, sem especiais); senão, da estimativa pelo histórico do Yahoo.
+      const real = realYield(linesByAsset.get(asset.id) ?? [], price, today);
       return {
         price,
         currency,
         source: `yahoo:${symbol}`,
-        annualYield: annualYieldPercent(dividends, price),
-        dividendFrequency: frequencyLabel(inferPaymentsPerYear(dividends)),
-        referenceYield: await refYield,
+        annualYield: real ? real.forwardPct : annualYieldPercent(dividends, price),
+        dividendFrequency: real?.frequency ?? frequencyLabel(inferPaymentsPerYear(dividends)),
       };
     },
     (currency) => getRateToEUR(currency, rateCache),

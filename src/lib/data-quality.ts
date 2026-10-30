@@ -4,7 +4,6 @@
  */
 
 import { addDaysISO } from "@/lib/dates";
-import { formatPct } from "@/lib/format";
 import { replayLedger, totalQuantity, type LedgerEntry } from "@/lib/fifo";
 import { withholdingRateFor, type TaxableAsset } from "@/lib/tax";
 
@@ -24,8 +23,7 @@ export type AlertCode =
   | "estimated_payment_dates"
   | "fx_unconfirmed"
   | "p2p_stale_import"
-  | "month_close_due"
-  | "yield_mismatch";
+  | "month_close_due";
 
 export interface DataQualityAlert {
   code: AlertCode;
@@ -50,10 +48,6 @@ export interface DqAsset extends TaxableAsset {
   quantity: number;
   current_price: number;
   price_updated_at?: string | null;
-  /** Yield calculado pela app (%). */
-  annual_yield?: number | null;
-  /** Yield de referência de outra fonte (Finnhub), em %. */
-  reference_yield?: number | null;
 }
 
 export interface DqTransaction extends LedgerEntry {
@@ -86,27 +80,6 @@ export interface DqInput {
 
 /** Sem importar há mais de um mês, o calendário e os juros ficam desatualizados. */
 const P2P_STALE_DAYS = 40;
-
-/** Diferença mínima, em pontos percentuais e relativa, para avisar. */
-export const YIELD_MISMATCH_PP = 1.5;
-export const YIELD_MISMATCH_REL = 0.3;
-
-/**
- * Compara o yield da app com o de referência. Só avisa quando ambos existem e
- * são positivos, e a diferença é grande em absoluto E em relativo (um REIT a
- * 6% vs 6,4% não é erro; o STAG a 12,5% vs 4,7% é).
- */
-export function yieldMismatch(
-  ours: number | null | undefined,
-  reference: number | null | undefined,
-): { ours: number; reference: number } | null {
-  const a = Number(ours);
-  const r = Number(reference);
-  if (!(a > 0) || !(r > 0)) return null;
-  const diff = Math.abs(a - r);
-  if (diff <= YIELD_MISMATCH_PP || diff / Math.max(a, r) <= YIELD_MISMATCH_REL) return null;
-  return { ours: a, reference: r };
-}
 
 const SEVERITY_ORDER: Record<AlertSeverity, number> = { error: 0, warning: 1, info: 2 };
 
@@ -180,16 +153,6 @@ export function dataQualityAlerts(input: DqInput): DataQualityAlert[] {
             : "Preço nunca atualizado automaticamente.",
         });
       }
-    }
-
-    const mismatch = yieldMismatch(a.annual_yield, a.reference_yield);
-    if (mismatch) {
-      out.push({
-        ...ref,
-        code: "yield_mismatch",
-        severity: "warning",
-        message: `Yield calculado ${formatPct(mismatch.ours, 1)} difere do Finnhub (${formatPct(mismatch.reference, 1)}): confirma a frequência e os últimos dividendos.`,
-      });
     }
 
     if (isSecurity(a.class) && !a.ticker) {

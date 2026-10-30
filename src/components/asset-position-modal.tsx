@@ -178,7 +178,7 @@ export function AssetPositionModal({ asset, onClose }: Props) {
                 {asset.class !== "etf" && (
                   <UnderlyingExposure assetId={asset.id} isEtf={false} hidden={hidden} />
                 )}
-                <PositionDividends assetId={asset.id} hidden={hidden} />
+                <PositionDividends assetId={asset.id} asset={asset} hidden={hidden} />
                 <OpenLots lots={pos.lots} hidden={hidden} />
               </>
             )}

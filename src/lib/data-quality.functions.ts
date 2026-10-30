@@ -17,7 +17,7 @@ export const getDataQualityAlerts = createServerFn({ method: "GET" })
       sb
         .from("assets")
         .select(
-          "id, name, class, status, quantity, current_price, price_updated_at, ticker, isin, withholding_rate, annual_yield, reference_yield",
+          "id, name, class, status, quantity, current_price, price_updated_at, ticker, isin, withholding_rate",
         ),
       sb
         .from("transactions")
@@ -64,8 +64,6 @@ export const getDataQualityAlerts = createServerFn({ method: "GET" })
         ...a,
         quantity: Number(a.quantity),
         current_price: Number(a.current_price),
-        annual_yield: a.annual_yield == null ? null : Number(a.annual_yield),
-        reference_yield: a.reference_yield == null ? null : Number(a.reference_yield),
         domicile: domicile.get(a.id) ?? null,
       })),
       transactions: (txRes.data ?? []).map((t) => ({

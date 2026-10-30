@@ -7,6 +7,7 @@ type ExtraColumns = {
     custodian: string | null;
     plan_name: string | null;
     vault_ref: string | null;
+    /** Sem uso desde que o yield passou a vir dos dividendos recebidos; a remover. */
     reference_yield: number | null;
     reference_yield_at: string | null;
   };
