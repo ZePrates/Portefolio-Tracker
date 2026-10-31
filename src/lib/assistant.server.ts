@@ -8,6 +8,8 @@ import type { ChatTurn } from "@/lib/assistant-data";
 import type { AssistantSupabase, AssistantTool } from "@/lib/assistant-tools";
 
 export const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
+/** Versão recomendada da API (a anterior, 2023-06-01, continua listada mas já não é a atual). */
+export const ANTHROPIC_VERSION = "2026-10-21";
 export const ASSISTANT_MODEL_DEFAULT = "claude-haiku-5-5";
 export const MAX_ITERATIONS = 6;
 export const MAX_HISTORY_TURNS = 8;
@@ -42,6 +44,12 @@ interface ApiResponse {
 export function anthropicKey(): string | null {
   const key = typeof process !== "undefined" ? process.env["ANTHROPIC_API_KEY"]?.trim() : "";
   return key ? key : null;
+}
+
+/** Só necessário se a chave não estiver associada a um workspace da consola. */
+export function anthropicWorkspaceId(): string | null {
+  const id = typeof process !== "undefined" ? process.env["ANTHROPIC_WORKSPACE_ID"]?.trim() : "";
+  return id ? id : null;
 }
 
 export function assistantModel(): string {
@@ -108,6 +116,7 @@ export async function runAssistant(opts: {
   page?: string | null | undefined;
   today: string;
   model?: string;
+  workspaceId?: string | null | undefined;
   fetchImpl?: typeof fetch;
   maxIterations?: number;
 }): Promise<AssistantResult> {
@@ -132,7 +141,8 @@ export async function runAssistant(opts: {
       headers: {
         "content-type": "application/json",
         "x-api-key": opts.apiKey,
-        "anthropic-version": "2023-06-01",
+        "anthropic-version": ANTHROPIC_VERSION,
+        ...(opts.workspaceId ? { "anthropic-workspace-id": opts.workspaceId } : {}),
       },
       body: JSON.stringify({ model, max_tokens: 1024, system, tools: toolDefs, messages }),
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),

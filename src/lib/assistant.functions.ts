@@ -3,7 +3,12 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware-external";
 import { todayLisbon } from "@/lib/dates";
 import { assistantTools } from "@/lib/assistant-tools";
-import { anthropicKey, checkRateLimit, runAssistant } from "@/lib/assistant.server";
+import {
+  anthropicKey,
+  anthropicWorkspaceId,
+  checkRateLimit,
+  runAssistant,
+} from "@/lib/assistant.server";
 
 const turnSchema = z.object({
   role: z.enum(["user", "assistant"]),
@@ -37,6 +42,7 @@ export const askAssistant = createServerFn({ method: "POST" })
     }
     return runAssistant({
       apiKey,
+      workspaceId: anthropicWorkspaceId(),
       sb: context.supabase,
       tools: assistantTools,
       question: data.question,

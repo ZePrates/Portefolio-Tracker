@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  ANTHROPIC_VERSION,
   MAX_QUESTIONS_PER_HOUR,
   buildSystemPrompt,
   checkRateLimit,
@@ -94,8 +95,22 @@ describe("runAssistant", () => {
     expect(url).toBe("https://api.anthropic.com/v1/messages");
     expect((init.headers as Record<string, string>)["x-api-key"]).toBe("k");
     const body = JSON.parse(init.body as string);
+    expect((init.headers as Record<string, string>)["anthropic-version"]).toBe(ANTHROPIC_VERSION);
+    expect(init.headers as Record<string, string>).not.toHaveProperty("anthropic-workspace-id");
     expect(body.model).toBe("claude-haiku-5-5");
     expect(body.messages).toEqual([{ role: "user", content: "quanto tenho?" }]);
+  });
+
+  it("envia o workspace quando configurado", async () => {
+    const fetchImpl = vi.fn(async () => textReply("ok"));
+    await runAssistant({
+      ...base,
+      tools: [],
+      workspaceId: "wrkspc_123",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    const init = (fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1];
+    expect((init.headers as Record<string, string>)["anthropic-workspace-id"]).toBe("wrkspc_123");
   });
 
   it("executa a ferramenta pedida e devolve o resultado ao modelo", async () => {
