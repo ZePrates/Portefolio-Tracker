@@ -38,6 +38,8 @@ Nunca pedir segredos no chat nem os escrever em ficheiros do repositório. Só d
 | Vercel (Production e Preview) | `EXTERNAL_SUPABASE_SERVICE_KEY`                   | chave `sb_secret_…`, usada só pelo snapshot diário                    |
 | Vercel (Production e Preview) | `CRON_SECRET` (e `CRON_SECRET_PREVIOUS` ao rodar) | autentica o pedido do agendamento                                     |
 | Vercel (Production e Preview) | `FINNHUB_API_KEY`                                 | calendário de resultados (opcional; sem ela o cartão fica desativado) |
+| Vercel (Production e Preview) | `ANTHROPIC_API_KEY`                               | assistente de perguntas (opcional; sem ela o assistente avisa que falta configurar) |
+| Vercel (Production e Preview) | `ASSISTANT_MODEL`                                 | modelo do assistente (opcional; por omissão `claude-haiku-5-5`)       |
 | GitHub Actions (variável)     | `SITE_URL`                                        | endereço de produção, sem barra final                                 |
 | GitHub Actions (segredo)      | `CRON_SECRET`                                     | o mesmo valor da Vercel                                               |
 

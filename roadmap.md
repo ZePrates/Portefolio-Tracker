@@ -1,5 +1,8 @@
 # Roadmap
 
+- [x] Assistente de perguntas (botão flutuante, Ctrl/⌘+J): ferramentas só de leitura sobre a carteira, dividendos, exposição, metais e histórico; modelo pequeno, histórico só na sessão, desativado em modo privado, sem schema/RLS. Requer `ANTHROPIC_API_KEY` na Vercel.
+- [ ] Assistente: confirmação na carteira real (pendente do utilizador no preview) e, se fizer sentido, guardar o histórico numa tabela com RLS.
+
 - [x] Resumo fiscal (IRS) segundo o CIRS: exclusão por detenção (art. 43.º/5), englobamento obrigatório e opcional, reporte de menos-valias 5 anos, opções do ano fiscal, arquivo de relatórios oficiais com reconciliação, CSV alargado.
 - [ ] Leitor automático dos relatórios XTB/Scramble (quando houver ficheiro real).
 
