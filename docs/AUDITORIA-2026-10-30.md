@@ -78,16 +78,16 @@ O `.env` que esteve no histórico (F5) tinha só `SUPABASE_URL`, `PROJECT_ID` e 
 
 ## 5. O que pode ser limado (por prioridade)
 
-| #   | O quê                                    | Porquê                                                                                                                 | Esforço                                                    | Quem                   |
-| --- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ---------------------- |
-| 5.1 | Correr **Reconstruir histórico**         | Preenche 26/10 e corrige o desfasamento das fotografias                                                                | 1 clique                                                   | Tu, depois do merge    |
-| 5.2 | Ativar **Leaked password protection**    | Último aviso de segurança do Supabase                                                                                  | 1 clique                                                   | Tu                     |
-| 5.3 | **ISIN nas 32 ações e REITs**            | O look-through já agrega por ISIN (#72), mas nas posições diretas cai no ticker/nome. Com ISIN a identidade fica exata | S (formulário do ativo, ou eu preencho com confirmação)    | Tu ou eu               |
-| 5.4 | Remover a tabela **`security_profiles`** | 0 linhas e nenhum código a usa. Migração `DROP TABLE`                                                                  | S                                                          | Eu, só com confirmação |
-| 5.5 | Migrar para **zod 4**                    | Última vulnerabilidade (DoS em coleções enormes; risco baixo numa app pessoal com login)                               | M (APIs mudaram: `.email()`, mensagens, `z.string().min`…) | Eu                     |
-| 5.6 | Dividir o bundle principal               | 148 KB gzip no primeiro carregamento; carregar o `recharts` e as páginas pesadas (Importar, IRS) só quando se abrem    | M                                                          | Eu                     |
-| 5.7 | Atualizações menores                     | React 19.3, supabase-js 2.118, TanStack Query 5.105, Radix. Majors à espera: recharts 3, lucide 1, zod 4               | S por grupo                                                | Eu                     |
-| 5.8 | Repetir uma vez em `PGRST303`            | Se o erro de relógio voltar a aparecer                                                                                 | S                                                          | Eu, se se repetir      |
+| #   | O quê                                    | Porquê                                                                                                                 | Esforço                                                    | Quem                |
+| --- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ------------------- |
+| 5.1 | Correr **Reconstruir histórico**         | Preenche 26/10 e corrige o desfasamento das fotografias                                                                | 1 clique                                                   | Tu, depois do merge |
+| 5.2 | Ativar **Leaked password protection**    | Último aviso de segurança do Supabase                                                                                  | 1 clique                                                   | Tu                  |
+| 5.3 | **ISIN nas 32 ações e REITs**            | O look-through já agrega por ISIN (#72), mas nas posições diretas cai no ticker/nome. Com ISIN a identidade fica exata | S (formulário do ativo, ou eu preencho com confirmação)    | Tu ou eu            |
+| 5.4 | Remover a tabela **`security_profiles`** | 0 linhas e nenhum código a usa. Migração `DROP TABLE`                                                                  | S                                                          | ✅ Feito (31/10)    |
+| 5.5 | Migrar para **zod 4**                    | Última vulnerabilidade (DoS em coleções enormes; risco baixo numa app pessoal com login)                               | M (APIs mudaram: `.email()`, mensagens, `z.string().min`…) | Eu                  |
+| 5.6 | Dividir o bundle principal               | 148 KB gzip no primeiro carregamento; carregar o `recharts` e as páginas pesadas (Importar, IRS) só quando se abrem    | M                                                          | Eu                  |
+| 5.7 | Atualizações menores                     | React 19.3, supabase-js 2.118, TanStack Query 5.105, Radix. Majors à espera: recharts 3, lucide 1, zod 4               | S por grupo                                                | Eu                  |
+| 5.8 | Repetir uma vez em `PGRST303`            | Se o erro de relógio voltar a aparecer                                                                                 | S                                                          | Eu, se se repetir   |
 
 ## 6. Estado dos achados de 07/10
 
