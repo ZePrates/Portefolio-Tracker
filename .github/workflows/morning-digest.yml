@@ -1,0 +1,57 @@
+name: Resumo das 9h
+
+# Envia o resumo da manhã (notificação push) chamando o endpoint
+# /api/public/cron/morning-digest da app publicada.
+#
+# Corre às 08:00 e às 09:00 UTC nos dias úteis porque Lisboa muda de hora:
+# o endpoint só envia a partir das 9h de Lisboa e uma vez por dia.
+#
+# Usa a mesma configuração do snapshot diário (variável SITE_URL e segredo CRON_SECRET).
+# Os agendamentos do GitHub só correm a partir do ramo principal e podem atrasar
+# alguns minutos. Para repetir à mão: Actions > Resumo das 9h > Run workflow.
+
+on:
+  schedule:
+    - cron: "2 8,9 * * 1-5"
+  workflow_dispatch:
+
+concurrency:
+  group: morning-digest
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  digest:
+    name: Chamar o endpoint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verificar configuração
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$SITE_URL" ]; then echo "::error::Falta a variável SITE_URL do repositório."; exit 1; fi
+          if [ -z "$CRON_SECRET" ]; then echo "::error::Falta o segredo CRON_SECRET do repositório."; exit 1; fi
+
+      - name: Enviar resumo
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          printf 'header = "Authorization: Bearer %s"\n' "$CRON_SECRET" > "$RUNNER_TEMP/curl.cfg"
+          status=$(curl --silent --show-error --max-time 300 \
+            --config "$RUNNER_TEMP/curl.cfg" \
+            --request POST \
+            --output "$RUNNER_TEMP/resposta.json" \
+            --write-out '%{http_code}' \
+            "${SITE_URL%/}/api/public/cron/morning-digest")
+          rm -f "$RUNNER_TEMP/curl.cfg"
+          echo "HTTP $status"
+          cat "$RUNNER_TEMP/resposta.json"; echo
+          # 200 = enviado ou dispensado (fora de horas / já enviado hoje). Outros = falha.
+          if [ "$status" != "200" ]; then
+            echo "::error::O resumo não terminou bem (HTTP $status)."
+            exit 1
+          fi

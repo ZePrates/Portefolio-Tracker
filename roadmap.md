@@ -1,5 +1,8 @@
 # Roadmap
 
+- [x] Notificações push (Android/Chrome): resumo dos dias úteis às 9h de Lisboa com variação do último fecho, quedas ≥ 5 %, ativos que passaram para baixo do preço médio, agenda de dividendos e avisos de dados; tabelas `push_subscriptions` e `notification_log` com RLS. Requer as chaves VAPID na Vercel.
+- [ ] Notificações: confirmação no telemóvel real e, se fizer sentido, limites configuráveis na app.
+
 - [x] Resumo fiscal (IRS) segundo o CIRS: exclusão por detenção (art. 43.º/5), englobamento obrigatório e opcional, reporte de menos-valias 5 anos, opções do ano fiscal, arquivo de relatórios oficiais com reconciliação, CSV alargado.
 - [ ] Leitor automático dos relatórios XTB/Scramble (quando houver ficheiro real).
 

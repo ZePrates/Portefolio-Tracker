@@ -31,6 +31,7 @@ import { Route as AuthenticatedProjecoesRouteImport } from './routes/_authentica
 import { Route as AuthenticatedReitsRouteImport } from './routes/_authenticated/reits'
 import { Route as AuthenticatedSimuladorRouteImport } from './routes/_authenticated/simulador'
 import { Route as ApiPublicCronDailySnapshotRouteImport } from './routes/api/public/cron/daily-snapshot'
+import { Route as ApiPublicCronMorningDigestRouteImport } from './routes/api/public/cron/morning-digest'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
@@ -146,6 +147,12 @@ const ApiPublicCronDailySnapshotRoute =
     path: '/api/public/cron/daily-snapshot',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronMorningDigestRoute =
+  ApiPublicCronMorningDigestRouteImport.update({
+    id: '/api/public/cron/morning-digest',
+    path: '/api/public/cron/morning-digest',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -169,6 +176,7 @@ export interface FileRoutesByFullPath {
   '/reits': typeof AuthenticatedReitsRoute
   '/simulador': typeof AuthenticatedSimuladorRoute
   '/api/public/cron/daily-snapshot': typeof ApiPublicCronDailySnapshotRoute
+  '/api/public/cron/morning-digest': typeof ApiPublicCronMorningDigestRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
@@ -192,6 +200,7 @@ export interface FileRoutesByTo {
   '/simulador': typeof AuthenticatedSimuladorRoute
   '/': typeof AuthenticatedIndexRoute
   '/api/public/cron/daily-snapshot': typeof ApiPublicCronDailySnapshotRoute
+  '/api/public/cron/morning-digest': typeof ApiPublicCronMorningDigestRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -217,6 +226,7 @@ export interface FileRoutesById {
   '/_authenticated/simulador': typeof AuthenticatedSimuladorRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/api/public/cron/daily-snapshot': typeof ApiPublicCronDailySnapshotRoute
+  '/api/public/cron/morning-digest': typeof ApiPublicCronMorningDigestRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -242,6 +252,7 @@ export interface FileRouteTypes {
     | '/reits'
     | '/simulador'
     | '/api/public/cron/daily-snapshot'
+    | '/api/public/cron/morning-digest'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -265,6 +276,7 @@ export interface FileRouteTypes {
     | '/simulador'
     | '/'
     | '/api/public/cron/daily-snapshot'
+    | '/api/public/cron/morning-digest'
   id:
     | '__root__'
     | '/_authenticated'
@@ -289,12 +301,14 @@ export interface FileRouteTypes {
     | '/_authenticated/simulador'
     | '/_authenticated/'
     | '/api/public/cron/daily-snapshot'
+    | '/api/public/cron/morning-digest'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ApiPublicCronDailySnapshotRoute: typeof ApiPublicCronDailySnapshotRoute
+  ApiPublicCronMorningDigestRoute: typeof ApiPublicCronMorningDigestRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -453,6 +467,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronDailySnapshotRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/morning-digest': {
+      id: '/api/public/cron/morning-digest'
+      path: '/api/public/cron/morning-digest'
+      fullPath: '/api/public/cron/morning-digest'
+      preLoaderRoute: typeof ApiPublicCronMorningDigestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -507,6 +528,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ApiPublicCronDailySnapshotRoute: ApiPublicCronDailySnapshotRoute,
+  ApiPublicCronMorningDigestRoute: ApiPublicCronMorningDigestRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

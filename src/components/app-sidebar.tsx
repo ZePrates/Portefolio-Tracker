@@ -4,6 +4,7 @@ import { Link, useNavigate, useRouteContext, useRouterState } from "@tanstack/re
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
+  Bell,
   ChartColumn,
   Coins,
   Ellipsis,
@@ -25,6 +26,7 @@ import { usePrivateMode } from "@/components/private-mode";
 import { useTheme, type ThemeChoice } from "@/components/theme";
 import { useAppShell } from "@/components/app-shell";
 import { IconButton, Modal } from "@/components/ui-bits";
+import { PushSettings } from "@/components/push-settings";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -196,6 +198,7 @@ function SidebarFooter() {
   const { theme, setTheme } = useTheme();
   const signOut = useSignOut();
   const ctx = useRouteContext({ strict: false }) as { user?: { email?: string | null } };
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   return (
     <div className="flex items-center gap-2 border-t border-sidebar-border px-3 py-3">
@@ -230,6 +233,10 @@ function SidebarFooter() {
             ))}
           </DropdownMenuRadioGroup>
           <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => setNotificationsOpen(true)}>
+            <Bell aria-hidden className="mr-2 h-4 w-4" />
+            Notificações
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={openHelp}>
             <Keyboard aria-hidden className="mr-2 h-4 w-4" />
             Atalhos de teclado
@@ -241,6 +248,13 @@ function SidebarFooter() {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <Modal
+        open={notificationsOpen}
+        onClose={() => setNotificationsOpen(false)}
+        title="Notificações"
+      >
+        <PushSettings />
+      </Modal>
     </div>
   );
 }
@@ -351,6 +365,7 @@ function SheetLinks({ items, onNavigate }: { items: NavItem[]; onNavigate: () =>
 
 function MobileBottomNav() {
   const [sheet, setSheet] = useState<SheetId | null>(null);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { hidden, toggle } = usePrivateMode();
   const { openPalette, openHelp } = useAppShell();
@@ -469,6 +484,19 @@ function MobileBottomNav() {
             <li>
               <button
                 type="button"
+                onClick={() => {
+                  close();
+                  setNotificationsOpen(true);
+                }}
+                className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium hover:bg-accent"
+              >
+                <Bell aria-hidden className="h-5 w-5 text-muted-foreground" />
+                Notificações
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
                 onClick={signOut}
                 className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium hover:bg-accent"
               >
@@ -481,6 +509,13 @@ function MobileBottomNav() {
             Valores em EUR
           </p>
         </div>
+      </Modal>
+      <Modal
+        open={notificationsOpen}
+        onClose={() => setNotificationsOpen(false)}
+        title="Notificações"
+      >
+        <PushSettings />
       </Modal>
     </>
   );

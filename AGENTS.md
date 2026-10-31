@@ -5,3 +5,4 @@
 - External database column extensions live in external-types.ts and are shared by external authenticated clients and helpers, because generated Cloud types describe a different schema and must remain untouched.
 - Calendar chart axes use the shared chart-dates presentation helpers to keep tick selection and tooltip dates consistent without resampling financial series; elapsed-duration axes stay separate.
 - Fiscal rules from the IRS code (holding exclusion, bracket thresholds, loss carryforward, reconciliation) live in the pure tax-rules module; tax-report composes them, so rule changes stay testable in one place.
+- The 9 a.m. push digest is rule-based (no LLM): pure rules live in `morning-digest.ts`, data loading and Yahoo closes in `morning-digest.server.ts`, VAPID sending only in `push.server.ts`; it shows percentages only (lock screen) and `notification_log` guarantees one digest per day.
