@@ -67,7 +67,26 @@ export default defineConfig(({ command, mode }) => {
       }),
       // O Nitro escolhe sozinho o alvo: na Vercel (VERCEL=1) gera o formato da
       // Vercel; noutros sítios, Node. Para forçar: NITRO_PRESET=vercel bun run build
-      ...(command === "build" ? [nitro()] : []),
+      //
+      // Agendamentos da Vercel (mais pontuais do que os do GitHub, que chegam a atrasar
+      // horas). No plano Hobby cada um corre uma vez por dia, dentro da hora indicada
+      // (UTC). O resumo das 9h corre às 8h e às 9h UTC porque Lisboa muda de hora; o
+      // endpoint só envia a partir das 9h de Lisboa e uma vez por dia.
+      ...(command === "build"
+        ? [
+            nitro({
+              vercel: {
+                config: {
+                  version: 3,
+                  crons: [
+                    { path: "/api/public/cron/morning-digest", schedule: "0 8 * * 1-5" },
+                    { path: "/api/public/cron/morning-digest", schedule: "0 9 * * 1-5" },
+                  ],
+                },
+              },
+            }),
+          ]
+        : []),
       viteReact(),
     ],
   };

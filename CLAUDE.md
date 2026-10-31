@@ -47,7 +47,7 @@ O URL e a chave pública do Supabase estão em `vite.config.ts` (são públicos)
 
 O snapshot diário corre em `.github/workflows/daily-snapshot.yml` (21:30 UTC, só a partir do `main`) e chama `POST /api/public/cron/daily-snapshot`; só o HTTP 200 conta como sucesso.
 
-O resumo das 9h corre em `.github/workflows/morning-digest.yml` (08:02 e 09:02 UTC, dias úteis, só a partir do `main`) e chama `POST /api/public/cron/morning-digest`; o endpoint só envia entre as 9h e as 12h de Lisboa e uma vez por dia (`notification_log`).
+O resumo das 9h é agendado na Vercel (`crons` em `vite.config.ts`: 8h e 9h UTC, dias úteis, só em produção; chama `GET /api/public/cron/morning-digest` com o `CRON_SECRET`), com `.github/workflows/morning-digest.yml` de reserva (os agendamentos do GitHub chegam a atrasar horas). O endpoint só envia entre as 9h e as 12h de Lisboa e uma vez por dia (`notification_log`).
 
 ## Regras
 

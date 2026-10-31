@@ -3,8 +3,10 @@ name: Resumo das 9h
 # Envia o resumo da manhã (notificação push) chamando o endpoint
 # /api/public/cron/morning-digest da app publicada.
 #
-# Corre às 08:00 e às 09:00 UTC nos dias úteis porque Lisboa muda de hora:
-# o endpoint só envia a partir das 9h de Lisboa e uma vez por dia.
+# Reserva: o agendamento principal é o da Vercel (vite.config.ts → crons), que é
+# mais pontual. Os do GitHub chegam a atrasar horas; se a Vercel falhar, este envia
+# mais tarde (até às 12h de Lisboa). Nunca há duplicados: o endpoint só envia a
+# partir das 9h de Lisboa e uma vez por dia.
 #
 # Usa a mesma configuração do snapshot diário (variável SITE_URL e segredo CRON_SECRET).
 # Os agendamentos do GitHub só correm a partir do ramo principal e podem atrasar
