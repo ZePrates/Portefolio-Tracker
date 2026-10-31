@@ -34,7 +34,10 @@ describe("invalidatePortfolio", () => {
       }
     }
     // Uma query nova que não dependa da carteira entra aqui, com o motivo.
-    const unrelated = new Set<string>();
+    const unrelated = new Set<string>([
+      // Estado das notificações push do dispositivo: não depende dos dados da carteira.
+      "push-status",
+    ]);
     const known = new Set<string>(PORTFOLIO_QUERY_KEYS);
     const missing = [...keys].filter((k) => !known.has(k) && !unrelated.has(k));
     expect(keys.size).toBeGreaterThan(5);

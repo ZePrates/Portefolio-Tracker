@@ -47,6 +47,26 @@ type TaxYearSettingsRow = {
   updated_at: string;
 };
 
+type PushSubscriptionRow = {
+  id: string;
+  user_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  user_agent: string | null;
+  last_success_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type NotificationLogRow = {
+  user_id: string;
+  kind: "morning_digest";
+  sent_on: string;
+  summary: import("./types").Json | null;
+  created_at: string;
+};
+
 /** Tables that exist only in the external database. */
 type ExtraTables = {
   tax_documents: {
@@ -59,6 +79,19 @@ type ExtraTables = {
     Row: TaxYearSettingsRow;
     Insert: Partial<TaxYearSettingsRow> & { tax_year: number };
     Update: Partial<TaxYearSettingsRow>;
+    Relationships: [];
+  };
+  push_subscriptions: {
+    Row: PushSubscriptionRow;
+    Insert: Partial<PushSubscriptionRow> &
+      Pick<PushSubscriptionRow, "endpoint" | "p256dh" | "auth">;
+    Update: Partial<PushSubscriptionRow>;
+    Relationships: [];
+  };
+  notification_log: {
+    Row: NotificationLogRow;
+    Insert: Partial<NotificationLogRow> & Pick<NotificationLogRow, "user_id" | "kind" | "sent_on">;
+    Update: Partial<NotificationLogRow>;
     Relationships: [];
   };
 };
