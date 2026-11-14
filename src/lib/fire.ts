@@ -118,27 +118,34 @@ export const FIRE_LEVELS: readonly FireLevelDef[] = [
     key: "half",
     name: "Half / Barista",
     multiple: 0.5,
-    info: "Metade das despesas vem da carteira; o resto de um trabalho a tempo parcial.",
+    info: "A carteira já paga metade das tuas despesas anuais; o resto vem de um trabalho a tempo parcial ou mais leve (o nome vem de quem trabalha num café só para ter algum rendimento). Dá para trabalhar menos sem esperar pelo FIRE completo.",
   },
   {
     key: "lean",
     name: "Lean",
     multiple: 0.7,
-    info: "Vida frugal: despesas cerca de 30 % abaixo das atuais.",
+    info: "Independência com orçamento apertado: a carteira cobre cerca de 70 % das despesas atuais. Só chega se viveres de forma frugal, cortando cerca de 30 % aos gastos, e deixa pouca margem para imprevistos.",
   },
   {
     key: "fire",
     name: "FIRE",
     multiple: 1,
-    info: "As despesas atuais pagas pela carteira à taxa de levantamento escolhida.",
+    info: "Financial Independence, Retire Early: a carteira paga todas as despesas atuais só com o levantamento anual à taxa escolhida (ex.: 4 %). Número FIRE = despesas anuais ÷ taxa de levantamento; com 4 % são 25 vezes as despesas.",
   },
   {
     key: "fat",
     name: "Fat",
     multiple: 1.5,
-    info: "Mais folga: despesas 50 % acima das atuais.",
+    info: "Independência com folga: a carteira cobre 50 % mais do que gastas hoje. Dá margem para viagens, imprevistos ou anos maus nos mercados sem cortar no estilo de vida.",
   },
 ];
+
+/** Explicações dos conceitos FIRE que não são patamares. */
+export const FIRE_INFO = {
+  coast:
+    "Coast FIRE: a carteira atual, sem mais nenhum aporte, continua a crescer sozinha até chegar ao número FIRE. Entretanto só precisas de ganhar o suficiente para pagar as despesas do dia a dia. Aqui vês quando lá chegarias se parasses hoje de investir.",
+  tax: "Em Portugal as mais-valias pagam 28 % quando vendes. Cada levantamento inclui uma parte de lucro, por isso precisas de uma carteira maior para que o valor líquido cubra as despesas. Este é o número FIRE já com esse imposto.",
+} as const;
 
 export interface FireLevel extends FireLevelDef {
   target: number;
