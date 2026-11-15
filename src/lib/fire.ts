@@ -118,27 +118,36 @@ export const FIRE_LEVELS: readonly FireLevelDef[] = [
     key: "half",
     name: "Half / Barista",
     multiple: 0.5,
-    info: "Metade das despesas vem da carteira; o resto de um trabalho a tempo parcial.",
+    info: "A carteira já paga metade das tuas despesas anuais; o resto vem de um trabalho a tempo parcial ou mais leve (o nome vem de quem trabalha num café só para ter algum rendimento). Dá para trabalhar menos sem esperar pelo FIRE completo.",
   },
   {
     key: "lean",
     name: "Lean",
     multiple: 0.7,
-    info: "Vida frugal: despesas cerca de 30 % abaixo das atuais.",
+    info: "Independência com orçamento apertado: a carteira cobre cerca de 70 % das despesas atuais. Só chega se viveres de forma frugal, cortando cerca de 30 % aos gastos, e deixa pouca margem para imprevistos.",
   },
   {
     key: "fire",
     name: "FIRE",
     multiple: 1,
-    info: "As despesas atuais pagas pela carteira à taxa de levantamento escolhida.",
+    info: "Financial Independence, Retire Early: a carteira paga todas as despesas atuais só com o levantamento anual à taxa escolhida (ex.: 4 %). Número FIRE = despesas anuais ÷ taxa de levantamento; com 4 % são 25 vezes as despesas.",
   },
   {
     key: "fat",
     name: "Fat",
     multiple: 1.5,
-    info: "Mais folga: despesas 50 % acima das atuais.",
+    info: "Independência com folga: a carteira cobre 50 % mais do que gastas hoje. Dá margem para viagens, imprevistos ou anos maus nos mercados sem cortar no estilo de vida.",
   },
 ];
+
+/** Explicações dos conceitos FIRE que não são patamares. */
+export const FIRE_INFO = {
+  coast:
+    "Coast FIRE: a carteira atual, sem mais nenhum aporte, continua a crescer sozinha até chegar ao número FIRE. Entretanto só precisas de ganhar o suficiente para pagar as despesas do dia a dia. Aqui vês quando lá chegarias se parasses hoje de investir.",
+  flamingo:
+    "Flamingo FIRE: investes até teres metade do número FIRE e, a partir daí, deixas de investir e passas a trabalhar menos, só o suficiente para pagar as despesas. A carteira continua a crescer sozinha até ao FIRE completo (com ~7 % ao ano duplica em cerca de 10 anos). Junta o Barista e o Coast FIRE.",
+  tax: "Em Portugal as mais-valias pagam 28 % quando vendes. Cada levantamento inclui uma parte de lucro, por isso precisas de uma carteira maior para que o valor líquido cubra as despesas. Este é o número FIRE já com esse imposto.",
+} as const;
 
 export interface FireLevel extends FireLevelDef {
   target: number;
@@ -155,6 +164,26 @@ export interface FireCoast {
   /** Anos até ao FIRE se deixares de investir hoje (null se não chega em 100 anos). */
   years: number | null;
   month: string | null;
+}
+
+/** Fração do número FIRE a partir da qual o Flamingo FIRE para os aportes. */
+export const FLAMINGO_SHARE = 0.5;
+
+export interface FireFlamingo {
+  /** Alvo intermédio: metade do número FIRE. */
+  target: number;
+  /** Já tens metade do número FIRE (a fase de investir terminou). */
+  halfReached: boolean;
+  /** Progresso até metade do número FIRE, em % (0–100). */
+  progressPct: number;
+  /** Anos/mês até chegar a metade do número FIRE com os aportes atuais. */
+  halfYears: number | null;
+  halfMonth: string | null;
+  /** Anos desde a metade até ao FIRE completo, sem mais aportes. */
+  coastYears: number | null;
+  /** Anos/mês (a contar de hoje) até ao FIRE completo. */
+  fireYears: number | null;
+  fireMonth: string | null;
 }
 
 export interface FireTax {
@@ -197,6 +226,7 @@ export const FIRE_OPTIMISTIC_REAL_PCT = 7;
 export interface FireDetails {
   levels: FireLevel[];
   coast: FireCoast;
+  flamingo: FireFlamingo;
   tax: FireTax | null;
   /** Data do FIRE com outros retornos (mesmas despesas e aportes). */
   scenarios: FireScenario[];
@@ -266,9 +296,43 @@ export function fireDetails(
   return {
     levels,
     coast,
+    flamingo: fireFlamingo(value, fireNumber, rate, contribution, today),
     tax: fireTax(settings, value, costBasis, today, taxRate),
     scenarios,
     optimistic: yoursReal > FIRE_OPTIMISTIC_REAL_PCT + 1e-9,
+  };
+}
+
+/**
+ * Flamingo FIRE: investir com os aportes atuais até metade do número FIRE e,
+ * daí em diante, parar os aportes e deixar a carteira crescer até ao FIRE
+ * completo (trabalhando só o suficiente para as despesas).
+ */
+function fireFlamingo(
+  value: number,
+  fireNumber: number,
+  rate: number,
+  contribution: number,
+  today: string,
+): FireFlamingo {
+  const target = fireNumber * FLAMINGO_SHARE;
+  const halfMonths = monthsToTarget(value, target, rate, contribution);
+  let atHalf = value;
+  for (let m = 0; m < (halfMonths ?? 0); m++) atHalf = atHalf * (1 + rate) + contribution;
+  const coastMonths = halfMonths == null ? null : monthsToTarget(atHalf, fireNumber, rate, 0);
+  const totalMonths =
+    halfMonths == null || coastMonths == null || halfMonths + coastMonths > MAX_MONTHS
+      ? null
+      : halfMonths + coastMonths;
+  return {
+    target,
+    halfReached: value >= target,
+    progressPct: Number.isFinite(target) && target > 0 ? Math.min(100, (value / target) * 100) : 0,
+    halfYears: toYears(halfMonths),
+    halfMonth: addMonths(today, halfMonths),
+    coastYears: toYears(coastMonths),
+    fireYears: toYears(totalMonths),
+    fireMonth: addMonths(today, totalMonths),
   };
 }
 

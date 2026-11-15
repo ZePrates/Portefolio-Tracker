@@ -1,4 +1,5 @@
-import type { FireDetails } from "@/lib/fire";
+import { FIRE_INFO, type FireDetails } from "@/lib/fire";
+import { InfoTip } from "@/components/info-tip";
 import { formatMonthPt, formatNumber, formatPct } from "@/lib/format";
 import { Badge, MetricCard } from "@/components/ui-bits";
 import { privateEUR } from "@/components/private-value";
@@ -14,6 +15,7 @@ export function FireLevels({ details, hidden }: { details: FireDetails; hidden: 
   const next = details.levels.find((l) => !l.reached);
   const reached = details.levels.filter((l) => l.reached).length;
   const tax = details.tax;
+  const flamingo = details.flamingo;
 
   return (
     <div className="space-y-5 border-t border-border pt-5">
@@ -29,13 +31,20 @@ export function FireLevels({ details, hidden }: { details: FireDetails; hidden: 
           {details.levels.map((l) => (
             <li
               key={l.key}
-              title={l.info}
               className={`rounded-lg border p-3 ${
                 l === next ? "border-primary/60" : "border-border"
               }`}
             >
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-[13px] font-medium">{l.name}</span>
+                <span className="inline-flex items-center gap-1 text-[13px] font-medium">
+                  {l.name}
+                  <InfoTip label={`O que é ${l.name}?`}>
+                    <p className="font-medium">
+                      {l.name} · {formatNumber(l.multiple, 1)}× o número FIRE
+                    </p>
+                    <p className="mt-1 text-muted-foreground">{l.info}</p>
+                  </InfoTip>
+                </span>
                 <span className="text-[11px] text-muted-foreground">
                   {formatNumber(l.multiple, 1)}×
                 </span>
@@ -61,10 +70,51 @@ export function FireLevels({ details, hidden }: { details: FireDetails; hidden: 
               </p>
             </li>
           ))}
+          <li className="col-span-2 rounded-lg border border-dashed border-border p-3 lg:col-span-4">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="inline-flex items-center gap-1 text-[13px] font-medium">
+                Flamingo FIRE
+                <InfoTip label="O que é Flamingo FIRE?">
+                  <p className="font-medium">Flamingo FIRE · 0,5× e depois sem aportes</p>
+                  <p className="mt-1 text-muted-foreground">{FIRE_INFO.flamingo}</p>
+                </InfoTip>
+              </span>
+              <span className="text-[11px] text-muted-foreground">0,5× → 1,0×</span>
+            </div>
+            <p className="mt-1 text-[15px] font-medium">
+              <span className="num">{privateEUR(flamingo.target, hidden)}</span>
+              <span className="text-[12px] font-normal text-muted-foreground">
+                {" "}
+                e depois paras de investir
+              </span>
+            </p>
+            <div
+              role="progressbar"
+              aria-label="Progresso Flamingo FIRE"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(flamingo.progressPct)}
+              className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary"
+            >
+              <div
+                className="h-full rounded-full bg-primary"
+                style={{ width: `${flamingo.progressPct}%` }}
+              />
+            </div>
+            <p className="mt-2 text-[12px] text-muted-foreground">
+              {flamingo.halfReached
+                ? "✓ Metade atingida: podias parar os aportes hoje"
+                : `${formatPct(flamingo.progressPct, 0)} · metade em ${when(flamingo.halfYears, flamingo.halfMonth)}`}
+              {flamingo.coastYears != null &&
+                ` · depois ${formatNumber(flamingo.coastYears, 1)} anos sem aportes`}
+              {" → FIRE em "}
+              {when(flamingo.fireYears, flamingo.fireMonth)}
+            </p>
+          </li>
         </ol>
         <p className="mt-2 text-[12px] text-muted-foreground">
-          Cada patamar é um múltiplo do número FIRE: Half/Barista (metade das despesas pagas pela
-          carteira), Lean (vida frugal), FIRE e Fat (mais folga).
+          Cada patamar é um múltiplo do número FIRE; o Flamingo usa a mesma metade do Half / Barista
+          mas para os aportes aí. Passa o rato (ou toca) no ícone ⓘ para ver o que significa.
         </p>
       </div>
 
@@ -118,13 +168,23 @@ export function FireLevels({ details, hidden }: { details: FireDetails; hidden: 
 
       <div className="grid grid-cols-1 gap-3 md:gap-4 sm:grid-cols-2">
         <MetricCard
-          label="Coast FIRE · se parares de investir hoje"
+          label={
+            <span className="inline-flex items-center gap-1">
+              Coast FIRE · se parares de investir hoje
+              <InfoTip label="O que é Coast FIRE?">{FIRE_INFO.coast}</InfoTip>
+            </span>
+          }
           value={when(details.coast.years, details.coast.month)}
           sub="só com o crescimento real da carteira atual, sem mais aportes"
         />
         {tax && (
           <MetricCard
-            label={`FIRE com impostos (${formatPct(tax.rate * 100, 0)} sobre mais-valias)`}
+            label={
+              <span className="inline-flex items-center gap-1">
+                FIRE com impostos ({formatPct(tax.rate * 100, 0)} sobre mais-valias)
+                <InfoTip label="O que é FIRE com impostos?">{FIRE_INFO.tax}</InfoTip>
+              </span>
+            }
             value={privateEUR(tax.fireNumber, hidden)}
             sub={`${when(tax.yearsToFire, tax.fireMonth)} · hoje ${formatPct(tax.gainSharePct, 0)} da carteira é mais-valia → imposto efetivo de ${formatPct(tax.effectiveRatePct, 1)} por levantamento`}
           />
