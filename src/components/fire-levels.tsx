@@ -15,6 +15,7 @@ export function FireLevels({ details, hidden }: { details: FireDetails; hidden: 
   const next = details.levels.find((l) => !l.reached);
   const reached = details.levels.filter((l) => l.reached).length;
   const tax = details.tax;
+  const flamingo = details.flamingo;
 
   return (
     <div className="space-y-5 border-t border-border pt-5">
@@ -124,7 +125,7 @@ export function FireLevels({ details, hidden }: { details: FireDetails; hidden: 
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 md:gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <MetricCard
           label={
             <span className="inline-flex items-center gap-1">
@@ -134,6 +135,27 @@ export function FireLevels({ details, hidden }: { details: FireDetails; hidden: 
           }
           value={when(details.coast.years, details.coast.month)}
           sub="só com o crescimento real da carteira atual, sem mais aportes"
+        />
+        <MetricCard
+          label={
+            <span className="inline-flex items-center gap-1">
+              Flamingo FIRE · paras de investir a meio
+              <InfoTip label="O que é Flamingo FIRE?">{FIRE_INFO.flamingo}</InfoTip>
+            </span>
+          }
+          value={when(flamingo.fireYears, flamingo.fireMonth)}
+          sub={
+            flamingo.halfReached ? (
+              "já tens metade do número FIRE: podias parar os aportes hoje"
+            ) : (
+              <>
+                metade ({privateEUR(flamingo.target, hidden)}):{" "}
+                {when(flamingo.halfYears, flamingo.halfMonth)}
+                {flamingo.coastYears != null &&
+                  ` · depois ${formatNumber(flamingo.coastYears, 1)} anos sem aportes`}
+              </>
+            )
+          }
         />
         {tax && (
           <MetricCard

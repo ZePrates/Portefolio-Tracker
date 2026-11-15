@@ -119,3 +119,44 @@ describe("fireDetails", () => {
     expect(d.scenarios.at(-1)!.realReturnPct).toBeCloseTo(11.65, 1);
   });
 });
+
+describe("Flamingo FIRE", () => {
+  it("investe até metade do número FIRE e depois cresce sem aportes", () => {
+    const d = fireDetails(settings, 150000, 150000, "2026-10-07");
+    const f = d.flamingo;
+    expect(f.target).toBe(300000);
+    expect(f.halfReached).toBe(false);
+    // A fase de investir é a mesma do patamar Half / Barista.
+    expect(f.halfYears).toBe(d.levels[0]!.years);
+    // ~300k × 1,049^n = 600k → n ≈ 14,5 anos sem aportes.
+    expect(f.coastYears!).toBeGreaterThan(14);
+    expect(f.coastYears!).toBeLessThan(15.2);
+    expect(f.fireYears!).toBeCloseTo(f.halfYears! + f.coastYears!, 0);
+    // Mais tarde que continuar a investir, mais cedo que parar já hoje.
+    expect(f.fireYears!).toBeGreaterThan(d.levels[2]!.years!);
+    expect(f.fireYears!).toBeLessThan(d.coast.years!);
+    expect(f.fireMonth).toMatch(/^\d{4}-\d{2}$/);
+  });
+
+  it("com metade já atingida coincide com o Coast FIRE", () => {
+    const f = fireDetails(settings, 350000, 350000, "2026-10-07").flamingo;
+    const coast = fireDetails(settings, 350000, 350000, "2026-10-07").coast;
+    expect(f.halfReached).toBe(true);
+    expect(f.halfYears).toBe(0);
+    expect(f.fireYears).toBe(coast.years);
+    expect(f.fireMonth).toBe(coast.month);
+  });
+
+  it("sem retorno real nunca chega ao FIRE completo", () => {
+    const f = fireDetails(
+      { ...settings, expectedReturnPct: 2, inflationPct: 2 },
+      150000,
+      150000,
+      "2026-10-07",
+    ).flamingo;
+    expect(f.halfYears).not.toBeNull();
+    expect(f.coastYears).toBeNull();
+    expect(f.fireYears).toBeNull();
+    expect(f.fireMonth).toBeNull();
+  });
+});
