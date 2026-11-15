@@ -70,10 +70,51 @@ export function FireLevels({ details, hidden }: { details: FireDetails; hidden: 
               </p>
             </li>
           ))}
+          <li className="col-span-2 rounded-lg border border-dashed border-border p-3 lg:col-span-4">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="inline-flex items-center gap-1 text-[13px] font-medium">
+                Flamingo FIRE
+                <InfoTip label="O que é Flamingo FIRE?">
+                  <p className="font-medium">Flamingo FIRE · 0,5× e depois sem aportes</p>
+                  <p className="mt-1 text-muted-foreground">{FIRE_INFO.flamingo}</p>
+                </InfoTip>
+              </span>
+              <span className="text-[11px] text-muted-foreground">0,5× → 1,0×</span>
+            </div>
+            <p className="mt-1 text-[15px] font-medium">
+              <span className="num">{privateEUR(flamingo.target, hidden)}</span>
+              <span className="text-[12px] font-normal text-muted-foreground">
+                {" "}
+                e depois paras de investir
+              </span>
+            </p>
+            <div
+              role="progressbar"
+              aria-label="Progresso Flamingo FIRE"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(flamingo.progressPct)}
+              className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary"
+            >
+              <div
+                className="h-full rounded-full bg-primary"
+                style={{ width: `${flamingo.progressPct}%` }}
+              />
+            </div>
+            <p className="mt-2 text-[12px] text-muted-foreground">
+              {flamingo.halfReached
+                ? "✓ Metade atingida: podias parar os aportes hoje"
+                : `${formatPct(flamingo.progressPct, 0)} · metade em ${when(flamingo.halfYears, flamingo.halfMonth)}`}
+              {flamingo.coastYears != null &&
+                ` · depois ${formatNumber(flamingo.coastYears, 1)} anos sem aportes`}
+              {" → FIRE em "}
+              {when(flamingo.fireYears, flamingo.fireMonth)}
+            </p>
+          </li>
         </ol>
         <p className="mt-2 text-[12px] text-muted-foreground">
-          Cada patamar é um múltiplo do número FIRE. Passa o rato (ou toca) no ícone ⓘ para ver o
-          que significa.
+          Cada patamar é um múltiplo do número FIRE; o Flamingo usa a mesma metade do Half / Barista
+          mas para os aportes aí. Passa o rato (ou toca) no ícone ⓘ para ver o que significa.
         </p>
       </div>
 
@@ -125,7 +166,7 @@ export function FireLevels({ details, hidden }: { details: FireDetails; hidden: 
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 md:gap-4 sm:grid-cols-2">
         <MetricCard
           label={
             <span className="inline-flex items-center gap-1">
@@ -135,27 +176,6 @@ export function FireLevels({ details, hidden }: { details: FireDetails; hidden: 
           }
           value={when(details.coast.years, details.coast.month)}
           sub="só com o crescimento real da carteira atual, sem mais aportes"
-        />
-        <MetricCard
-          label={
-            <span className="inline-flex items-center gap-1">
-              Flamingo FIRE · paras de investir a meio
-              <InfoTip label="O que é Flamingo FIRE?">{FIRE_INFO.flamingo}</InfoTip>
-            </span>
-          }
-          value={when(flamingo.fireYears, flamingo.fireMonth)}
-          sub={
-            flamingo.halfReached ? (
-              "já tens metade do número FIRE: podias parar os aportes hoje"
-            ) : (
-              <>
-                metade ({privateEUR(flamingo.target, hidden)}):{" "}
-                {when(flamingo.halfYears, flamingo.halfMonth)}
-                {flamingo.coastYears != null &&
-                  ` · depois ${formatNumber(flamingo.coastYears, 1)} anos sem aportes`}
-              </>
-            )
-          }
         />
         {tax && (
           <MetricCard

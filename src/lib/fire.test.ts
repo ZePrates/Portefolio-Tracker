@@ -126,6 +126,7 @@ describe("Flamingo FIRE", () => {
     const f = d.flamingo;
     expect(f.target).toBe(300000);
     expect(f.halfReached).toBe(false);
+    expect(f.progressPct).toBeCloseTo(50);
     // A fase de investir é a mesma do patamar Half / Barista.
     expect(f.halfYears).toBe(d.levels[0]!.years);
     // ~300k × 1,049^n = 600k → n ≈ 14,5 anos sem aportes.

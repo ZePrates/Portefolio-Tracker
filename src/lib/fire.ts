@@ -174,6 +174,8 @@ export interface FireFlamingo {
   target: number;
   /** Já tens metade do número FIRE (a fase de investir terminou). */
   halfReached: boolean;
+  /** Progresso até metade do número FIRE, em % (0–100). */
+  progressPct: number;
   /** Anos/mês até chegar a metade do número FIRE com os aportes atuais. */
   halfYears: number | null;
   halfMonth: string | null;
@@ -325,6 +327,7 @@ function fireFlamingo(
   return {
     target,
     halfReached: value >= target,
+    progressPct: Number.isFinite(target) && target > 0 ? Math.min(100, (value / target) * 100) : 0,
     halfYears: toYears(halfMonths),
     halfMonth: addMonths(today, halfMonths),
     coastYears: toYears(coastMonths),
