@@ -27,7 +27,7 @@ export function FireLevels({ details, hidden }: { details: FireDetails; hidden: 
             {next ? ` · próximo: ${next.name}` : ""}
           </p>
         </div>
-        <ol className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <ol className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-5">
           {details.levels.map((l) => (
             <li
               key={l.key}
@@ -70,7 +70,7 @@ export function FireLevels({ details, hidden }: { details: FireDetails; hidden: 
               </p>
             </li>
           ))}
-          <li className="col-span-2 rounded-lg border border-dashed border-border p-3 lg:col-span-4">
+          <li className="col-span-2 rounded-lg border border-dashed border-border p-3 lg:col-span-1">
             <div className="flex items-baseline justify-between gap-2">
               <span className="inline-flex items-center gap-1 text-[13px] font-medium">
                 Flamingo FIRE
@@ -79,14 +79,10 @@ export function FireLevels({ details, hidden }: { details: FireDetails; hidden: 
                   <p className="mt-1 text-muted-foreground">{FIRE_INFO.flamingo}</p>
                 </InfoTip>
               </span>
-              <span className="text-[11px] text-muted-foreground">0,5× → 1,0×</span>
+              <span className="text-[11px] text-muted-foreground">0,5×→1,0×</span>
             </div>
-            <p className="mt-1 text-[15px] font-medium">
-              <span className="num">{privateEUR(flamingo.target, hidden)}</span>
-              <span className="text-[12px] font-normal text-muted-foreground">
-                {" "}
-                e depois paras de investir
-              </span>
+            <p className="num mt-1 text-[15px] font-medium">
+              {privateEUR(flamingo.target, hidden)}
             </p>
             <div
               role="progressbar"
@@ -103,11 +99,11 @@ export function FireLevels({ details, hidden }: { details: FireDetails; hidden: 
             </div>
             <p className="mt-2 text-[12px] text-muted-foreground">
               {flamingo.halfReached
-                ? "✓ Metade atingida: podias parar os aportes hoje"
+                ? "✓ Metade atingida"
                 : `${formatPct(flamingo.progressPct, 0)} · metade em ${when(flamingo.halfYears, flamingo.halfMonth)}`}
-              {flamingo.coastYears != null &&
-                ` · depois ${formatNumber(flamingo.coastYears, 1)} anos sem aportes`}
-              {" → FIRE em "}
+            </p>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">
+              {"FIRE em "}
               {when(flamingo.fireYears, flamingo.fireMonth)}
             </p>
           </li>
