@@ -15,6 +15,7 @@ import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedAcoesCrescimentoRouteImport } from './routes/_authenticated/acoes-crescimento'
 import { Route as AuthenticatedAcoesDividendosRouteImport } from './routes/_authenticated/acoes-dividendos'
 import { Route as AuthenticatedAnaliseRouteImport } from './routes/_authenticated/analise'
+import { Route as AuthenticatedAvaliacaoRouteImport } from './routes/_authenticated/avaliacao'
 import { Route as AuthenticatedCalendarioRouteImport } from './routes/_authenticated/calendario'
 import { Route as AuthenticatedDividendosRouteImport } from './routes/_authenticated/dividendos'
 import { Route as AuthenticatedEtfsRouteImport } from './routes/_authenticated/etfs'
@@ -31,6 +32,7 @@ import { Route as AuthenticatedProjecoesRouteImport } from './routes/_authentica
 import { Route as AuthenticatedReitsRouteImport } from './routes/_authenticated/reits'
 import { Route as AuthenticatedSimuladorRouteImport } from './routes/_authenticated/simulador'
 import { Route as ApiPublicCronDailySnapshotRouteImport } from './routes/api/public/cron/daily-snapshot'
+import { Route as ApiPublicCronMorningDigestRouteImport } from './routes/api/public/cron/morning-digest'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
@@ -61,6 +63,11 @@ const AuthenticatedAcoesDividendosRoute =
 const AuthenticatedAnaliseRoute = AuthenticatedAnaliseRouteImport.update({
   id: '/analise',
   path: '/analise',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAvaliacaoRoute = AuthenticatedAvaliacaoRouteImport.update({
+  id: '/avaliacao',
+  path: '/avaliacao',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedCalendarioRoute = AuthenticatedCalendarioRouteImport.update({
@@ -146,6 +153,12 @@ const ApiPublicCronDailySnapshotRoute =
     path: '/api/public/cron/daily-snapshot',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronMorningDigestRoute =
+  ApiPublicCronMorningDigestRouteImport.update({
+    id: '/api/public/cron/morning-digest',
+    path: '/api/public/cron/morning-digest',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -153,6 +166,7 @@ export interface FileRoutesByFullPath {
   '/acoes-crescimento': typeof AuthenticatedAcoesCrescimentoRoute
   '/acoes-dividendos': typeof AuthenticatedAcoesDividendosRoute
   '/analise': typeof AuthenticatedAnaliseRoute
+  '/avaliacao': typeof AuthenticatedAvaliacaoRoute
   '/calendario': typeof AuthenticatedCalendarioRoute
   '/dividendos': typeof AuthenticatedDividendosRoute
   '/etfs': typeof AuthenticatedEtfsRoute
@@ -169,12 +183,14 @@ export interface FileRoutesByFullPath {
   '/reits': typeof AuthenticatedReitsRoute
   '/simulador': typeof AuthenticatedSimuladorRoute
   '/api/public/cron/daily-snapshot': typeof ApiPublicCronDailySnapshotRoute
+  '/api/public/cron/morning-digest': typeof ApiPublicCronMorningDigestRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/acoes-crescimento': typeof AuthenticatedAcoesCrescimentoRoute
   '/acoes-dividendos': typeof AuthenticatedAcoesDividendosRoute
   '/analise': typeof AuthenticatedAnaliseRoute
+  '/avaliacao': typeof AuthenticatedAvaliacaoRoute
   '/calendario': typeof AuthenticatedCalendarioRoute
   '/dividendos': typeof AuthenticatedDividendosRoute
   '/etfs': typeof AuthenticatedEtfsRoute
@@ -192,6 +208,7 @@ export interface FileRoutesByTo {
   '/simulador': typeof AuthenticatedSimuladorRoute
   '/': typeof AuthenticatedIndexRoute
   '/api/public/cron/daily-snapshot': typeof ApiPublicCronDailySnapshotRoute
+  '/api/public/cron/morning-digest': typeof ApiPublicCronMorningDigestRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -200,6 +217,7 @@ export interface FileRoutesById {
   '/_authenticated/acoes-crescimento': typeof AuthenticatedAcoesCrescimentoRoute
   '/_authenticated/acoes-dividendos': typeof AuthenticatedAcoesDividendosRoute
   '/_authenticated/analise': typeof AuthenticatedAnaliseRoute
+  '/_authenticated/avaliacao': typeof AuthenticatedAvaliacaoRoute
   '/_authenticated/calendario': typeof AuthenticatedCalendarioRoute
   '/_authenticated/dividendos': typeof AuthenticatedDividendosRoute
   '/_authenticated/etfs': typeof AuthenticatedEtfsRoute
@@ -217,6 +235,7 @@ export interface FileRoutesById {
   '/_authenticated/simulador': typeof AuthenticatedSimuladorRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/api/public/cron/daily-snapshot': typeof ApiPublicCronDailySnapshotRoute
+  '/api/public/cron/morning-digest': typeof ApiPublicCronMorningDigestRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -226,6 +245,7 @@ export interface FileRouteTypes {
     | '/acoes-crescimento'
     | '/acoes-dividendos'
     | '/analise'
+    | '/avaliacao'
     | '/calendario'
     | '/dividendos'
     | '/etfs'
@@ -242,12 +262,14 @@ export interface FileRouteTypes {
     | '/reits'
     | '/simulador'
     | '/api/public/cron/daily-snapshot'
+    | '/api/public/cron/morning-digest'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
     | '/acoes-crescimento'
     | '/acoes-dividendos'
     | '/analise'
+    | '/avaliacao'
     | '/calendario'
     | '/dividendos'
     | '/etfs'
@@ -265,6 +287,7 @@ export interface FileRouteTypes {
     | '/simulador'
     | '/'
     | '/api/public/cron/daily-snapshot'
+    | '/api/public/cron/morning-digest'
   id:
     | '__root__'
     | '/_authenticated'
@@ -272,6 +295,7 @@ export interface FileRouteTypes {
     | '/_authenticated/acoes-crescimento'
     | '/_authenticated/acoes-dividendos'
     | '/_authenticated/analise'
+    | '/_authenticated/avaliacao'
     | '/_authenticated/calendario'
     | '/_authenticated/dividendos'
     | '/_authenticated/etfs'
@@ -289,12 +313,14 @@ export interface FileRouteTypes {
     | '/_authenticated/simulador'
     | '/_authenticated/'
     | '/api/public/cron/daily-snapshot'
+    | '/api/public/cron/morning-digest'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ApiPublicCronDailySnapshotRoute: typeof ApiPublicCronDailySnapshotRoute
+  ApiPublicCronMorningDigestRoute: typeof ApiPublicCronMorningDigestRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -339,6 +365,13 @@ declare module '@tanstack/react-router' {
       path: '/analise'
       fullPath: '/analise'
       preLoaderRoute: typeof AuthenticatedAnaliseRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/avaliacao': {
+      id: '/_authenticated/avaliacao'
+      path: '/avaliacao'
+      fullPath: '/avaliacao'
+      preLoaderRoute: typeof AuthenticatedAvaliacaoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/calendario': {
@@ -453,6 +486,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronDailySnapshotRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/morning-digest': {
+      id: '/api/public/cron/morning-digest'
+      path: '/api/public/cron/morning-digest'
+      fullPath: '/api/public/cron/morning-digest'
+      preLoaderRoute: typeof ApiPublicCronMorningDigestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -460,6 +500,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAcoesCrescimentoRoute: typeof AuthenticatedAcoesCrescimentoRoute
   AuthenticatedAcoesDividendosRoute: typeof AuthenticatedAcoesDividendosRoute
   AuthenticatedAnaliseRoute: typeof AuthenticatedAnaliseRoute
+  AuthenticatedAvaliacaoRoute: typeof AuthenticatedAvaliacaoRoute
   AuthenticatedCalendarioRoute: typeof AuthenticatedCalendarioRoute
   AuthenticatedDividendosRoute: typeof AuthenticatedDividendosRoute
   AuthenticatedEtfsRoute: typeof AuthenticatedEtfsRoute
@@ -482,6 +523,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAcoesCrescimentoRoute: AuthenticatedAcoesCrescimentoRoute,
   AuthenticatedAcoesDividendosRoute: AuthenticatedAcoesDividendosRoute,
   AuthenticatedAnaliseRoute: AuthenticatedAnaliseRoute,
+  AuthenticatedAvaliacaoRoute: AuthenticatedAvaliacaoRoute,
   AuthenticatedCalendarioRoute: AuthenticatedCalendarioRoute,
   AuthenticatedDividendosRoute: AuthenticatedDividendosRoute,
   AuthenticatedEtfsRoute: AuthenticatedEtfsRoute,
@@ -507,6 +549,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ApiPublicCronDailySnapshotRoute: ApiPublicCronDailySnapshotRoute,
+  ApiPublicCronMorningDigestRoute: ApiPublicCronMorningDigestRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

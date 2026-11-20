@@ -3,6 +3,15 @@
 - [x] Assistente de perguntas (botão flutuante, Ctrl/⌘+J): ferramentas só de leitura sobre a carteira, dividendos, exposição, metais e histórico; modelo pequeno, histórico só na sessão, desativado em modo privado, sem schema/RLS. Requer `ANTHROPIC_API_KEY` na Vercel.
 - [ ] Assistente: confirmação na carteira real (pendente do utilizador no preview) e, se fizer sentido, guardar o histórico numa tabela com RLS.
 
+- [x] Avaliação de ações (inspirada no Holygrail AI da Lucrar.pt, com implementação própria): valor justo por modelos ponderados pelo tipo de empresa, saúde financeira, gestão, REITs, bancos, macro e radar de valor da carteira; dados públicos (Yahoo, BCE, Damodaran jan/2026), sem schema/RLS; motor puro com testes.
+- [x] Avaliação: confirmação visual com a carteira real (radar das 32 posições sem erros; ficha de ação, REIT e banco).
+- [x] Watchlist na página Avaliação: preço, valor justo (análise leve do radar), potencial, veredito, alertas ⚠ e preço-alvo editável; o resumo das 9h avisa as empresas cujo fecho ficou abaixo do alvo (só percentagens). Tabela `watchlist` com RLS.
+- [x] Perfil de investidor: coeficiente de aversão ao risco (A) e utilidade média-variância (Markowitz) aplicada à carteira.
+- [ ] ETFs: custos (TER) e comparação lado a lado.
+
+- [x] Notificações push (Android/Chrome): resumo dos dias úteis às 9h de Lisboa com variação do último fecho, quedas ≥ 5 %, ativos que passaram para baixo do preço médio, agenda de dividendos e avisos de dados; tabelas `push_subscriptions` e `notification_log` com RLS. Requer as chaves VAPID na Vercel.
+- [ ] Notificações: confirmação no telemóvel real e, se fizer sentido, limites configuráveis na app.
+
 - [x] Resumo fiscal (IRS) segundo o CIRS: exclusão por detenção (art. 43.º/5), englobamento obrigatório e opcional, reporte de menos-valias 5 anos, opções do ano fiscal, arquivo de relatórios oficiais com reconciliação, CSV alargado.
 - [ ] Leitor automático dos relatórios XTB/Scramble (quando houver ficheiro real).
 

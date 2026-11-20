@@ -150,7 +150,7 @@ export function MetricCard({
   loading,
   className,
 }: {
-  label: string;
+  label: ReactNode;
   value: ReactNode;
   sub?: ReactNode;
   tone?: Tone;

@@ -47,8 +47,63 @@ type TaxYearSettingsRow = {
   updated_at: string;
 };
 
+type PushSubscriptionRow = {
+  id: string;
+  user_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  user_agent: string | null;
+  last_success_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type NotificationLogRow = {
+  user_id: string;
+  kind: "morning_digest";
+  sent_on: string;
+  summary: import("./types").Json | null;
+  created_at: string;
+};
+
+type InvestorProfileRow = {
+  user_id: string;
+  /** Índice da opção escolhida por pergunta (ver risk-profile.ts). */
+  answers: import("./types").Json;
+  risk_free_pct: number;
+  outside_cash: number;
+  expected_return_pct: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type WatchlistRow = {
+  id: string;
+  user_id: string;
+  /** Símbolo do Yahoo (maiúsculas). */
+  symbol: string;
+  name: string;
+  /** Preço-alvo na moeda da cotação. */
+  target_price: number | null;
+  notes: string | null;
+  created_at: string;
+};
+
 /** Tables that exist only in the external database. */
 type ExtraTables = {
+  investor_profiles: {
+    Row: InvestorProfileRow;
+    Insert: Partial<InvestorProfileRow>;
+    Update: Partial<InvestorProfileRow>;
+    Relationships: [];
+  };
+  watchlist: {
+    Row: WatchlistRow;
+    Insert: Partial<WatchlistRow> & Pick<WatchlistRow, "symbol" | "name">;
+    Update: Partial<WatchlistRow>;
+    Relationships: [];
+  };
   tax_documents: {
     Row: TaxDocumentRow;
     Insert: Partial<TaxDocumentRow> & { tax_year: number; source: TaxDocumentRow["source"] };
@@ -59,6 +114,19 @@ type ExtraTables = {
     Row: TaxYearSettingsRow;
     Insert: Partial<TaxYearSettingsRow> & { tax_year: number };
     Update: Partial<TaxYearSettingsRow>;
+    Relationships: [];
+  };
+  push_subscriptions: {
+    Row: PushSubscriptionRow;
+    Insert: Partial<PushSubscriptionRow> &
+      Pick<PushSubscriptionRow, "endpoint" | "p256dh" | "auth">;
+    Update: Partial<PushSubscriptionRow>;
+    Relationships: [];
+  };
+  notification_log: {
+    Row: NotificationLogRow;
+    Insert: Partial<NotificationLogRow> & Pick<NotificationLogRow, "user_id" | "kind" | "sent_on">;
+    Update: Partial<NotificationLogRow>;
     Relationships: [];
   };
 };
@@ -79,4 +147,5 @@ export type Database = Omit<GeneratedDatabase, "public"> & {
 
 export type TaxDocument = TaxDocumentRow;
 export type TaxYearSettings = TaxYearSettingsRow;
+export type WatchlistItem = WatchlistRow;
 export type { Json } from "./types";

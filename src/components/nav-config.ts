@@ -5,6 +5,7 @@ import {
   Coins,
   DollarSign,
   FileUp,
+  Gauge,
   Gem,
   Globe,
   Handshake,
@@ -79,6 +80,14 @@ export const ANALYSIS_NAV: NavItem[] = [
     keywords: "performance twr xirr rentabilidade análise classes investido",
   },
   {
+    to: "/avaliacao",
+    label: "Avaliação de ações",
+    icon: Gauge,
+    key: "j",
+    keywords:
+      "valor justo fair value dcf múltiplos ddm eva wacc damodaran altman piotroski beneish reit ffo análise fundamental radar",
+  },
+  {
     to: "/exposicao",
     label: "Risco e exposição",
     icon: Globe,
@@ -91,7 +100,7 @@ export const ANALYSIS_NAV: NavItem[] = [
     icon: Target,
     key: "o",
     keywords:
-      "objetivos fire independência financeira alocação alvo projeções futuro simulador comprar aporte",
+      "objetivos fire independência financeira alocação alvo projeções futuro simulador comprar aporte perfil de risco aversão markowitz questionário",
   },
 ];
 

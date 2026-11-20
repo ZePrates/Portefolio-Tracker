@@ -33,20 +33,24 @@ Instalar dependências com `bun install --frozen-lockfile`; o `bun.lock` aponta 
 
 Nunca pedir segredos no chat nem os escrever em ficheiros do repositório. Só dizer onde se definem:
 
-| Onde                          | Nome                                              | Para quê                                                              |
-| ----------------------------- | ------------------------------------------------- | --------------------------------------------------------------------- |
-| Vercel (Production e Preview) | `EXTERNAL_SUPABASE_SERVICE_KEY`                   | chave `sb_secret_…`, usada só pelo snapshot diário                    |
-| Vercel (Production e Preview) | `CRON_SECRET` (e `CRON_SECRET_PREVIOUS` ao rodar) | autentica o pedido do agendamento                                     |
-| Vercel (Production e Preview) | `FINNHUB_API_KEY`                                 | calendário de resultados (opcional; sem ela o cartão fica desativado) |
-| Vercel (Production e Preview) | `ANTHROPIC_API_KEY`                               | assistente de perguntas (opcional; sem ela o assistente avisa que falta configurar) |
-| Vercel (Production e Preview) | `ANTHROPIC_WORKSPACE_ID`                          | só se a chave da API não estiver associada a um workspace da consola   |
-| Vercel (Production e Preview) | `ASSISTANT_MODEL`                                 | modelo do assistente (opcional; por omissão `claude-haiku-5-5`)       |
-| GitHub Actions (variável)     | `SITE_URL`                                        | endereço de produção, sem barra final                                 |
-| GitHub Actions (segredo)      | `CRON_SECRET`                                     | o mesmo valor da Vercel                                               |
+| Onde                          | Nome                                              | Para quê                                                                                                           |
+| ----------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Vercel (Production e Preview) | `EXTERNAL_SUPABASE_SERVICE_KEY`                   | chave `sb_secret_…`, usada só pelo snapshot diário                                                                 |
+| Vercel (Production e Preview) | `CRON_SECRET` (e `CRON_SECRET_PREVIOUS` ao rodar) | autentica o pedido do agendamento                                                                                  |
+| Vercel (Production e Preview) | `FINNHUB_API_KEY`                                 | calendário de resultados (opcional; sem ela o cartão fica desativado)                                              |
+| Vercel (Production e Preview) | `VAPID_PUBLIC_KEY` e `VAPID_PRIVATE_KEY`          | notificações push do resumo das 9h (par gerado com `npx web-push generate-vapid-keys`; a privada como _Sensitive_) |
+| Vercel (Production e Preview) | `VAPID_SUBJECT`                                   | opcional; contacto VAPID (por omissão o endereço de produção)                                                      |
+| Vercel (Production e Preview) | `ANTHROPIC_API_KEY`                               | assistente de perguntas (opcional; sem ela o assistente avisa que falta configurar)                                |
+| Vercel (Production e Preview) | `ANTHROPIC_WORKSPACE_ID`                          | só se a chave da API não estiver associada a um workspace da consola                                               |
+| Vercel (Production e Preview) | `ASSISTANT_MODEL`                                 | modelo do assistente (opcional; por omissão `claude-haiku-5-5`)                                                    |
+| GitHub Actions (variável)     | `SITE_URL`                                        | endereço de produção, sem barra final                                                                              |
+| GitHub Actions (segredo)      | `CRON_SECRET`                                     | o mesmo valor da Vercel                                                                                            |
 
 O URL e a chave pública do Supabase estão em `vite.config.ts` (são públicos).
 
 O snapshot diário corre em `.github/workflows/daily-snapshot.yml` (21:30 UTC, só a partir do `main`) e chama `POST /api/public/cron/daily-snapshot`; só o HTTP 200 conta como sucesso.
+
+O resumo das 9h é agendado na Vercel (`crons` em `vite.config.ts`: 8h e 9h UTC, dias úteis, só em produção; chama `GET /api/public/cron/morning-digest` com o `CRON_SECRET`), com `.github/workflows/morning-digest.yml` de reserva (os agendamentos do GitHub chegam a atrasar horas). O endpoint só envia entre as 9h e as 12h de Lisboa e uma vez por dia (`notification_log`).
 
 ## Regras
 
