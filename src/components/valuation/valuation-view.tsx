@@ -8,6 +8,7 @@ import { analyzeCompany } from "@/lib/valuation/analyze";
 import type { Assumptions } from "@/lib/valuation/assumptions";
 import { getCompanyData } from "@/lib/valuation.functions";
 import { ValuationHeader } from "@/components/valuation/valuation-header";
+import { WatchlistButton } from "@/components/valuation/watchlist-button";
 import { ValuationSummary } from "@/components/valuation/valuation-summary";
 import { ValuationFairValue } from "@/components/valuation/valuation-fair-value";
 import { ValuationHealth } from "@/components/valuation/valuation-health";
@@ -128,6 +129,7 @@ export function ValuationView({
         analysis={analysis}
         onRefresh={() => void q.refetch()}
         refreshing={q.isFetching}
+        actions={<WatchlistButton symbol={data.profile.symbol} name={data.profile.name} />}
       />
       {Object.keys(overrides).length > 0 && (
         <p className="rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 text-[12.5px]">

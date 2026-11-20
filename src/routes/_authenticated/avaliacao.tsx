@@ -7,6 +7,7 @@ import { tabSearch } from "@/lib/tab-search";
 import { getValuationCandidates } from "@/lib/valuation.functions";
 import { PortfolioRadar } from "@/components/valuation/portfolio-radar";
 import { ValuationSearch } from "@/components/valuation/valuation-search";
+import { WatchlistCard } from "@/components/valuation/watchlist-card";
 import { cleanSymbol } from "@/lib/valuation/symbol";
 import {
   VALUATION_TABS,
@@ -64,6 +65,7 @@ function AvaliacaoPage() {
             loading={candidates.isLoading}
             onOpen={open}
           />
+          <WatchlistCard onOpen={open} />
           <HowItWorks />
         </>
       )}

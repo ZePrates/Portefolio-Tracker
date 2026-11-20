@@ -8,6 +8,7 @@ import {
   shouldSendDigest,
   type DigestInput,
   type DigestPosition,
+  type DigestWatchItem,
 } from "./morning-digest";
 
 const pos = (over: Partial<DigestPosition>): DigestPosition => ({
@@ -235,6 +236,106 @@ describe("digestNotification", () => {
       }),
     );
     expect(digestNotification(buildMorningDigest(base({ positions }))).body).toContain("e mais 2");
+  });
+});
+
+describe("watchlist abaixo do preço-alvo", () => {
+  const watch = (over: Partial<DigestWatchItem>): DigestWatchItem => ({
+    symbol: "AAA",
+    name: "Empresa A",
+    targetPrice: 100,
+    session: { date: "2026-10-30", previous: 101, close: 99, change: 99 / 101 - 1 },
+    ...over,
+  });
+
+  it("inclui quem fechou abaixo do alvo, com a distância em percentagem", () => {
+    const d = buildMorningDigest(base({ watchlist: [watch({ symbol: "O" })] }));
+    expect(d.watchlistBelowTarget).toHaveLength(1);
+    expect(d.watchlistBelowTarget[0]).toMatchObject({ name: "O", crossed: true });
+    expect(d.watchlistBelowTarget[0]!.gap).toBeCloseTo(-0.01, 10);
+  });
+
+  it("ignora quem está no alvo ou acima, sem alvo ou sem fecho", () => {
+    const d = buildMorningDigest(
+      base({
+        watchlist: [
+          watch({
+            symbol: "IGUAL",
+            session: { date: "2026-10-30", previous: 98, close: 100, change: 0.02 },
+          }),
+          watch({
+            symbol: "ACIMA",
+            session: { date: "2026-10-30", previous: 98, close: 120, change: 0.22 },
+          }),
+          watch({ symbol: "SEMALVO", targetPrice: null }),
+          watch({ symbol: "ALVOZERO", targetPrice: 0 }),
+          watch({ symbol: "SEMFECHO", session: null }),
+        ],
+      }),
+    );
+    expect(d.watchlistBelowTarget).toEqual([]);
+  });
+
+  it("primeiro os que passaram agora para baixo do alvo, depois os mais afastados", () => {
+    const d = buildMorningDigest(
+      base({
+        watchlist: [
+          // Já estava abaixo antes do último fecho.
+          watch({
+            symbol: "VELHO",
+            session: { date: "2026-10-30", previous: 80, close: 70, change: -0.125 },
+          }),
+          watch({
+            symbol: "NOVO1",
+            session: { date: "2026-10-30", previous: 100, close: 99, change: -0.01 },
+          }),
+          watch({
+            symbol: "NOVO2",
+            session: { date: "2026-10-30", previous: 105, close: 90, change: -0.14 },
+          }),
+        ],
+      }),
+    );
+    expect(d.watchlistBelowTarget.map((w) => [w.name, w.crossed])).toEqual([
+      ["NOVO2", true],
+      ["NOVO1", true],
+      ["VELHO", false],
+    ]);
+  });
+
+  it("a notificação mostra só percentagens, até 4 ativos, e abre a avaliação", () => {
+    const watchlist = Array.from({ length: 5 }, (_, i) =>
+      watch({
+        symbol: `W${i}`,
+        targetPrice: 50,
+        session: { date: "2026-10-30", previous: 51, close: 48 - i, change: -0.05 },
+      }),
+    );
+    const n = digestNotification(buildMorningDigest(base({ watchlist })));
+    expect(n.body).toMatch(/🎯 Watchlist abaixo do alvo: W4 −12,00\s%, W3 −10,00\s%/);
+    expect(n.body).toContain("e mais 1");
+    expect(n.body).not.toMatch(/€|USD|\b48\b|\b50\b/);
+    expect(n.url).toBe("/avaliacao");
+  });
+
+  it("com quedas na carteira, a notificação continua a abrir a performance", () => {
+    const n = digestNotification(
+      buildMorningDigest(
+        base({
+          positions: [
+            pos({ session: { date: "2026-10-30", previous: 1, close: 1, change: -0.08 } }),
+          ],
+          watchlist: [watch({})],
+        }),
+      ),
+    );
+    expect(n.body).toContain("Watchlist abaixo do alvo: AAA");
+    expect(n.url).toBe("/performance");
+  });
+
+  it("sem watchlist não acrescenta linha", () => {
+    const n = digestNotification(buildMorningDigest(base()));
+    expect(n.body).not.toContain("Watchlist");
   });
 });
 

@@ -41,6 +41,8 @@ describe("invalidatePortfolio", () => {
       "valuation",
       // Pesquisa de símbolos no Yahoo: não depende da carteira.
       "valuation-search",
+      // Watchlist (símbolos e preços-alvo): lista própria, não muda com os movimentos da carteira.
+      "watchlist",
     ]);
     const known = new Set<string>(PORTFOLIO_QUERY_KEYS);
     const missing = [...keys].filter((k) => !known.has(k) && !unrelated.has(k));

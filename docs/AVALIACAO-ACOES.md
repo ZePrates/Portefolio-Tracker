@@ -56,6 +56,13 @@ Ação especulativa (queima caixa com menos de 12 meses de liquidez), prejuízo 
 
 Com qualquer um destes avisos de fiabilidade, a página marca o **potencial como pouco fiável** e a nota global conta-o como neutro, tal como o radar assinala a posição com ⚠.
 
+## Watchlist
+
+- Botão **Adicionar à watchlist** no cabeçalho da análise; o cartão **Watchlist** aparece na página sem ticker, por baixo do radar.
+- Cada empresa é avaliada como no radar (sem pares nem notícias, dois pedidos de cada vez, cache partilhada de 30 min): preço, valor justo, potencial, veredito e ⚠ com os avisos de fiabilidade.
+- O **preço-alvo** escreve-se na moeda da cotação (unidade principal: GBP e não GBp); vazio retira o alvo. Tabela `watchlist` (único por utilizador e símbolo, RLS).
+- **Resumo das 9h**: lista as empresas cujo último fecho ficou abaixo do alvo, com a distância em percentagem (sem preços, por causa do ecrã bloqueado). O aviso repete-se enquanto estiverem abaixo; primeiro as que passaram agora para baixo do alvo. Regras puras em `morning-digest.ts`, fechos do Yahoo em `morning-digest.server.ts`.
+
 ## Holygrail AI → esta app
 
 | Holygrail                                                                   | Aqui                                                             |
@@ -71,7 +78,8 @@ Com qualquer um destes avisos de fiabilidade, a página marca o **potencial como
 | Notícias da ação, exportar PDF                                              | ✅ (PDF pela impressão do browser)                               |
 | Carteira, FIRE, dividendos                                                  | ✅ já existiam (mais completos aqui: IRS, XTB, TWR/XIRR)         |
 | Radar de oportunidades                                                      | ✅ radar de valor da carteira                                    |
-| Watchlist com alertas, perfil de investidor (Markowitz)                     | ⏳ no roadmap                                                    |
+| Watchlist com alertas                                                       | ✅ cartão Watchlist, com preço-alvo e aviso no resumo das 9h     |
+| Perfil de investidor (Markowitz)                                            | ⏳ no roadmap                                                    |
 | ETFs (custos, comparar), cripto, IA a ler relatórios e chamadas, comunidade | ❌ fora do âmbito atual (sem cripto na carteira; sem LLM na app) |
 
 ## Limites conhecidos

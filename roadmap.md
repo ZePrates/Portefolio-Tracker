@@ -2,7 +2,7 @@
 
 - [x] Avaliação de ações (inspirada no Holygrail AI da Lucrar.pt, com implementação própria): valor justo por modelos ponderados pelo tipo de empresa, saúde financeira, gestão, REITs, bancos, macro e radar de valor da carteira; dados públicos (Yahoo, BCE, Damodaran jan/2026), sem schema/RLS; motor puro com testes.
 - [x] Avaliação: confirmação visual com a carteira real (radar das 32 posições sem erros; ficha de ação, REIT e banco).
-- [ ] Watchlist com valor justo e alertas de preço-alvo na página Avaliação.
+- [x] Watchlist na página Avaliação: preço, valor justo (análise leve do radar), potencial, veredito, alertas ⚠ e preço-alvo editável; o resumo das 9h avisa as empresas cujo fecho ficou abaixo do alvo (só percentagens). Tabela `watchlist` com RLS.
 - [ ] Perfil de investidor: coeficiente de aversão ao risco (A) e utilidade média-variância (Markowitz) aplicada à carteira.
 - [ ] ETFs: custos (TER) e comparação lado a lado.
 
