@@ -359,120 +359,123 @@ export interface AssetExposureMeta {
 }
 
 /** Leitura consolidada: lê exclusivamente da base de dados (sem chamadas externas). */
+/** Carrega posições, exposições e holdings e calcula o relatório de exposição (partilhado com o assistente). */
+export async function loadExposure(supabase: SupabaseClient<Database>) {
+  const [assetsRes, exposuresRes, holdingsRes, profilesRes] = await Promise.all([
+    supabase.from("assets").select("*").neq("status", "closed"),
+    readExposurePages((from, to) =>
+      supabase.from("asset_exposures").select("*").order("id").range(from, to),
+    ),
+    readExposurePages((from, to) =>
+      supabase.from("etf_holdings").select("*").order("id").range(from, to),
+    ),
+    supabase.from("asset_profiles").select("*"),
+  ]);
+  if (assetsRes.error) throw new Error(assetsRes.error.message);
+
+  const assets = ((assetsRes.data ?? []) as Asset[]).filter(isOpenPosition);
+  if (profilesRes.error) throw new Error(profilesRes.error.message);
+  const exposures = exposuresRes as Array<{
+    asset_id: string;
+    dimension: string;
+    value: string;
+    weight: number;
+    source: string | null;
+    as_of_date: string | null;
+  }>;
+  const holdings = holdingsRes as Array<{
+    asset_id: string;
+    holding_name: string;
+    isin?: string | null;
+    holding_symbol: string | null;
+    asset_class?: string | null;
+    weight: number;
+    country: string | null;
+    sector: string | null;
+    currency: string | null;
+    as_of_date: string | null;
+    source: string | null;
+  }>;
+  const profiles = (profilesRes.data ?? []) as Array<{
+    asset_id: string;
+    domicile_country: string | null;
+    holdings_status?: "full" | "partial" | "error" | null;
+    holdings_coverage?: number | null;
+    holdings_synced_at?: string | null;
+    holdings_error?: string | null;
+    source: string | null;
+    as_of_date: string | null;
+  }>;
+
+  const positions: PositionInput[] = [];
+  const meta: AssetExposureMeta[] = [];
+
+  for (const a of assets) {
+    const ex = exposures.filter((e) => e.asset_id === a.id);
+    const hs = holdings.filter((h) => h.asset_id === a.id);
+    const profile = profiles.find((p) => p.asset_id === a.id) ?? null;
+
+    positions.push({
+      assetId: a.id,
+      name: a.name,
+      class: a.class,
+      ticker: a.ticker,
+      isin: a.isin,
+      value: assetCurrentValue(a),
+      nativeCurrency: a.native_currency || a.currency || "EUR",
+      exposures: ex.map((e): ExposureRecord => ({
+        dimension: e.dimension as ExposureRecord["dimension"],
+        value: e.value,
+        weight: Number(e.weight) || 0,
+        source: e.source,
+        as_of_date: e.as_of_date,
+      })),
+      holdings: hs.map((h): HoldingRecord => ({
+        name: h.holding_name,
+        symbol: h.holding_symbol,
+        isin: h.isin ?? null,
+        asset_class: h.asset_class ?? null,
+        weight: Number(h.weight) || 0,
+        country: h.country,
+        sector: h.sector,
+        currency: h.currency,
+        as_of_date: h.as_of_date,
+      })),
+    });
+
+    const holdingCoverage = hs.reduce((s, h) => s + (Number(h.weight) || 0), 0);
+    const hasCountryDim = ex.some((e) => e.dimension === "country");
+    meta.push({
+      assetId: a.id,
+      name: a.name,
+      class: a.class,
+      ticker: a.ticker,
+      value: assetCurrentValue(a),
+      coverage: Math.min(
+        100,
+        (a.class === "etf"
+          ? (profile?.holdings_coverage ?? holdingCoverage)
+          : hasCountryDim
+            ? 1
+            : holdingCoverage) * 100,
+      ),
+      holdingsStatus: profile?.holdings_status ?? (hs.length ? "partial" : null),
+      holdingsCount: hs.length,
+      holdingsError: profile?.holdings_error ?? null,
+      holdingsSyncedAt: profile?.holdings_synced_at ?? null,
+      derived: !hasCountryDim && hs.length > 0,
+      asOfDate: profile?.as_of_date ?? hs[0]?.as_of_date ?? ex[0]?.as_of_date ?? null,
+      source: hs[0]?.source ?? ex[0]?.source ?? profile?.source ?? null,
+      domicile: profile?.domicile_country ?? null,
+    });
+  }
+
+  return { report: computeExposure(positions), meta, positions };
+}
+
 export const getExposure = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const [assetsRes, exposuresRes, holdingsRes, profilesRes] = await Promise.all([
-      context.supabase.from("assets").select("*").neq("status", "closed"),
-      readExposurePages((from, to) =>
-        context.supabase.from("asset_exposures").select("*").order("id").range(from, to),
-      ),
-      readExposurePages((from, to) =>
-        context.supabase.from("etf_holdings").select("*").order("id").range(from, to),
-      ),
-      context.supabase.from("asset_profiles").select("*"),
-    ]);
-    if (assetsRes.error) throw new Error(assetsRes.error.message);
-
-    const assets = ((assetsRes.data ?? []) as Asset[]).filter(isOpenPosition);
-    if (profilesRes.error) throw new Error(profilesRes.error.message);
-    const exposures = exposuresRes as Array<{
-      asset_id: string;
-      dimension: string;
-      value: string;
-      weight: number;
-      source: string | null;
-      as_of_date: string | null;
-    }>;
-    const holdings = holdingsRes as Array<{
-      asset_id: string;
-      holding_name: string;
-      isin?: string | null;
-      holding_symbol: string | null;
-      asset_class?: string | null;
-      weight: number;
-      country: string | null;
-      sector: string | null;
-      currency: string | null;
-      as_of_date: string | null;
-      source: string | null;
-    }>;
-    const profiles = (profilesRes.data ?? []) as Array<{
-      asset_id: string;
-      domicile_country: string | null;
-      holdings_status?: "full" | "partial" | "error" | null;
-      holdings_coverage?: number | null;
-      holdings_synced_at?: string | null;
-      holdings_error?: string | null;
-      source: string | null;
-      as_of_date: string | null;
-    }>;
-
-    const positions: PositionInput[] = [];
-    const meta: AssetExposureMeta[] = [];
-
-    for (const a of assets) {
-      const ex = exposures.filter((e) => e.asset_id === a.id);
-      const hs = holdings.filter((h) => h.asset_id === a.id);
-      const profile = profiles.find((p) => p.asset_id === a.id) ?? null;
-
-      positions.push({
-        assetId: a.id,
-        name: a.name,
-        class: a.class,
-        ticker: a.ticker,
-        isin: a.isin,
-        value: assetCurrentValue(a),
-        nativeCurrency: a.native_currency || a.currency || "EUR",
-        exposures: ex.map((e): ExposureRecord => ({
-          dimension: e.dimension as ExposureRecord["dimension"],
-          value: e.value,
-          weight: Number(e.weight) || 0,
-          source: e.source,
-          as_of_date: e.as_of_date,
-        })),
-        holdings: hs.map((h): HoldingRecord => ({
-          name: h.holding_name,
-          symbol: h.holding_symbol,
-          isin: h.isin ?? null,
-          asset_class: h.asset_class ?? null,
-          weight: Number(h.weight) || 0,
-          country: h.country,
-          sector: h.sector,
-          currency: h.currency,
-          as_of_date: h.as_of_date,
-        })),
-      });
-
-      const holdingCoverage = hs.reduce((s, h) => s + (Number(h.weight) || 0), 0);
-      const hasCountryDim = ex.some((e) => e.dimension === "country");
-      meta.push({
-        assetId: a.id,
-        name: a.name,
-        class: a.class,
-        ticker: a.ticker,
-        value: assetCurrentValue(a),
-        coverage: Math.min(
-          100,
-          (a.class === "etf"
-            ? (profile?.holdings_coverage ?? holdingCoverage)
-            : hasCountryDim
-              ? 1
-              : holdingCoverage) * 100,
-        ),
-        holdingsStatus: profile?.holdings_status ?? (hs.length ? "partial" : null),
-        holdingsCount: hs.length,
-        holdingsError: profile?.holdings_error ?? null,
-        holdingsSyncedAt: profile?.holdings_synced_at ?? null,
-        derived: !hasCountryDim && hs.length > 0,
-        asOfDate: profile?.as_of_date ?? hs[0]?.as_of_date ?? ex[0]?.as_of_date ?? null,
-        source: hs[0]?.source ?? ex[0]?.source ?? profile?.source ?? null,
-        domicile: profile?.domicile_country ?? null,
-      });
-    }
-
-    return { report: computeExposure(positions), meta, positions };
-  });
+  .handler(({ context }) => loadExposure(context.supabase));
 
 export interface AssetExposureDetail {
   assetId: string;

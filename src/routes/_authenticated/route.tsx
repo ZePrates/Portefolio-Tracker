@@ -7,6 +7,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { PrivateModeProvider } from "@/components/private-mode";
 import { ConfirmProvider } from "@/components/ui-bits";
 import { AppShellProvider } from "@/components/app-shell";
+import { AssistantPanel } from "@/components/assistant-panel";
 import { ensureDailySnapshot } from "@/lib/snapshots.functions";
 import { invalidatePortfolio } from "@/lib/portfolio-queries";
 
@@ -62,6 +63,7 @@ function AuthenticatedLayout() {
               </div>
             </main>
           </div>
+          <AssistantPanel />
         </AppShellProvider>
       </ConfirmProvider>
     </PrivateModeProvider>

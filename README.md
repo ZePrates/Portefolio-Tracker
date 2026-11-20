@@ -87,6 +87,9 @@ Cada `push` ao `main` volta a publicar sozinho. Configuração única:
 | `CRON_SECRET`                            | Segredo que autentica o pedido do agendamento (gera um valor longo e aleatório).                                            |
 | `FINNHUB_API_KEY`                        | Opcional. Chave gratuita do [Finnhub](https://finnhub.io) para o cartão "Próximos resultados".                              |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Opcional. Par de chaves das notificações push (resumo das 9h): `npx web-push generate-vapid-keys`. **A privada é segredo.** |
+| `ANTHROPIC_API_KEY`                      | Opcional. Chave da API da Anthropic para o assistente de perguntas (botão flutuante, Ctrl/⌘+J).                             |
+| `ANTHROPIC_WORKSPACE_ID`                 | Opcional. Só se a chave da API não estiver associada a um workspace da consola.                                             |
+| `ASSISTANT_MODEL`                        | Opcional. Modelo do assistente; por omissão `claude-haiku-5-5`.                                                             |
 
 O URL e a chave pública (`publishable`) do Supabase estão em `vite.config.ts` e não precisam de configuração.
 
