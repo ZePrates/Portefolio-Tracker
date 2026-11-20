@@ -1,14 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware-external";
 import { todayLisbon } from "@/lib/dates";
 import { assistantTools } from "@/lib/assistant-tools";
-import {
-  anthropicKey,
-  anthropicWorkspaceId,
-  checkRateLimit,
-  runAssistant,
-} from "@/lib/assistant.server";
+import { checkRateLimit, resolveAssistantAuth, runAssistant } from "@/lib/assistant.server";
 
 const turnSchema = z.object({
   role: z.enum(["user", "assistant"]),
@@ -31,18 +27,17 @@ export const askAssistant = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const apiKey = anthropicKey();
-    if (!apiKey) {
+    const auth = resolveAssistantAuth(getRequest().headers.get("x-vercel-oidc-token"));
+    if (!auth) {
       throw new Error(
-        "O assistente não está configurado: falta a variável ANTHROPIC_API_KEY na Vercel (Production e Preview).",
+        "O assistente não está configurado: sem token do AI Gateway da Vercel nem ANTHROPIC_API_KEY.",
       );
     }
     if (!checkRateLimit(context.userId)) {
       throw new Error("Atingiste o limite de perguntas por hora. Tenta de novo mais tarde.");
     }
     return runAssistant({
-      apiKey,
-      workspaceId: anthropicWorkspaceId(),
+      auth,
       sb: context.supabase,
       tools: assistantTools,
       question: data.question,

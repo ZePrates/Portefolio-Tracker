@@ -1,6 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  AI_GATEWAY_ANTHROPIC_VERSION,
   ANTHROPIC_VERSION,
+  ASSISTANT_GATEWAY_MODEL_DEFAULT,
+  assistantModel,
+  resolveAssistantAuth,
   MAX_QUESTIONS_PER_HOUR,
   buildSystemPrompt,
   checkRateLimit,
@@ -35,7 +39,59 @@ function fakeTool(name: string, result: unknown, fail = false): AssistantTool {
   };
 }
 
-const base = { apiKey: "k", sb, today: "2026-10-31", question: "quanto tenho?" };
+const base = {
+  auth: { provider: "anthropic" as const, apiKey: "k" },
+  sb,
+  today: "2026-10-31",
+  question: "quanto tenho?",
+};
+
+describe("resolveAssistantAuth", () => {
+  beforeEach(() => {
+    vi.unstubAllEnvs();
+    for (const k of [
+      "ANTHROPIC_API_KEY",
+      "ANTHROPIC_WORKSPACE_ID",
+      "AI_GATEWAY_API_KEY",
+      "VERCEL_OIDC_TOKEN",
+      "ASSISTANT_MODEL",
+    ])
+      vi.stubEnv(k, "");
+  });
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("prefere a chave da Anthropic quando existe", () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "sk");
+    vi.stubEnv("ANTHROPIC_WORKSPACE_ID", "w1");
+    expect(resolveAssistantAuth("oidc")).toEqual({
+      provider: "anthropic",
+      apiKey: "sk",
+      workspaceId: "w1",
+    });
+  });
+
+  it("sem chave usa o token OIDC do pedido no AI Gateway", () => {
+    expect(resolveAssistantAuth(" oidc ")).toEqual({ provider: "gateway", token: "oidc" });
+  });
+
+  it("a chave do Gateway passa à frente do OIDC; o OIDC do ambiente é o último recurso", () => {
+    vi.stubEnv("VERCEL_OIDC_TOKEN", "env-oidc");
+    expect(resolveAssistantAuth(null)).toEqual({ provider: "gateway", token: "env-oidc" });
+    vi.stubEnv("AI_GATEWAY_API_KEY", "gw");
+    expect(resolveAssistantAuth("oidc")).toEqual({ provider: "gateway", token: "gw" });
+  });
+
+  it("sem nada devolve null", () => {
+    expect(resolveAssistantAuth(undefined)).toBeNull();
+  });
+
+  it("o modelo por omissão depende do fornecedor", () => {
+    expect(assistantModel("anthropic")).toBe("claude-haiku-5-5");
+    expect(assistantModel("gateway")).toBe(ASSISTANT_GATEWAY_MODEL_DEFAULT);
+    vi.stubEnv("ASSISTANT_MODEL", "google/x");
+    expect(assistantModel("gateway")).toBe("google/x");
+  });
+});
 
 describe("sanitizeHistory", () => {
   it("começa num turno do utilizador e termina numa resposta", () => {
@@ -105,12 +161,41 @@ describe("runAssistant", () => {
     const fetchImpl = vi.fn(async () => textReply("ok"));
     await runAssistant({
       ...base,
+      auth: { provider: "anthropic", apiKey: "k", workspaceId: "wrkspc_123" },
       tools: [],
-      workspaceId: "wrkspc_123",
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
     const init = (fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1];
     expect((init.headers as Record<string, string>)["anthropic-workspace-id"]).toBe("wrkspc_123");
+  });
+
+  it("no AI Gateway usa o endpoint, o Bearer e o modelo do Gateway", async () => {
+    const fetchImpl = vi.fn(async () => textReply("ok"));
+    await runAssistant({
+      ...base,
+      auth: { provider: "gateway", token: "oidc" },
+      tools: [],
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    const headers = init.headers as Record<string, string>;
+    expect(url).toBe("https://ai-gateway.vercel.sh/v1/messages");
+    expect(headers["authorization"]).toBe("Bearer oidc");
+    expect(headers["anthropic-version"]).toBe(AI_GATEWAY_ANTHROPIC_VERSION);
+    expect(headers).not.toHaveProperty("x-api-key");
+    expect(JSON.parse(init.body as string).model).toBe(ASSISTANT_GATEWAY_MODEL_DEFAULT);
+  });
+
+  it("explica quando o crédito do Gateway acabou", async () => {
+    const fetchImpl = vi.fn(async () => new Response("{}", { status: 402 }));
+    await expect(
+      runAssistant({
+        ...base,
+        auth: { provider: "gateway", token: "oidc" },
+        tools: [],
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      }),
+    ).rejects.toThrow(/crédito do AI Gateway/);
   });
 
   it("executa a ferramenta pedida e devolve o resultado ao modelo", async () => {
