@@ -67,6 +67,17 @@ type NotificationLogRow = {
   created_at: string;
 };
 
+type InvestorProfileRow = {
+  user_id: string;
+  /** Índice da opção escolhida por pergunta (ver risk-profile.ts). */
+  answers: import("./types").Json;
+  risk_free_pct: number;
+  outside_cash: number;
+  expected_return_pct: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
 type WatchlistRow = {
   id: string;
   user_id: string;
@@ -81,6 +92,12 @@ type WatchlistRow = {
 
 /** Tables that exist only in the external database. */
 type ExtraTables = {
+  investor_profiles: {
+    Row: InvestorProfileRow;
+    Insert: Partial<InvestorProfileRow>;
+    Update: Partial<InvestorProfileRow>;
+    Relationships: [];
+  };
   watchlist: {
     Row: WatchlistRow;
     Insert: Partial<WatchlistRow> & Pick<WatchlistRow, "symbol" | "name">;

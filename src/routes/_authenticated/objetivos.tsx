@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PageTabs } from "@/components/page-tabs";
 import { ProjectionsPanel } from "@/components/projections-panel";
 import { PurchaseSimulator } from "@/components/purchase-simulator";
+import { RiskProfilePanel } from "@/components/risk-profile-panel";
 import { tabSearch } from "@/lib/tab-search";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -33,11 +34,11 @@ import { FIRE_DEFAULTS, validateFire, type FireForm } from "@/lib/fire-form";
 import type { AssetClass } from "@/lib/portfolio-types";
 import { privateEUR } from "@/components/private-value";
 
-const TABS = ["fire", "alocacao", "projecoes", "simulador"] as const;
+const TABS = ["fire", "alocacao", "projecoes", "simulador", "perfil"] as const;
 type Tab = (typeof TABS)[number];
 
 const DESCRIPTION =
-  "Independência financeira (FIRE), alocação-alvo, projeções e simulação de compras.";
+  "Independência financeira (FIRE), alocação-alvo, projeções, simulação de compras e perfil de risco.";
 
 export const Route = createFileRoute("/_authenticated/objetivos")({
   head: () => ({
@@ -69,6 +70,7 @@ function ObjetivosPage() {
           { id: "alocacao", label: "Alocação", content: <AllocationSection /> },
           { id: "projecoes", label: "Projeções", content: <ProjectionsPanel /> },
           { id: "simulador", label: "Simular compra", content: <PurchaseSimulator /> },
+          { id: "perfil", label: "Perfil de risco", content: <RiskProfilePanel /> },
         ]}
       />
     </div>
