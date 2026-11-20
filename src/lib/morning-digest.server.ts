@@ -12,6 +12,7 @@ import {
   buildMorningDigest,
   lastSessionChange,
   type DigestPosition,
+  type DigestWatchItem,
   type MorningDigest,
 } from "@/lib/morning-digest";
 
@@ -39,7 +40,7 @@ export async function loadMorningDigest(
   const { fetchYahooHistory, yahooSymbolFor } = await import("@/lib/yahoo.server");
   const { metalSymbol } = await import("@/lib/metals.server");
 
-  const [assetsRes, divRes, snapRes] = await Promise.all([
+  const [assetsRes, divRes, snapRes, watchRes] = await Promise.all([
     db.from("assets").select("*").eq("user_id", userId).neq("status", "closed"),
     db
       .from("dividends")
@@ -53,10 +54,16 @@ export async function loadMorningDigest(
       .eq("scope", "total")
       .order("snapshot_date", { ascending: false })
       .limit(1),
+    db
+      .from("watchlist")
+      .select("symbol, name, target_price")
+      .eq("user_id", userId)
+      .not("target_price", "is", null),
   ]);
   if (assetsRes.error) throw dbError(assetsRes.error);
   if (divRes.error) throw dbError(divRes.error);
   if (snapRes.error) throw dbError(snapRes.error);
+  if (watchRes.error) throw dbError(watchRes.error);
 
   const assets = ((assetsRes.data ?? []) as unknown as Asset[]).filter(
     (a) => isOpenPosition(a) && a.class !== "p2p",
@@ -77,8 +84,31 @@ export async function loadMorningDigest(
     };
   });
 
+  // Watchlist com preço-alvo. O alvo está na unidade principal da moeda (GBP,
+  // não GBp, como na página Avaliação): os fechos em cêntimos passam para lá.
+  const watchlist = await mapLimited(
+    watchRes.data ?? [],
+    5,
+    async (w): Promise<DigestWatchItem> => {
+      const history = await fetchYahooHistory(w.symbol, from, today);
+      const session = history ? lastSessionChange(history.points, today) : null;
+      const factor = history?.currency === "ZAC" ? 0.01 : (history?.factor ?? 1);
+      return {
+        symbol: w.symbol,
+        name: w.name,
+        targetPrice: w.target_price == null ? null : Number(w.target_price),
+        session: session && {
+          ...session,
+          previous: session.previous * factor,
+          close: session.close * factor,
+        },
+      };
+    },
+  );
+
   const status = (s: string | null) => (s ?? "").toLowerCase();
   return buildMorningDigest({
+    watchlist,
     today,
     positions,
     dividends: (divRes.data ?? []).map((d) => ({

@@ -5,6 +5,7 @@ import {
   Coins,
   DollarSign,
   FileUp,
+  Gauge,
   Gem,
   Globe,
   Handshake,
@@ -77,6 +78,14 @@ export const ANALYSIS_NAV: NavItem[] = [
     icon: Activity,
     key: "f",
     keywords: "performance twr xirr rentabilidade análise classes investido",
+  },
+  {
+    to: "/avaliacao",
+    label: "Avaliação de ações",
+    icon: Gauge,
+    key: "j",
+    keywords:
+      "valor justo fair value dcf múltiplos ddm eva wacc damodaran altman piotroski beneish reit ffo análise fundamental radar",
   },
   {
     to: "/exposicao",

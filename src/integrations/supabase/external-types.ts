@@ -67,8 +67,26 @@ type NotificationLogRow = {
   created_at: string;
 };
 
+type WatchlistRow = {
+  id: string;
+  user_id: string;
+  /** Símbolo do Yahoo (maiúsculas). */
+  symbol: string;
+  name: string;
+  /** Preço-alvo na moeda da cotação. */
+  target_price: number | null;
+  notes: string | null;
+  created_at: string;
+};
+
 /** Tables that exist only in the external database. */
 type ExtraTables = {
+  watchlist: {
+    Row: WatchlistRow;
+    Insert: Partial<WatchlistRow> & Pick<WatchlistRow, "symbol" | "name">;
+    Update: Partial<WatchlistRow>;
+    Relationships: [];
+  };
   tax_documents: {
     Row: TaxDocumentRow;
     Insert: Partial<TaxDocumentRow> & { tax_year: number; source: TaxDocumentRow["source"] };
@@ -112,4 +130,5 @@ export type Database = Omit<GeneratedDatabase, "public"> & {
 
 export type TaxDocument = TaxDocumentRow;
 export type TaxYearSettings = TaxYearSettingsRow;
+export type WatchlistItem = WatchlistRow;
 export type { Json } from "./types";
