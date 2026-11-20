@@ -235,3 +235,19 @@
     }
   }
 }
+
+/* Impressão / "Exportar PDF" (avaliação de ações): só o conteúdo da página. */
+@media print {
+  aside,
+  nav,
+  header.sticky,
+  [data-print-hide] {
+    display: none !important;
+  }
+  #conteudo {
+    padding-left: 0 !important;
+  }
+  section {
+    break-inside: avoid;
+  }
+}
