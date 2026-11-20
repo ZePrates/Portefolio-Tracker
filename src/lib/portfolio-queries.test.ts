@@ -39,6 +39,12 @@ describe("invalidatePortfolio", () => {
       "push-status",
       // Respostas ao questionário de risco: só mudam quando o utilizador as guarda.
       "investor-profile",
+      // Dados públicos de mercado de uma empresa (Yahoo, BCE): iguais com qualquer carteira.
+      "valuation",
+      // Pesquisa de símbolos no Yahoo: não depende da carteira.
+      "valuation-search",
+      // Watchlist (símbolos e preços-alvo): lista própria, não muda com os movimentos da carteira.
+      "watchlist",
     ]);
     const known = new Set<string>(PORTFOLIO_QUERY_KEYS);
     const missing = [...keys].filter((k) => !known.has(k) && !unrelated.has(k));

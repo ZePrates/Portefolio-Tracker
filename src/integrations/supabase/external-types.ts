@@ -78,12 +78,30 @@ type InvestorProfileRow = {
   updated_at: string;
 };
 
+type WatchlistRow = {
+  id: string;
+  user_id: string;
+  /** Símbolo do Yahoo (maiúsculas). */
+  symbol: string;
+  name: string;
+  /** Preço-alvo na moeda da cotação. */
+  target_price: number | null;
+  notes: string | null;
+  created_at: string;
+};
+
 /** Tables that exist only in the external database. */
 type ExtraTables = {
   investor_profiles: {
     Row: InvestorProfileRow;
     Insert: Partial<InvestorProfileRow>;
     Update: Partial<InvestorProfileRow>;
+    Relationships: [];
+  };
+  watchlist: {
+    Row: WatchlistRow;
+    Insert: Partial<WatchlistRow> & Pick<WatchlistRow, "symbol" | "name">;
+    Update: Partial<WatchlistRow>;
     Relationships: [];
   };
   tax_documents: {
@@ -129,4 +147,5 @@ export type Database = Omit<GeneratedDatabase, "public"> & {
 
 export type TaxDocument = TaxDocumentRow;
 export type TaxYearSettings = TaxYearSettingsRow;
+export type WatchlistItem = WatchlistRow;
 export type { Json } from "./types";

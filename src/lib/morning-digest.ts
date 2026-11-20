@@ -3,11 +3,13 @@
  *
  * Regras simples e verificáveis: variação do último fecho de cada ativo (em
  * moeda local) aplicada ao valor em EUR, quedas a partir de 5 %, ativos que
- * passaram para baixo do preço médio, agenda de dividendos e avisos de dados.
+ * passaram para baixo do preço médio, agenda de dividendos, empresas da
+ * watchlist abaixo do preço-alvo e avisos de dados.
  * Os valores em euros não entram na notificação (aparece no ecrã bloqueado).
  */
 import { addDaysISO, APP_TIME_ZONE } from "@/lib/dates";
 import { formatDatePt, formatPercent } from "@/lib/format";
+import { targetGap } from "@/lib/watchlist";
 
 /** Queda diária (fração) a partir da qual um ativo é destacado. */
 export const DROP_ALERT_THRESHOLD = 0.05;
@@ -106,12 +108,29 @@ export interface DigestDividendEvent {
   received: boolean;
 }
 
+/** Empresa da watchlist com preço-alvo (na moeda da cotação, tal como o fecho). */
+export interface DigestWatchItem {
+  symbol: string;
+  name: string;
+  targetPrice: number | null;
+  session: SessionChange | null;
+}
+
 export interface DigestInput {
   today: string;
   positions: DigestPosition[];
   dividends: DigestDividendEvent[];
   /** Data da última fotografia diária (null = nenhuma). */
   lastSnapshotDate: string | null;
+  watchlist?: DigestWatchItem[];
+}
+
+export interface DigestWatchHit {
+  name: string;
+  /** Distância do fecho ao alvo (fração negativa: −0,05 = 5 % abaixo). */
+  gap: number;
+  /** Passou para baixo do alvo no último fecho (no fecho anterior estava no alvo ou acima). */
+  crossed: boolean;
 }
 
 export interface DigestMover {
@@ -133,6 +152,28 @@ export interface MorningDigest {
   exDividends: string[];
   payments: string[];
   warnings: string[];
+  /** Empresas da watchlist cujo último fecho ficou abaixo do preço-alvo. */
+  watchlistBelowTarget: DigestWatchHit[];
+}
+
+/**
+ * Watchlist abaixo do alvo: todos os que fecharam abaixo do preço-alvo (o
+ * aviso repete-se enquanto lá estiverem). Primeiro os que passaram agora para
+ * baixo, depois os mais afastados do alvo.
+ */
+export function watchlistBelowTarget(items: DigestWatchItem[]): DigestWatchHit[] {
+  const hits: DigestWatchHit[] = [];
+  for (const w of items) {
+    if (!w.session) continue;
+    const gap = targetGap(w.session.close, w.targetPrice);
+    if (gap == null || gap >= 0) continue;
+    hits.push({
+      name: w.symbol.trim() || w.name,
+      gap,
+      crossed: w.session.previous >= w.targetPrice!,
+    });
+  }
+  return hits.sort((a, b) => Number(b.crossed) - Number(a.crossed) || a.gap - b.gap);
 }
 
 const shortName = (p: { name: string; ticker: string | null }) =>
@@ -207,6 +248,7 @@ export function buildMorningDigest(input: DigestInput): MorningDigest {
     exDividends,
     payments,
     warnings,
+    watchlistBelowTarget: watchlistBelowTarget(input.watchlist ?? []),
   };
 }
 
@@ -253,6 +295,12 @@ export function digestNotification(d: MorningDigest): DigestNotification {
   }
   if (d.exDividends.length) lines.push(`Ex-dividendo: ${d.exDividends.slice(0, 4).join(", ")}`);
   if (d.payments.length) lines.push(`Pagamentos: ${d.payments.slice(0, 4).join(", ")}`);
+  const watch = d.watchlistBelowTarget;
+  if (watch.length) {
+    const shown = watch.slice(0, 4).map((w) => `${w.name} ${pct(w.gap)}`);
+    const more = watch.length > 4 ? ` e mais ${watch.length - 4}` : "";
+    lines.push(`🎯 Watchlist abaixo do alvo: ${shown.join(", ")}${more}`);
+  }
   if (d.warnings.length) lines.push(`⚠ ${d.warnings.join("; ")}`);
 
   const [, , m, day] = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d.today) ?? [];
@@ -260,7 +308,7 @@ export function digestNotification(d: MorningDigest): DigestNotification {
     title: `Portefólio · ${weekdayPt(d.today)} ${Number(day)}/${m}`,
     body: lines.join("\n"),
     tag: `morning-digest-${d.today}`,
-    url: d.drops.length ? "/performance" : "/",
+    url: d.drops.length ? "/performance" : watch.length ? "/avaliacao" : "/",
   };
 }
 

@@ -15,6 +15,7 @@ import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedAcoesCrescimentoRouteImport } from './routes/_authenticated/acoes-crescimento'
 import { Route as AuthenticatedAcoesDividendosRouteImport } from './routes/_authenticated/acoes-dividendos'
 import { Route as AuthenticatedAnaliseRouteImport } from './routes/_authenticated/analise'
+import { Route as AuthenticatedAvaliacaoRouteImport } from './routes/_authenticated/avaliacao'
 import { Route as AuthenticatedCalendarioRouteImport } from './routes/_authenticated/calendario'
 import { Route as AuthenticatedDividendosRouteImport } from './routes/_authenticated/dividendos'
 import { Route as AuthenticatedEtfsRouteImport } from './routes/_authenticated/etfs'
@@ -62,6 +63,11 @@ const AuthenticatedAcoesDividendosRoute =
 const AuthenticatedAnaliseRoute = AuthenticatedAnaliseRouteImport.update({
   id: '/analise',
   path: '/analise',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAvaliacaoRoute = AuthenticatedAvaliacaoRouteImport.update({
+  id: '/avaliacao',
+  path: '/avaliacao',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedCalendarioRoute = AuthenticatedCalendarioRouteImport.update({
@@ -160,6 +166,7 @@ export interface FileRoutesByFullPath {
   '/acoes-crescimento': typeof AuthenticatedAcoesCrescimentoRoute
   '/acoes-dividendos': typeof AuthenticatedAcoesDividendosRoute
   '/analise': typeof AuthenticatedAnaliseRoute
+  '/avaliacao': typeof AuthenticatedAvaliacaoRoute
   '/calendario': typeof AuthenticatedCalendarioRoute
   '/dividendos': typeof AuthenticatedDividendosRoute
   '/etfs': typeof AuthenticatedEtfsRoute
@@ -183,6 +190,7 @@ export interface FileRoutesByTo {
   '/acoes-crescimento': typeof AuthenticatedAcoesCrescimentoRoute
   '/acoes-dividendos': typeof AuthenticatedAcoesDividendosRoute
   '/analise': typeof AuthenticatedAnaliseRoute
+  '/avaliacao': typeof AuthenticatedAvaliacaoRoute
   '/calendario': typeof AuthenticatedCalendarioRoute
   '/dividendos': typeof AuthenticatedDividendosRoute
   '/etfs': typeof AuthenticatedEtfsRoute
@@ -209,6 +217,7 @@ export interface FileRoutesById {
   '/_authenticated/acoes-crescimento': typeof AuthenticatedAcoesCrescimentoRoute
   '/_authenticated/acoes-dividendos': typeof AuthenticatedAcoesDividendosRoute
   '/_authenticated/analise': typeof AuthenticatedAnaliseRoute
+  '/_authenticated/avaliacao': typeof AuthenticatedAvaliacaoRoute
   '/_authenticated/calendario': typeof AuthenticatedCalendarioRoute
   '/_authenticated/dividendos': typeof AuthenticatedDividendosRoute
   '/_authenticated/etfs': typeof AuthenticatedEtfsRoute
@@ -236,6 +245,7 @@ export interface FileRouteTypes {
     | '/acoes-crescimento'
     | '/acoes-dividendos'
     | '/analise'
+    | '/avaliacao'
     | '/calendario'
     | '/dividendos'
     | '/etfs'
@@ -259,6 +269,7 @@ export interface FileRouteTypes {
     | '/acoes-crescimento'
     | '/acoes-dividendos'
     | '/analise'
+    | '/avaliacao'
     | '/calendario'
     | '/dividendos'
     | '/etfs'
@@ -284,6 +295,7 @@ export interface FileRouteTypes {
     | '/_authenticated/acoes-crescimento'
     | '/_authenticated/acoes-dividendos'
     | '/_authenticated/analise'
+    | '/_authenticated/avaliacao'
     | '/_authenticated/calendario'
     | '/_authenticated/dividendos'
     | '/_authenticated/etfs'
@@ -353,6 +365,13 @@ declare module '@tanstack/react-router' {
       path: '/analise'
       fullPath: '/analise'
       preLoaderRoute: typeof AuthenticatedAnaliseRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/avaliacao': {
+      id: '/_authenticated/avaliacao'
+      path: '/avaliacao'
+      fullPath: '/avaliacao'
+      preLoaderRoute: typeof AuthenticatedAvaliacaoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/calendario': {
@@ -481,6 +500,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAcoesCrescimentoRoute: typeof AuthenticatedAcoesCrescimentoRoute
   AuthenticatedAcoesDividendosRoute: typeof AuthenticatedAcoesDividendosRoute
   AuthenticatedAnaliseRoute: typeof AuthenticatedAnaliseRoute
+  AuthenticatedAvaliacaoRoute: typeof AuthenticatedAvaliacaoRoute
   AuthenticatedCalendarioRoute: typeof AuthenticatedCalendarioRoute
   AuthenticatedDividendosRoute: typeof AuthenticatedDividendosRoute
   AuthenticatedEtfsRoute: typeof AuthenticatedEtfsRoute
@@ -503,6 +523,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAcoesCrescimentoRoute: AuthenticatedAcoesCrescimentoRoute,
   AuthenticatedAcoesDividendosRoute: AuthenticatedAcoesDividendosRoute,
   AuthenticatedAnaliseRoute: AuthenticatedAnaliseRoute,
+  AuthenticatedAvaliacaoRoute: AuthenticatedAvaliacaoRoute,
   AuthenticatedCalendarioRoute: AuthenticatedCalendarioRoute,
   AuthenticatedDividendosRoute: AuthenticatedDividendosRoute,
   AuthenticatedEtfsRoute: AuthenticatedEtfsRoute,

@@ -25,6 +25,8 @@ export const PORTFOLIO_QUERY_KEYS = [
   "tax",
   "tax-documents",
   "month-close",
+  // Ações e REITs em carteira para o radar de valor da página Avaliação.
+  "valuation-candidates",
 ] as const;
 
 export async function invalidatePortfolio(queryClient: QueryClient): Promise<void> {
