@@ -37,6 +37,8 @@ describe("invalidatePortfolio", () => {
     const unrelated = new Set<string>([
       // Estado das notificações push do dispositivo: não depende dos dados da carteira.
       "push-status",
+      // Respostas ao questionário de risco: só mudam quando o utilizador as guarda.
+      "investor-profile",
     ]);
     const known = new Set<string>(PORTFOLIO_QUERY_KEYS);
     const missing = [...keys].filter((k) => !known.has(k) && !unrelated.has(k));

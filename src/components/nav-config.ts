@@ -91,7 +91,7 @@ export const ANALYSIS_NAV: NavItem[] = [
     icon: Target,
     key: "o",
     keywords:
-      "objetivos fire independência financeira alocação alvo projeções futuro simulador comprar aporte",
+      "objetivos fire independência financeira alocação alvo projeções futuro simulador comprar aporte perfil de risco aversão markowitz questionário",
   },
 ];
 
