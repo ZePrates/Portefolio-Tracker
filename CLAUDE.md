@@ -40,9 +40,10 @@ Nunca pedir segredos no chat nem os escrever em ficheiros do repositório. Só d
 | Vercel (Production e Preview) | `FINNHUB_API_KEY`                                 | calendário de resultados (opcional; sem ela o cartão fica desativado)                                              |
 | Vercel (Production e Preview) | `VAPID_PUBLIC_KEY` e `VAPID_PRIVATE_KEY`          | notificações push do resumo das 9h (par gerado com `npx web-push generate-vapid-keys`; a privada como _Sensitive_) |
 | Vercel (Production e Preview) | `VAPID_SUBJECT`                                   | opcional; contacto VAPID (por omissão o endereço de produção)                                                      |
-| Vercel (Production e Preview) | `ANTHROPIC_API_KEY`                               | assistente de perguntas (opcional; sem ela o assistente avisa que falta configurar)                                |
+| Vercel (Production e Preview) | `ANTHROPIC_API_KEY`                               | assistente pela API paga da Anthropic (opcional; sem ela usa o AI Gateway da Vercel, sem chave, pelo token OIDC)   |
 | Vercel (Production e Preview) | `ANTHROPIC_WORKSPACE_ID`                          | só se a chave da API não estiver associada a um workspace da consola                                               |
-| Vercel (Production e Preview) | `ASSISTANT_MODEL`                                 | modelo do assistente (opcional; por omissão `claude-haiku-5-5`)                                                    |
+| Vercel (Production e Preview) | `AI_GATEWAY_API_KEY`                              | opcional; só fora da Vercel (nos deploys o assistente usa o token OIDC e o crédito grátis mensal do Gateway)       |
+| Vercel (Production e Preview) | `ASSISTANT_MODEL`                                 | modelo (opcional; por omissão `anthropic/claude-haiku-5.5` no Gateway e `claude-haiku-5-5` na API da Anthropic)    |
 | GitHub Actions (variável)     | `SITE_URL`                                        | endereço de produção, sem barra final                                                                              |
 | GitHub Actions (segredo)      | `CRON_SECRET`                                     | o mesmo valor da Vercel                                                                                            |
 
