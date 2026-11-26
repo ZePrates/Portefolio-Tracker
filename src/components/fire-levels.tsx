@@ -138,6 +138,7 @@ function LevelStep({
             isGoal && !isNext && "text-warning",
           )}
         >
+          {isGoal && <Flame aria-hidden className="h-3.5 w-3.5 shrink-0 text-warning" />}
           <span className="truncate">{level.name}</span>
           <InfoTip label={`O que é ${level.name}?`}>
             <p className="font-medium">
@@ -296,7 +297,13 @@ export function FireLevels({ details, hidden }: { details: FireDetails; hidden: 
             info={FIRE_INFO.tax}
             value={privateEUR(tax.fireNumber, hidden)}
           >
-            <p>{when(tax.yearsToFire, tax.fireMonth)}</p>
+            <p>
+              {tax.yearsToFire === 0
+                ? "✓ Atingido"
+                : tax.fireMonth
+                  ? `FIRE em ${formatMonthLongPt(tax.fireMonth)}`
+                  : "Fora de alcance"}
+            </p>
             <p>
               hoje {formatPct(tax.gainSharePct, 0)} da carteira é mais-valia → imposto efetivo de{" "}
               {formatPct(tax.effectiveRatePct, 1)} por levantamento
