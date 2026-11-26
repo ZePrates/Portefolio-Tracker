@@ -134,6 +134,44 @@ export function formatMonthPt(iso: string | null | undefined): string {
   return month ? `${month}/${m[1]!.slice(2)}` : EMPTY;
 }
 
+const MONTHS_LONG_PT = [
+  "janeiro",
+  "fevereiro",
+  "março",
+  "abril",
+  "maio",
+  "junho",
+  "julho",
+  "agosto",
+  "setembro",
+  "outubro",
+  "novembro",
+  "dezembro",
+];
+
+/** "2042-04" → "abril de 2042". */
+export function formatMonthLongPt(iso: string | null | undefined): string {
+  const m = /^(\d{4})-(\d{2})/.exec(iso ?? "");
+  const month = m ? MONTHS_LONG_PT[Number(m[2]) - 1] : undefined;
+  return m && month ? `${month} de ${m[1]}` : EMPTY;
+}
+
+/**
+ * Duração em meses → "15 anos e 5 meses" (ou "15a 5m" com `short`).
+ * 0 → "agora"; null ou inválido → "—".
+ */
+export function formatDurationPt(months: number | null | undefined, short = false): string {
+  if (months == null || !Number.isFinite(months) || months < 0) return EMPTY;
+  const total = Math.round(months);
+  if (total === 0) return "agora";
+  const y = Math.floor(total / 12);
+  const m = total % 12;
+  if (short) return [y ? `${y}a` : "", m ? `${m}m` : ""].filter(Boolean).join(" ");
+  const years = y ? `${y} ${y === 1 ? "ano" : "anos"}` : "";
+  const rest = m ? `${m} ${m === 1 ? "mês" : "meses"}` : "";
+  return [years, rest].filter(Boolean).join(" e ");
+}
+
 /** "2026-01-15" → "15/01" (eixos curtos). */
 export function formatDayMonthPt(iso: string | null | undefined): string {
   const m = /^\d{4}-(\d{2})-(\d{2})/.exec(iso ?? "");

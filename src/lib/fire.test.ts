@@ -59,6 +59,20 @@ describe("fireDetails", () => {
     expect(fat!.years!).toBeGreaterThan(fire!.years!);
   });
 
+  it("meses exatos batem com os anos e a data", () => {
+    const d = fireDetails(settings, 150000, 150000, "2026-10-07");
+    for (const l of d.levels) {
+      expect(l.years).toBe(Math.round((l.monthsAway! / 12) * 10) / 10);
+    }
+    const fire = d.levels[2]!;
+    const [y, m] = fire.month!.split("-").map(Number);
+    expect((y! - 2026) * 12 + (m! - 10)).toBe(fire.monthsAway);
+    expect(d.coast.monthsAway).toBeGreaterThan(fire.monthsAway!);
+    expect(d.flamingo.monthsToHalf).toBe(d.levels[0]!.monthsAway);
+    expect(d.flamingo.monthsToFire).toBeGreaterThan(fire.monthsAway!);
+    expect(fireDetails(settings, 350000, 350000, "2026-10-07").levels[0]!.monthsAway).toBe(0);
+  });
+
   it("Coast FIRE: data sem mais aportes é mais tarde que com aportes", () => {
     const d = fireDetails(settings, 150000, 150000, "2026-10-07");
     const withContrib = fireProgress(settings, 150000, 0, "2026-10-07").yearsToFire!;

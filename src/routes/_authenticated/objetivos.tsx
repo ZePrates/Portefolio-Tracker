@@ -21,7 +21,7 @@ import {
 } from "@/components/ui-bits";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CLASS_COLOR } from "@/components/chart-kit";
-import { FireLevels } from "@/components/fire-levels";
+import { FireCountdown, FireLevels } from "@/components/fire-levels";
 import { usePrivateMode } from "@/components/private-mode";
 import {
   getAllocation,
@@ -80,15 +80,6 @@ function ObjetivosPage() {
 /* ------------------------------------------------------------------ */
 /* FIRE                                                                */
 /* ------------------------------------------------------------------ */
-
-function monthLong(yyyymm: string): string {
-  const m = /^(\d{4})-(\d{2})$/.exec(yyyymm);
-  if (!m) return yyyymm;
-  return new Date(Number(m[1]), Number(m[2]) - 1, 1).toLocaleDateString("pt-PT", {
-    month: "long",
-    year: "numeric",
-  });
-}
 
 function FireSection() {
   const { hidden } = usePrivateMode();
@@ -286,28 +277,21 @@ function FireSection() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
+            {data?.details && (
+              <FireCountdown
+                details={data.details}
+                realReturnPct={progress.realReturnPct}
+                hidden={hidden}
+              />
+            )}
+            <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-3">
               <MetricCard label="Número FIRE" value={privateEUR(progress.fireNumber, hidden)} />
               <MetricCard label="Falta" value={privateEUR(progress.remaining, hidden)} />
               <MetricCard
+                className="col-span-2 lg:col-span-1"
                 label="Despesas cobertas"
                 value={formatPct(progress.passiveCoveragePct, 1)}
                 sub="dividendos e juros P2P líquidos (12 m) ÷ despesas"
-              />
-              <MetricCard
-                label="Previsão"
-                value={
-                  progress.fireMonth
-                    ? monthLong(progress.fireMonth)
-                    : progress.yearsToFire === 0
-                      ? "Já atingido"
-                      : "Fora de alcance"
-                }
-                sub={
-                  progress.yearsToFire
-                    ? `${formatNumber(progress.yearsToFire, 1)} anos · retorno real ${formatPct(progress.realReturnPct, 1)}`
-                    : `retorno real ${formatPct(progress.realReturnPct, 1)}`
-                }
               />
             </div>
             {data?.details?.optimistic && data.settings && (

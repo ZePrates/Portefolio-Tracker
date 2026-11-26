@@ -157,12 +157,15 @@ export interface FireLevel extends FireLevelDef {
   remaining: number;
   /** Anos até lá, com os aportes atuais. */
   years: number | null;
+  /** Meses até lá (exato, para mostrar "x anos e y meses"). */
+  monthsAway: number | null;
   month: string | null;
 }
 
 export interface FireCoast {
   /** Anos até ao FIRE se deixares de investir hoje (null se não chega em 100 anos). */
   years: number | null;
+  monthsAway: number | null;
   month: string | null;
 }
 
@@ -178,11 +181,15 @@ export interface FireFlamingo {
   progressPct: number;
   /** Anos/mês até chegar a metade do número FIRE com os aportes atuais. */
   halfYears: number | null;
+  /** Meses até metade do número FIRE. */
+  monthsToHalf: number | null;
   halfMonth: string | null;
   /** Anos desde a metade até ao FIRE completo, sem mais aportes. */
   coastYears: number | null;
   /** Anos/mês (a contar de hoje) até ao FIRE completo. */
   fireYears: number | null;
+  /** Meses (a contar de hoje) até ao FIRE completo. */
+  monthsToFire: number | null;
   fireMonth: string | null;
 }
 
@@ -224,6 +231,8 @@ export const FIRE_SCENARIOS: readonly { key: FireScenario["key"]; name: string; 
 export const FIRE_OPTIMISTIC_REAL_PCT = 7;
 
 export interface FireDetails {
+  /** Valor atual da carteira usado nas contas (EUR). */
+  portfolioValue: number;
   levels: FireLevel[];
   coast: FireCoast;
   flamingo: FireFlamingo;
@@ -267,12 +276,17 @@ export function fireDetails(
         Number.isFinite(target) && target > 0 ? Math.min(100, (value / target) * 100) : 0,
       remaining: Number.isFinite(target) ? Math.max(0, target - value) : Number.POSITIVE_INFINITY,
       years: toYears(months),
+      monthsAway: months,
       month: addMonths(today, months),
     };
   });
 
   const coastMonths = monthsToTarget(value, fireNumber, rate, 0);
-  const coast: FireCoast = { years: toYears(coastMonths), month: addMonths(today, coastMonths) };
+  const coast: FireCoast = {
+    years: toYears(coastMonths),
+    monthsAway: coastMonths,
+    month: addMonths(today, coastMonths),
+  };
 
   const yoursReal =
     ((1 + settings.expectedReturnPct / 100) / (1 + settings.inflationPct / 100) - 1) * 100;
@@ -294,6 +308,7 @@ export function fireDetails(
   ];
 
   return {
+    portfolioValue: value,
     levels,
     coast,
     flamingo: fireFlamingo(value, fireNumber, rate, contribution, today),
@@ -329,9 +344,11 @@ function fireFlamingo(
     halfReached: value >= target,
     progressPct: Number.isFinite(target) && target > 0 ? Math.min(100, (value / target) * 100) : 0,
     halfYears: toYears(halfMonths),
+    monthsToHalf: halfMonths,
     halfMonth: addMonths(today, halfMonths),
     coastYears: toYears(coastMonths),
     fireYears: toYears(totalMonths),
+    monthsToFire: totalMonths,
     fireMonth: addMonths(today, totalMonths),
   };
 }

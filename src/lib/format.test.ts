@@ -3,6 +3,8 @@ import {
   countryNamePt,
   formatCompact,
   formatDatePt,
+  formatDurationPt,
+  formatMonthLongPt,
   formatEUR,
   formatEURCompact,
   formatMonthPt,
@@ -163,5 +165,30 @@ describe("formatação PT-PT de interface", () => {
     expect(countryNamePt("Narnia")).toBe("Narnia");
     expect(sectorNamePt("Finance")).toBe("Financeiro");
     expect(sectorNamePt("Tecnologia")).toBe("Tecnologia");
+  });
+});
+
+describe("formatMonthLongPt", () => {
+  it("mês por extenso", () => {
+    expect(formatMonthLongPt("2042-04")).toBe("abril de 2042");
+    expect(formatMonthLongPt("2026-03-15")).toBe("março de 2026");
+    expect(formatMonthLongPt(null)).toBe("—");
+  });
+});
+
+describe("formatDurationPt", () => {
+  it("anos e meses, por extenso e curto", () => {
+    expect(formatDurationPt(185)).toBe("15 anos e 5 meses");
+    expect(formatDurationPt(185, true)).toBe("15a 5m");
+    expect(formatDurationPt(13)).toBe("1 ano e 1 mês");
+    expect(formatDurationPt(24)).toBe("2 anos");
+    expect(formatDurationPt(24, true)).toBe("2a");
+    expect(formatDurationPt(7)).toBe("7 meses");
+    expect(formatDurationPt(7, true)).toBe("7m");
+  });
+  it("zero e valores inválidos", () => {
+    expect(formatDurationPt(0)).toBe("agora");
+    expect(formatDurationPt(null)).toBe("—");
+    expect(formatDurationPt(-3)).toBe("—");
   });
 });
